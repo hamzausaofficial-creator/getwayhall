@@ -1,0 +1,53 @@
+import axios from 'axios';
+
+const client = axios.create({
+  baseURL: 'http://localhost:8000/api',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add a request interceptor to include the JWT token
+client.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add a response interceptor to handle token expiration
+client.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (refreshToken) {
+        try {
+          const response = await axios.post('http://localhost:8000/api/auth/token/refresh/', {
+            refresh: refreshToken,
+          });
+          localStorage.setItem('access_token', response.data.access);
+          originalRequest.headers.Authorization = `Bearer ${response.data.access}`;
+          return client(originalRequest);
+        } catch (refreshError) {
+          localStorage.clear();
+          window.location.href = '/login';
+        }
+      } else {
+        localStorage.clear();
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default client;

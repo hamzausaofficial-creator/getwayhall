@@ -1,0 +1,143 @@
+from django.db import models
+from core.models import Tenant
+from customers.models import Customer
+from venues.models import Venue
+from django.conf import settings
+from decimal import Decimal
+import datetime
+import random
+from django.utils import timezone
+
+class Booking(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('CONFIRMED', 'Confirmed'),
+        ('COMPLETED', 'Completed'),
+        ('CANCELLED', 'Cancelled'),
+    )
+    
+    PAYMENT_STATUS_CHOICES = (
+        ('UNPAID', 'Unpaid'),
+        ('PARTIAL', 'Partial'),
+        ('PAID', 'Paid'),
+    )
+
+    SLOT_CHOICES = (
+        ('morning', 'Morning'),
+        ('evening', 'Evening'),
+    )
+    
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='bookings', null=True, blank=True)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='bookings')
+    venue = models.ForeignKey(Venue, on_delete=models.CASCADE, related_name='bookings')
+    
+    event_name = models.CharField(max_length=255)
+    booking_id = models.CharField(max_length=50, blank=True, unique=True, null=True)
+    booking_date = models.DateField(default=datetime.date.today)
+    event_date = models.DateField(null=True, blank=True)
+    slot = models.CharField(max_length=20, choices=SLOT_CHOICES, default='morning')
+    
+    start_date = models.DateTimeField(null=True, blank=True)
+    end_date = models.DateTimeField(null=True, blank=True)
+    
+    # Attendance details
+    gents_count = models.PositiveIntegerField(default=0)
+    ladies_count = models.PositiveIntegerField(default=0)
+    guest_count = models.PositiveIntegerField(default=0)  # Total attendance
+
+    # Rate and pricing details
+    rate_per_head = models.DecimalField(max_digits=12, decimal_places=2, default=1200)
+    
+    # Special services charges
+    overtime_hours = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    kitchen_charge = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    decoration_charge = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    deg_count = models.PositiveIntegerField(default=0)
+    generator_charge = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    
+    # Client Info per contract
+    cnic = models.CharField(max_length=20, blank=True, null=True)
+    
+    total_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    advance_paid = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    remaining_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    
+    booking_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='UNPAID')
+    
+    notes = models.TextField(blank=True, null=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['start_date']),
+            models.Index(fields=['booking_status']),
+        ]
+
+    def save(self, *args, **kwargs):
+        # Auto generate booking_id if not present
+        if not self.booking_id:
+            today_str = datetime.date.today().strftime('%Y')
+            random_num = random.randint(1000, 9999)
+            self.booking_id = f"BK-{today_str}-{random_num}"
+            
+        # Aggregate guest count
+        self.guest_count = self.gents_count + self.ladies_count
+        
+        # Calculate subtotal = guest_count * rate_per_head
+        subtotal = Decimal(str(self.guest_count)) * Decimal(str(self.rate_per_head))
+        
+        # Calculate extra services = (overtime_hours * 5000) + kitchen_charge + decoration_charge + generator_charge
+        extra_services = (Decimal(str(self.overtime_hours)) * Decimal('5000.00')) + \
+                         Decimal(str(self.kitchen_charge)) + \
+                         Decimal(str(self.decoration_charge)) + \
+                         Decimal(str(self.generator_charge))
+        
+        # Grand Total = Subtotal + Extra Services + Taxes (5% of Subtotal + Extra Services)
+        total_before_tax = subtotal + extra_services
+        tax = total_before_tax * Decimal('0.05')
+        
+        self.total_price = total_before_tax + tax
+        
+        # Auto calculate balance
+        self.remaining_balance = self.total_price - self.advance_paid
+        
+        # Update payment status
+        if self.advance_paid <= 0:
+            self.payment_status = 'UNPAID'
+        elif self.remaining_balance <= 0:
+            self.payment_status = 'PAID'
+        else:
+            self.payment_status = 'PARTIAL'
+            
+        # Also auto-calculate start_date and end_date if they are not provided but event_date and slot are provided
+        if self.event_date:
+            if self.slot == 'morning':
+                # Morning: 12:00 PM to 4:00 PM
+                start_dt = datetime.datetime.combine(self.event_date, datetime.time(12, 0))
+                end_dt = datetime.datetime.combine(self.event_date, datetime.time(16, 0))
+            else:
+                # Evening: 7:00 PM to 11:00 PM
+                start_dt = datetime.datetime.combine(self.event_date, datetime.time(19, 0))
+                end_dt = datetime.datetime.combine(self.event_date, datetime.time(23, 0))
+            
+            # Make timezone aware if settings.USE_TZ is True
+            if settings.USE_TZ:
+                current_tz = timezone.get_current_timezone()
+                self.start_date = timezone.make_aware(start_dt, current_tz)
+                self.end_date = timezone.make_aware(end_dt, current_tz)
+            else:
+                self.start_date = start_dt
+                self.end_date = end_dt
+        else:
+            # Fallback if event_date is not set
+            if not self.start_date:
+                self.start_date = timezone.now()
+            if not self.end_date:
+                self.end_date = self.start_date + datetime.timedelta(days=1)
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.event_name} - {self.customer.last_name}"

@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Add New Booking | Hallora Management Pro</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none !important;
+            border-color: #a83900 !important;
+            box-shadow: 0 0 0 1px #a83900 !important;
+        }
+        .segmented-control input:checked + div {
+            background-color: white;
+            color: #a83900;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .sidebar-transition {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* Stripe-like subtle shadows and borders */
+        .premium-card {
+            background: white;
+            border: 1px solid #f2f2f2;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-lowest": "#ffffff",
+                      "on-error": "#ffffff",
+                      "inverse-on-surface": "#eff1f3",
+                      "surface": "#fcfcfd",
+                      "outline-variant": "#e5e7eb",
+                      "on-secondary": "#ffffff",
+                      "primary": "#a83900",
+                      "on-tertiary-container": "#1102ab",
+                      "tertiary-container": "#8b8eff",
+                      "on-tertiary-fixed-variant": "#2f2ebe",
+                      "on-surface-variant": "#6b7280",
+                      "primary-container": "#ff6b2c",
+                      "on-primary-fixed": "#380d00",
+                      "inverse-surface": "#111827",
+                      "surface-container-low": "#f9fafb",
+                      "primary-fixed-dim": "#ffb59a",
+                      "on-secondary-container": "#5c647a",
+                      "inverse-primary": "#ffb59a",
+                      "surface-variant": "#f3f4f6",
+                      "secondary-fixed-dim": "#9ca3af",
+                      "on-secondary-fixed": "#111827",
+                      "on-error-container": "#93000a",
+                      "surface-container": "#f3f4f6",
+                      "on-secondary-fixed-variant": "#374151",
+                      "secondary": "#4b5563",
+                      "surface-bright": "#ffffff",
+                      "background": "#fcfcfd",
+                      "on-surface": "#111827",
+                      "primary-fixed": "#ffdbcf",
+                      "on-tertiary-fixed": "#07006c",
+                      "on-primary-container": "#5c1c00",
+                      "on-background": "#111827",
+                      "tertiary-fixed-dim": "#c0c1ff",
+                      "surface-container-highest": "#e5e7eb",
+                      "tertiary": "#494bd6",
+                      "tertiary-fixed": "#e1e0ff",
+                      "secondary-container": "#f3f4f6",
+                      "surface-dim": "#f3f4f6",
+                      "on-primary": "#ffffff",
+                      "error-container": "#fef2f2",
+                      "on-primary-fixed-variant": "#802900",
+                      "surface-tint": "#a83900",
+                      "error": "#dc2626",
+                      "secondary-fixed": "#f3f4f6",
+                      "outline": "#d1d5db",
+                      "on-tertiary": "#ffffff",
+                      "surface-container-high": "#f9fafb"
+              },
+              "borderRadius": {
+                      "DEFAULT": "6px",
+                      "lg": "8px",
+                      "xl": "12px",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "sidebar-width": "260px",
+                      "margin-mobile": "16px",
+                      "stack-md": "16px",
+                      "stack-lg": "24px",
+                      "margin-desktop": "40px",
+                      "gutter": "32px",
+                      "container-max": "1200px",
+                      "stack-sm": "12px"
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface antialiased">
+<!-- Sidebar -->
+<aside class="fixed left-0 top-0 h-full flex flex-col py-8 bg-inverse-surface shadow-xl w-sidebar-width z-50 overflow-y-auto">
+<div class="px-8 mb-10">
+<h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+<span class="w-8 h-8 bg-primary-container rounded flex items-center justify-center text-white text-base">H</span>
+                Hallora
+            </h1>
+<p class="text-[10px] font-semibold text-secondary-fixed-dim/40 uppercase tracking-[2px] mt-1">Management Pro</p>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 text-secondary-fixed-dim/80 hover:text-white hover:bg-white/5 rounded-lg px-4 py-2.5 transition-all group" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 bg-primary text-on-primary rounded-lg px-4 py-2.5 shadow-lg shadow-primary/20" href="#">
+<span class="material-symbols-outlined text-[20px]">event_available</span>
+<span class="text-sm font-medium">Bookings</span>
+</a>
+<a class="flex items-center gap-3 text-secondary-fixed-dim/80 hover:text-white hover:bg-white/5 rounded-lg px-4 py-2.5 transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">calendar_month</span>
+<span class="text-sm font-medium">Calendar</span>
+</a>
+<a class="flex items-center gap-3 text-secondary-fixed-dim/80 hover:text-white hover:bg-white/5 rounded-lg px-4 py-2.5 transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">meeting_room</span>
+<span class="text-sm font-medium">Halls</span>
+</a>
+<a class="flex items-center gap-3 text-secondary-fixed-dim/80 hover:text-white hover:bg-white/5 rounded-lg px-4 py-2.5 transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">group</span>
+<span class="text-sm font-medium">Customers</span>
+</a>
+<a class="flex items-center gap-3 text-secondary-fixed-dim/80 hover:text-white hover:bg-white/5 rounded-lg px-4 py-2.5 transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">payments</span>
+<span class="text-sm font-medium">Payments</span>
+</a>
+</nav>
+<div class="px-4 mt-auto">
+<button class="w-full bg-white/10 hover:bg-white/15 text-white text-sm font-medium py-3 rounded-lg flex items-center justify-center gap-2 transition-all border border-white/5">
+<span class="material-symbols-outlined text-sm">add</span>
+                Quick Booking
+            </button>
+</div>
+</aside>
+<main class="ml-sidebar-width min-h-screen">
+<!-- Top Bar -->
+<header class="sticky top-0 z-40 flex justify-between items-center px-margin-desktop h-16 bg-white/80 backdrop-blur-md border-b border-outline-variant">
+<div class="flex items-center gap-2">
+<span class="text-secondary text-sm font-medium">Bookings</span>
+<span class="text-outline text-sm">/</span>
+<span class="text-on-surface text-sm font-semibold">New Booking</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-on-surface-variant text-lg">search</span>
+<input class="bg-surface-container border-none rounded-full pl-10 pr-4 py-1.5 text-sm w-56 focus:ring-1 focus:ring-primary/40 placeholder:text-on-surface-variant/50" placeholder="Search..." type="text"/>
+</div>
+<button class="relative p-1.5 text-on-surface-variant hover:bg-surface-container rounded-md transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-1.5 h-1.5 bg-primary rounded-full ring-2 ring-white"></span>
+</button>
+<div class="flex items-center gap-3 pl-4 border-l border-outline-variant">
+<div class="text-right">
+<p class="text-sm font-semibold text-on-surface leading-none">Alex Rivera</p>
+<p class="text-[10px] text-on-surface-variant mt-1">Venue Manager</p>
+</div>
+<img alt="Alex Rivera" class="w-8 h-8 rounded-full ring-1 ring-outline-variant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAOuF_ivLYjShiOaxsCEMha0onpPngpPDPogoQotcg1XvuKOAuHFEohp_-irroM9EXlPqlBpHePn7b0bvyNl9qdP4GnUnvERGImq0bLtkhJABsBgCRnTMb55aE54eb2z8tyHQAGOhgXg4wrcLzoQgg3A6AGD2FgpPQHlB8CTMsKB3vv0L0HQ-xNLOy_G7ApJx8ZOKm8jN0qF4lLOqz0-dPZEC-qbx2djL5lUd37wmsDNep_bNtATj3WA5-0XSdqwDUsLDem7zWUbQG8"/>
+</div>
+</div>
+</header>
+<div class="max-w-container-max mx-auto px-margin-desktop py-12">
+<form id="bookingForm">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+<!-- Main Form Fields -->
+<div class="lg:col-span-8 space-y-12">
+<!-- Header Section -->
+<div class="flex justify-between items-end border-b border-outline-variant pb-6">
+<div>
+<h1 class="text-3xl font-bold text-on-surface tracking-tight">Booking Request</h1>
+<p class="text-on-surface-variant mt-2">Fill in the details to reserve a hall slot.</p>
+</div>
+<div class="flex items-center gap-2 px-3 py-1 bg-surface-container rounded-full text-secondary font-bold text-[10px] uppercase tracking-wider">
+<span class="w-1.5 h-1.5 bg-secondary rounded-full"></span>
+                                Draft Mode
+                            </div>
+</div>
+<!-- Section: Booking Essentials -->
+<section class="space-y-6">
+<h2 class="text-sm font-bold text-on-surface uppercase tracking-widest flex items-center gap-3">
+<span class="w-1.5 h-6 bg-primary rounded-full"></span>
+                                Essentials
+                            </h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+<div class="space-y-1.5">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Booking ID</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-4 py-2.5 text-sm font-mono text-secondary" readonly="" type="text" value="BK-2024-0082"/>
+</div>
+<div class="space-y-1.5">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Booking Date</label>
+<input class="w-full border border-outline-variant rounded-lg px-4 py-2.5 text-sm focus:border-primary" type="date" value="2024-11-15"/>
+</div>
+<div class="space-y-1.5">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Event Date</label>
+<input class="w-full border border-outline-variant rounded-lg px-4 py-2.5 text-sm focus:border-primary" type="date"/>
+</div>
+<div class="space-y-1.5">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Event Title</label>
+<input class="w-full border border-outline-variant rounded-lg px-4 py-2.5 text-sm placeholder:text-on-surface-variant/40" placeholder="e.g. Wedding Reception: Sarah &amp; Mark" type="text"/>
+</div>
+</div>
+</section>
+<!-- Section: Client Details -->
+<section class="space-y-6">
+<h2 class="text-sm font-bold text-on-surface uppercase tracking-widest flex items-center gap-3">
+<span class="w-1.5 h-6 bg-primary rounded-full"></span>
+                                Client Info
+                            </h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+<div class="space-y-1.5">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Full Name</label>
+<input class="w-full border border-outline-variant rounded-lg px-4 py-2.5 text-sm" placeholder="Enter legal name" type="text"/>
+</div>
+<div class="space-y-1.5">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Phone Number</label>
+<input class="w-full border border-outline-variant rounded-lg px-4 py-2.5 text-sm" placeholder="+92 300 0000000" type="tel"/>
+</div>
+<div class="space-y-1.5 md:col-span-2">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">CNIC (ID Number)</label>
+<input class="w-full border border-outline-variant rounded-lg px-4 py-2.5 text-sm font-mono" placeholder="00000-0000000-0" type="text"/>
+</div>
+<div class="space-y-1.5 md:col-span-2">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Residential Address</label>
+<textarea class="w-full border border-outline-variant rounded-lg px-4 py-2.5 text-sm resize-none" placeholder="Street address, City, Province" rows="2"></textarea>
+</div>
+</div>
+</section>
+<!-- Section: Venue & Attendance -->
+<section class="space-y-6">
+<h2 class="text-sm font-bold text-on-surface uppercase tracking-widest flex items-center gap-3">
+<span class="w-1.5 h-6 bg-primary rounded-full"></span>
+                                Venue &amp; Logistics
+                            </h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+<div class="space-y-6">
+<div class="space-y-3">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Select Hall</label>
+<div class="flex p-1 bg-surface-container rounded-lg segmented-control">
+<label class="flex-1 cursor-pointer">
+<input checked="" class="hidden" name="hall" type="radio" value="A"/>
+<div class="py-2 text-center text-sm font-semibold rounded-md transition-all text-on-surface-variant">Hall A</div>
+</label>
+<label class="flex-1 cursor-pointer">
+<input class="hidden" name="hall" type="radio" value="B"/>
+<div class="py-2 text-center text-sm font-semibold rounded-md transition-all text-on-surface-variant">Hall B</div>
+</label>
+</div>
+</div>
+<div class="space-y-3">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Select Slot</label>
+<div class="flex p-1 bg-surface-container rounded-lg segmented-control">
+<label class="flex-1 cursor-pointer">
+<input checked="" class="hidden" name="slot" type="radio" value="morning"/>
+<div class="py-2 text-center text-sm font-semibold rounded-md transition-all text-on-surface-variant">Morning</div>
+</label>
+<label class="flex-1 cursor-pointer">
+<input class="hidden" name="slot" type="radio" value="evening"/>
+<div class="py-2 text-center text-sm font-semibold rounded-md transition-all text-on-surface-variant">Evening</div>
+</label>
+</div>
+</div>
+</div>
+<div class="space-y-6">
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-1.5">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Gents</label>
+<input class="w-full border border-outline-variant rounded-lg px-4 py-2.5 text-sm" type="number" value="250"/>
+</div>
+<div class="space-y-1.5">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Ladies</label>
+<input class="w-full border border-outline-variant rounded-lg px-4 py-2.5 text-sm" type="number" value="250"/>
+</div>
+</div>
+<div class="p-4 bg-surface-container-low border border-outline-variant/50 rounded-xl flex justify-between items-center">
+<span class="text-xs font-semibold text-secondary uppercase tracking-tight">Total Attendance</span>
+<span class="text-xl font-bold text-primary">500</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Section: Charges Grid -->
+<section class="space-y-6">
+<h2 class="text-sm font-bold text-on-surface uppercase tracking-widest flex items-center gap-3">
+<span class="w-1.5 h-6 bg-primary rounded-full"></span>
+                                Special Services
+                            </h2>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+<div class="premium-card p-4 rounded-xl space-y-3">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-base">schedule</span>
+<span class="text-[11px] font-bold uppercase tracking-wider">Overtime</span>
+</div>
+<div class="relative">
+<input class="w-full border border-outline-variant rounded-lg pl-4 pr-12 py-2 text-sm" placeholder="0" step="0.5" type="number"/>
+<span class="absolute right-3 top-2 text-[10px] font-bold text-secondary">HRS</span>
+</div>
+</div>
+<div class="premium-card p-4 rounded-xl space-y-3">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-base">flatware</span>
+<span class="text-[11px] font-bold uppercase tracking-wider">Kitchen</span>
+</div>
+<div class="relative">
+<input class="w-full border border-outline-variant rounded-lg pl-10 pr-4 py-2 text-sm" placeholder="0" type="number"/>
+<span class="absolute left-3 top-2 text-[10px] font-bold text-secondary">PKR</span>
+</div>
+</div>
+<div class="premium-card p-4 rounded-xl space-y-3">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-base">festival</span>
+<span class="text-[11px] font-bold uppercase tracking-wider">Decoration</span>
+</div>
+<div class="relative">
+<input class="w-full border border-outline-variant rounded-lg pl-10 pr-4 py-2 text-sm" placeholder="0" type="number"/>
+<span class="absolute left-3 top-2 text-[10px] font-bold text-secondary">PKR</span>
+</div>
+</div>
+<div class="premium-card p-4 rounded-xl space-y-3">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-base">cooking</span>
+<span class="text-[11px] font-bold uppercase tracking-wider">Deg Count</span>
+</div>
+<input class="w-full border border-outline-variant rounded-lg px-4 py-2 text-sm" placeholder="0" type="number"/>
+</div>
+<div class="premium-card p-4 rounded-xl md:col-span-2 space-y-3">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-base">bolt</span>
+<span class="text-[11px] font-bold uppercase tracking-wider">Generator (per hr)</span>
+</div>
+<div class="relative">
+<input class="w-full border border-outline-variant rounded-lg pl-10 pr-4 py-2 text-sm" placeholder="0" type="number"/>
+<span class="absolute left-3 top-2 text-[10px] font-bold text-secondary">PKR</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Sidebar: Billing & Actions -->
+<div class="lg:col-span-4 lg:sticky lg:top-24 space-y-8">
+<div class="bg-white border border-outline-variant rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
+<div class="bg-primary/5 px-8 py-6 border-b border-outline-variant/40">
+<h3 class="text-lg font-bold text-primary flex items-center gap-3">
+<span class="material-symbols-outlined">receipt_long</span>
+                                    Billing Summary
+                                </h3>
+</div>
+<div class="p-8 space-y-6">
+<!-- Line Items -->
+<div class="space-y-4">
+<div class="flex justify-between items-center group">
+<span class="text-sm text-secondary font-medium">Rate per Head</span>
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-bold text-on-surface-variant/60">PKR</span>
+<input class="w-24 text-right border-b border-transparent group-hover:border-outline-variant bg-transparent px-0 py-0.5 font-bold text-on-surface focus:border-primary transition-all" type="number" value="1200"/>
+</div>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/20">
+<span class="text-sm text-secondary font-medium">Subtotal</span>
+<span class="text-sm font-bold text-on-surface">600,000</span>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-xs text-on-surface-variant">
+<span>Extra Services</span>
+<span class="font-medium">45,000</span>
+</div>
+<div class="flex justify-between text-xs text-on-surface-variant">
+<span>Taxes (5%)</span>
+<span class="font-medium">32,250</span>
+</div>
+</div>
+</div>
+<!-- Totals Block -->
+<div class="bg-surface-container rounded-xl p-6 space-y-5">
+<div class="flex justify-between items-baseline">
+<span class="text-xs font-bold text-secondary uppercase tracking-wider">Grand Total</span>
+<div class="text-right">
+<span class="text-[10px] font-bold text-primary mr-1">PKR</span>
+<span class="text-2xl font-black text-primary tracking-tight">677,250</span>
+</div>
+</div>
+<div class="pt-4 border-t border-outline-variant flex justify-between items-center">
+<span class="text-xs font-semibold text-secondary">Advance Paid</span>
+<div class="relative w-28">
+<input class="w-full text-right bg-white border border-outline-variant rounded-lg px-3 py-1.5 text-xs font-bold focus:ring-primary" type="number" value="100000"/>
+</div>
+</div>
+<div class="flex justify-between items-baseline pt-2">
+<span class="text-xs font-bold text-error uppercase tracking-wider">Remaining</span>
+<div class="text-right">
+<span class="text-[10px] font-bold text-error mr-1">PKR</span>
+<span class="text-xl font-black text-error tracking-tight">577,250</span>
+</div>
+</div>
+</div>
+<!-- Actions -->
+<div class="space-y-3 pt-2">
+<button class="w-full bg-primary text-white font-bold text-sm py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined text-[20px]">save</span>
+                                        Save Booking
+                                    </button>
+<div class="grid grid-cols-2 gap-3">
+<button class="flex items-center justify-center gap-2 py-3 px-4 border border-outline-variant rounded-xl text-xs font-bold text-secondary hover:bg-surface-container transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined text-lg">print</span>
+                                            Print
+                                        </button>
+<button class="flex items-center justify-center gap-2 py-3 px-4 border border-error/20 text-error rounded-xl text-xs font-bold hover:bg-error/5 transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined text-lg">delete</span>
+                                            Delete
+                                        </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Notes -->
+<div class="bg-primary/5 border border-primary/10 rounded-2xl p-6 relative overflow-hidden group">
+<div class="absolute -right-4 -top-4 text-primary/5 group-hover:text-primary/10 transition-colors">
+<span class="material-symbols-outlined text-8xl">info</span>
+</div>
+<h4 class="text-xs font-black text-primary uppercase tracking-widest mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-base">info</span>
+                                Manager's Note
+                            </h4>
+<p class="text-xs text-secondary leading-relaxed relative z-10 font-medium">
+                                Ensure all client identification documents are uploaded within 48 hours of advance payment. Overtime is charged at <span class="font-bold">PKR 5,000/hr</span> for Hall A.
+                            </p>
+</div>
+</div>
+</div>
+</form>
+</div>
+<footer class="w-full py-12 px-margin-desktop border-t border-outline-variant mt-20">
+<div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="flex items-center gap-3">
+<span class="w-6 h-6 bg-secondary text-white rounded flex items-center justify-center text-[10px] font-bold">H</span>
+<span class="text-xs font-bold text-on-surface">© 2024 Hallora Systems.</span>
+</div>
+<div class="flex gap-10">
+<a class="text-[11px] font-bold text-on-surface-variant hover:text-primary transition-colors uppercase tracking-wider" href="#">Privacy</a>
+<a class="text-[11px] font-bold text-on-surface-variant hover:text-primary transition-colors uppercase tracking-wider" href="#">Terms</a>
+<a class="text-[11px] font-bold text-on-surface-variant hover:text-primary transition-colors uppercase tracking-wider" href="#">Help Center</a>
+</div>
+</div>
+</footer>
+</main>
+<script>
+        // Smooth transitions for segmented controls
+        document.querySelectorAll('.segmented-control input').forEach(input => {
+            input.addEventListener('change', function() {
+                const group = this.getAttribute('name');
+                const labels = document.querySelectorAll(`input[name="${group}"]`);
+                labels.forEach(l => {
+                    // Styles are handled by CSS + :checked pseudo-class
+                });
+            });
+        });
+
+        // Simple scroll behavior for header
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('header');
+            if (window.scrollY > 20) {
+                header.classList.add('shadow-sm', 'border-outline-variant/100');
+            } else {
+                header.classList.remove('shadow-sm', 'border-outline-variant/100');
+            }
+        });
+    </script>
+</body></html>
