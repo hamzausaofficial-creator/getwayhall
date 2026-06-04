@@ -18,13 +18,17 @@ import {
   CalendarDays,
   Bell,
   X,
-  UserCircle
+  UserCircle,
+  BedDouble,
+  CalendarCheck,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAppType } from '../hooks/useAppType';
 
 const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobileClose }) => {
   const { logout } = useAuth();
+  const { isGuestHouse } = useAppType();
   const {
     user,
     loading,
@@ -38,7 +42,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
     canAccessDashboard,
   } = usePermissions();
 
-  const mainNavItems = [
+  const hallNavItems = [
     { name: 'Bookings', icon: Calendar, path: '/bookings' },
     { name: 'Calendar', icon: CalendarDays, path: '/calendar' },
     { name: 'Halls', icon: Building2, path: '/halls' },
@@ -49,10 +53,29 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
     { name: 'Inventory', icon: Package, path: '/inventory' },
     { name: 'Decoration Packages', icon: Sparkles, path: '/decoration-packages' },
     ...(canAccessReports ? [{ name: 'Reports', icon: BarChart3, path: '/reports' }] : []),
-    ...(canAccessNotifications ? [{ name: 'SMS Log', icon: Bell, path: '/notifications' }] : []),
+    ...(canAccessNotifications ? [{ name: 'Notifications', icon: Bell, path: '/notifications' }] : []),
   ];
 
-  const accountantNavItem = { name: 'Accountant', icon: Calculator, path: '/dashboard' };
+  const guestHouseNavItems = [
+    { name: 'Stays', icon: CalendarCheck, path: '/gh/stays' },
+    { name: 'Calendar', icon: CalendarDays, path: '/gh/calendar' },
+    { name: 'Rooms', icon: BedDouble, path: '/gh/rooms' },
+    { name: 'Customers', icon: Users, path: '/gh/customers' },
+    { name: 'Payments', icon: CreditCard, path: '/gh/payments' },
+    ...(canAccessExpenses ? [{ name: 'Expenses', icon: Receipt, path: '/gh/expenses' }] : []),
+    ...(canAccessStaff ? [{ name: 'Staff', icon: BadgeCheck, path: '/gh/staff' }] : []),
+    ...(canAccessReports ? [{ name: 'Reports', icon: BarChart3, path: '/gh/reports' }] : []),
+    ...(canAccessNotifications ? [{ name: 'Notifications', icon: Bell, path: '/gh/notifications' }] : []),
+  ];
+
+  const mainNavItems = isGuestHouse ? guestHouseNavItems : hallNavItems;
+  const accountantNavItem = isGuestHouse
+    ? { name: 'Dashboard', icon: Calculator, path: '/gh/dashboard' }
+    : { name: 'Accountant', icon: Calculator, path: '/dashboard' };
+
+  const profilePath = isGuestHouse ? '/gh/profile' : '/profile';
+  const settingsPath = isGuestHouse ? '/gh/settings' : '/settings';
+  const brandSubtitle = isGuestHouse ? 'Guest House Management' : 'Marriage Hall Management';
 
   if (loading || !user) {
     return (
@@ -121,7 +144,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
         </h1>
         {(!isCollapsed || isMobile) && (
           <p style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px' }}>
-            Marriage Hall Management
+            {brandSubtitle}
             {role && (
               <span
                 style={{
@@ -219,7 +242,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
       <div style={{ marginTop: 'auto', borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '24px' }}>
         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: isCollapsed && !isMobile ? '16px' : '8px', alignItems: isCollapsed && !isMobile ? 'center' : 'stretch' }}>
           <li style={{ width: isCollapsed && !isMobile ? 'auto' : '100%', display: 'flex', justifyContent: 'center' }}>
-            <NavLink to="/profile" onClick={handleNavClick} style={{
+            <NavLink to={profilePath} onClick={handleNavClick} style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: isCollapsed && !isMobile ? 'center' : 'flex-start',
@@ -237,7 +260,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
           </li>
           {canAccessSettings && (
           <li style={{ width: isCollapsed && !isMobile ? 'auto' : '100%', display: 'flex', justifyContent: 'center' }}>
-            <NavLink to="/settings" onClick={handleNavClick} style={{
+            <NavLink to={settingsPath} onClick={handleNavClick} style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: isCollapsed && !isMobile ? 'center' : 'flex-start',

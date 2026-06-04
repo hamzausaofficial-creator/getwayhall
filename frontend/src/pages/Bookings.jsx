@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import SearchInput from '../components/SearchInput';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Plus,
-  Search,
   Calendar as CalendarIcon,
   ChevronLeft,
   Trash2,
@@ -23,6 +23,29 @@ import { formatCollectDue, formatCollectDuePKR, bookingCollectDue, hasCollectDue
 import toast from 'react-hot-toast';
 import { customerDisplayName, buildCustomerPayload } from '../utils/customer';
 import { usePermissions } from '../hooks/usePermissions';
+
+const BOOKING_STATUS_STYLE = {
+  PENDING: { bg: '#fef3c7', color: '#92400e', label: 'Pending' },
+  CONFIRMED: { bg: '#dcfce7', color: '#166534', label: 'Confirmed' },
+  COMPLETED: { bg: '#dbeafe', color: '#1e40af', label: 'Completed' },
+  CANCELLED: { bg: '#fee2e2', color: '#991b1b', label: 'Cancelled' },
+};
+
+const displayNumField = (v) => (v === '' || v === null || v === undefined ? '' : v);
+
+const toIntField = (raw) => {
+  if (raw === '') return '';
+  const n = parseInt(raw, 10);
+  return Number.isNaN(n) ? '' : n;
+};
+
+const toFloatField = (raw) => {
+  if (raw === '') return '';
+  const n = parseFloat(raw);
+  return Number.isNaN(n) ? '' : n;
+};
+
+const numFromApi = (v) => (v === 0 || v === '0' || v == null ? '' : v);
 
 const Bookings = () => {
   const navigate = useNavigate();
@@ -50,16 +73,16 @@ const Bookings = () => {
     booking_date: new Date().toISOString().split('T')[0],
     event_date: '',
     slot: '',
-    gents_count: 0,
-    ladies_count: 0,
+    gents_count: '',
+    ladies_count: '',
     rate_per_head: 1200,
-    overtime_hours: 0,
-    kitchen_charge: 0,
-    decoration_charge: 0,
-    deg_count: 0,
-    generator_charge: 0,
+    overtime_hours: '',
+    kitchen_charge: '',
+    decoration_charge: '',
+    deg_count: '',
+    generator_charge: '',
     cnic: '',
-    advance_paid: 0,
+    advance_paid: '',
     booking_status: 'CONFIRMED'
   });
 
@@ -126,16 +149,16 @@ const Bookings = () => {
       booking_date: new Date().toISOString().split('T')[0],
       event_date: '',
       slot: '',
-      gents_count: 0,
-      ladies_count: 0,
+      gents_count: '',
+      ladies_count: '',
       rate_per_head: 1200,
-      overtime_hours: 0,
-      kitchen_charge: 0,
-      decoration_charge: 0,
-      deg_count: 0,
-      generator_charge: 0,
+      overtime_hours: '',
+      kitchen_charge: '',
+      decoration_charge: '',
+      deg_count: '',
+      generator_charge: '',
       cnic: '',
-      advance_paid: 0,
+      advance_paid: '',
       booking_status: 'CONFIRMED'
     });
     setNewCustomer({
@@ -210,16 +233,16 @@ const Bookings = () => {
       booking_date: booking.booking_date || new Date().toISOString().split('T')[0],
       event_date: booking.event_date || (booking.start_date ? booking.start_date.split('T')[0] : ''),
       slot: booking.slot || '',
-      gents_count: booking.gents_count || 0,
-      ladies_count: booking.ladies_count || 0,
+      gents_count: numFromApi(booking.gents_count),
+      ladies_count: numFromApi(booking.ladies_count),
       rate_per_head: booking.rate_per_head || 1200,
-      overtime_hours: booking.overtime_hours || 0,
-      kitchen_charge: booking.kitchen_charge || 0,
-      decoration_charge: booking.decoration_charge || 0,
-      deg_count: booking.deg_count || 0,
-      generator_charge: booking.generator_charge || 0,
+      overtime_hours: numFromApi(booking.overtime_hours),
+      kitchen_charge: numFromApi(booking.kitchen_charge),
+      decoration_charge: numFromApi(booking.decoration_charge),
+      deg_count: numFromApi(booking.deg_count),
+      generator_charge: numFromApi(booking.generator_charge),
       cnic: booking.cnic || '',
-      advance_paid: booking.advance_paid || 0,
+      advance_paid: numFromApi(booking.advance_paid),
       booking_status: booking.booking_status || 'CONFIRMED'
     });
     setNewCustomerMode(false);
@@ -301,7 +324,7 @@ const Bookings = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, statusOverride) => {
     e.preventDefault();
     setBookingError('');
 
@@ -354,6 +377,7 @@ const Bookings = () => {
         : (selectedCustomer?.cnic || '');
       const payload = {
         ...formData,
+        booking_status: statusOverride || formData.booking_status,
         cnic: bookingCnic,
         customer: parseInt(finalCustomerId),
         venue: parseInt(formData.venue),
@@ -377,7 +401,11 @@ const Bookings = () => {
       } else {
         const created = await client.post('/bookings/', payload);
         bookingId = created.data.id;
-        toast.success('Reservation saved successfully');
+        toast.success(
+          payload.booking_status === 'PENDING'
+            ? 'Booking saved as pending'
+            : 'Reservation saved successfully'
+        );
       }
 
       if (bookingId) {
@@ -448,17 +476,13 @@ const Bookings = () => {
             </div>
 
             {/* Filter Search */}
-            <div className="card" style={{ marginBottom: '32px', padding: '16px 24px', display: 'flex', gap: '24px', alignItems: 'center' }}>
-              <div style={{ flex: 1, position: 'relative' }}>
-                <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input
-                  type="text"
-                  placeholder="Search reservations by event name, customer first/last name, hall tag, or booking ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ width: '100%', paddingLeft: '44px', backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                />
-              </div>
+            <div className="search-toolbar">
+              <SearchInput
+                variant="inset"
+                placeholder="Search reservations by event name, customer first/last name, hall tag, or booking ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
 
             {/* Bookings table */}
@@ -466,14 +490,32 @@ const Bookings = () => {
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid var(--border)' }}>
-                    <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Booking ID / Event</th>
-                    <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Venue Hall</th>
-                    <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Event Date & Slot</th>
-                    <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Status</th>
-                    <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Payment</th>
-                    <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Lena (due)</th>
-                    <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Grand Total</th>
-                    <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Actions</th>
+                    {[
+                      { label: 'Event', title: 'Booking ID & event name' },
+                      { label: 'Hall', title: 'Venue / marriage hall' },
+                      { label: 'Date', title: 'Event date & time slot' },
+                      { label: 'Status', title: 'Booking status' },
+                      { label: 'Payment', title: 'Payment status' },
+                      { label: 'Due', title: 'Balance due (lena)' },
+                      { label: 'Total', title: 'Grand total amount' },
+                      { label: '', title: 'Actions' },
+                    ].map((col) => (
+                      <th
+                        key={col.label || 'actions'}
+                        title={col.title}
+                        style={{
+                          padding: '14px 16px',
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                          color: 'var(--text-muted)',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {col.label}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -600,10 +642,45 @@ const Bookings = () => {
                   <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '2px' }}>Fill in the details to reserve a hall slot.</p>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.1em', padding: '6px 12px', borderRadius: '20px', backgroundColor: '#f1f5f9', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Sparkles size={12} /> Draft Mode
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                {(() => {
+                  const st = BOOKING_STATUS_STYLE[formData.booking_status] || BOOKING_STATUS_STYLE.PENDING;
+                  return (
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.06em',
+                        padding: '6px 12px',
+                        borderRadius: '20px',
+                        backgroundColor: st.bg,
+                        color: st.color,
+                      }}
+                    >
+                      {st.label}
+                    </span>
+                  );
+                })()}
+                <select
+                  value={formData.booking_status}
+                  onChange={(e) => setFormData({ ...formData, booking_status: e.target.value })}
+                  aria-label="Booking status"
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border)',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    background: 'var(--surface)',
+                    color: 'var(--text-main)',
+                  }}
+                >
+                  <option value="PENDING">Pending</option>
+                  <option value="CONFIRMED">Confirmed</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="CANCELLED">Cancelled</option>
+                </select>
               </div>
             </div>
 
@@ -850,11 +927,11 @@ const Bookings = () => {
                       <div className="form-grid-2">
                         <div className="input-group">
                           <label>Gents Guest</label>
-                          <input type="number" min="0" value={formData.gents_count} onChange={(e) => setFormData({ ...formData, gents_count: parseInt(e.target.value) || 0 })} />
+                          <input type="number" min="0" placeholder="—" value={displayNumField(formData.gents_count)} onChange={(e) => setFormData({ ...formData, gents_count: toIntField(e.target.value) })} />
                         </div>
                         <div className="input-group">
                           <label>Ladies Guest</label>
-                          <input type="number" min="0" value={formData.ladies_count} onChange={(e) => setFormData({ ...formData, ladies_count: parseInt(e.target.value) || 0 })} />
+                          <input type="number" min="0" placeholder="—" value={displayNumField(formData.ladies_count)} onChange={(e) => setFormData({ ...formData, ladies_count: toIntField(e.target.value) })} />
                         </div>
                       </div>
 
@@ -883,14 +960,14 @@ const Bookings = () => {
                     <div className="input-group">
                       <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Overtime Hours</label>
                       <div style={{ position: 'relative' }}>
-                        <input type="number" step="0.5" value={formData.overtime_hours} onChange={(e) => setFormData({ ...formData, overtime_hours: parseFloat(e.target.value) || 0 })} style={{ width: '100%', paddingRight: '40px' }} />
+                        <input type="number" step="0.5" min="0" placeholder="—" value={displayNumField(formData.overtime_hours)} onChange={(e) => setFormData({ ...formData, overtime_hours: toFloatField(e.target.value) })} style={{ width: '100%', paddingRight: '40px' }} />
                         <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', fontWeight: '700', color: '#64748b' }}>HRS</span>
                       </div>
                     </div>
 
                     <div className="input-group">
                       <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Kitchen Services (PKR)</label>
-                      <input type="number" value={formData.kitchen_charge} onChange={(e) => setFormData({ ...formData, kitchen_charge: parseFloat(e.target.value) || 0 })} />
+                      <input type="number" min="0" placeholder="—" value={displayNumField(formData.kitchen_charge)} onChange={(e) => setFormData({ ...formData, kitchen_charge: toFloatField(e.target.value) })} />
                     </div>
 
                     <div className="input-group" style={{ gridColumn: '1 / -1' }}>
@@ -910,17 +987,17 @@ const Bookings = () => {
                         ))}
                       </select>
                       <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Decorations charge (PKR)</label>
-                      <input type="number" value={formData.decoration_charge} onChange={(e) => setFormData({ ...formData, decoration_charge: parseFloat(e.target.value) || 0 })} />
+                      <input type="number" min="0" placeholder="—" value={displayNumField(formData.decoration_charge)} onChange={(e) => setFormData({ ...formData, decoration_charge: toFloatField(e.target.value) })} />
                     </div>
 
                     <div className="input-group">
                       <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Deg Cooking Count</label>
-                      <input type="number" value={formData.deg_count} onChange={(e) => setFormData({ ...formData, deg_count: parseInt(e.target.value) || 0 })} />
+                      <input type="number" min="0" placeholder="—" value={displayNumField(formData.deg_count)} onChange={(e) => setFormData({ ...formData, deg_count: toIntField(e.target.value) })} />
                     </div>
 
                     <div className="input-group">
                       <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Generator Usage (PKR)</label>
-                      <input type="number" value={formData.generator_charge} onChange={(e) => setFormData({ ...formData, generator_charge: parseFloat(e.target.value) || 0 })} />
+                      <input type="number" min="0" placeholder="—" value={displayNumField(formData.generator_charge)} onChange={(e) => setFormData({ ...formData, generator_charge: toFloatField(e.target.value) })} />
                     </div>
                   </div>
                 </section>
@@ -1002,7 +1079,7 @@ const Bookings = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>Rate per Head</span>
                       <div style={{ position: 'relative', width: '110px' }}>
-                        <input type="number" disabled={isEdit} value={formData.rate_per_head} onChange={(e) => setFormData({ ...formData, rate_per_head: parseFloat(e.target.value) || 0 })} style={isEdit ? { width: '100%', textAlign: 'right', fontSize: '13px', padding: '4px 8px', fontWeight: '700', backgroundColor: '#f1f5f9', color: '#64748b', cursor: 'not-allowed' } : { width: '100%', textAlign: 'right', fontSize: '13px', padding: '4px 8px', fontWeight: '700' }} />
+                        <input type="number" min="0" disabled={isEdit} value={displayNumField(formData.rate_per_head)} onChange={(e) => setFormData({ ...formData, rate_per_head: toFloatField(e.target.value) })} style={isEdit ? { width: '100%', textAlign: 'right', fontSize: '13px', padding: '4px 8px', fontWeight: '700', backgroundColor: '#f1f5f9', color: '#64748b', cursor: 'not-allowed' } : { width: '100%', textAlign: 'right', fontSize: '13px', padding: '4px 8px', fontWeight: '700' }} />
                       </div>
                     </div>
 
@@ -1050,7 +1127,7 @@ const Bookings = () => {
 
                       <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)' }}>Advance Paid</span>
-                        <input type="number" min="0" disabled={isEdit} value={formData.advance_paid} onChange={(e) => setFormData({ ...formData, advance_paid: parseFloat(e.target.value) || 0 })} style={isEdit ? { width: '100px', padding: '4px 8px', fontSize: '12px', textAlign: 'right', fontWeight: '700', backgroundColor: '#f1f5f9', color: '#64748b', cursor: 'not-allowed' } : { width: '100px', padding: '4px 8px', fontSize: '12px', textAlign: 'right', fontWeight: '700' }} />
+                        <input type="number" min="0" placeholder="—" disabled={isEdit} value={displayNumField(formData.advance_paid)} onChange={(e) => setFormData({ ...formData, advance_paid: toFloatField(e.target.value) })} style={isEdit ? { width: '100px', padding: '4px 8px', fontSize: '12px', textAlign: 'right', fontWeight: '700', backgroundColor: '#f1f5f9', color: '#64748b', cursor: 'not-allowed' } : { width: '100px', padding: '4px 8px', fontSize: '12px', textAlign: 'right', fontWeight: '700' }} />
                       </div>
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderTop: '1px dashed var(--border)', paddingTop: '12px' }}>
@@ -1064,8 +1141,19 @@ const Bookings = () => {
                     {/* Action buttons */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
                       <button type="submit" className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px', borderRadius: '10px', fontWeight: '700', fontSize: '14px' }}>
-                        <CheckCircle size={18} /> Confirm & Save
+                        <CheckCircle size={18} />
+                        {formData.booking_status === 'CONFIRMED' ? 'Confirm & Save' : 'Save booking'}
                       </button>
+                      {viewMode === 'create' && (
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', borderRadius: '10px', fontWeight: '700', fontSize: '13px' }}
+                          onClick={(e) => handleSubmit(e, 'PENDING')}
+                        >
+                          <Clock size={18} /> Save as Pending
+                        </button>
+                      )}
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                         <button 

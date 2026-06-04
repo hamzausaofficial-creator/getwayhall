@@ -1,5 +1,38 @@
 from rest_framework import permissions
 
+MARRIAGE_HALL_APP = 'MARRIAGE_HALL'
+GUEST_HOUSE_APP = 'GUEST_HOUSE'
+
+
+def _user_app_type(user):
+    return getattr(user, 'app_type', MARRIAGE_HALL_APP) or MARRIAGE_HALL_APP
+
+
+class IsMarriageHallApp(permissions.BasePermission):
+    """Only Marriage Hall users (superuser bypasses)."""
+
+    message = 'This account is for Guest House. Use the Guest House login.'
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser:
+            return True
+        return _user_app_type(request.user) == MARRIAGE_HALL_APP
+
+
+class IsGuestHouseApp(permissions.BasePermission):
+    """Only Guest House users (superuser bypasses)."""
+
+    message = 'This account is for Marriage Hall. Use the Marriage Hall login.'
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser:
+            return True
+        return _user_app_type(request.user) == GUEST_HOUSE_APP
+
 
 class IsTenantOwner(permissions.BasePermission):
     """Object must belong to the user's tenant."""

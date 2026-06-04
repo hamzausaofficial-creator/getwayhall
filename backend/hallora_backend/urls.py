@@ -26,6 +26,7 @@ urlpatterns = [
     path('api/finance/', include('finance.urls')),
     path('api/inventory/', include('inventory.urls')),
     path('api/decorations/', include('decorations.urls')),
+    path('api/guesthouse/', include('guesthouse.urls')),
     
     # Catch-all SPA router for React frontend
     re_path(r'^.*$', serve_react, name='react-app'),

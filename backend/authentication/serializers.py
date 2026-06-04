@@ -23,11 +23,11 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'email', 'role', 'tenant',
+            'id', 'username', 'email', 'role', 'app_type', 'tenant',
             'first_name', 'last_name', 'date_joined', 'last_login', 'is_active', 'avatar',
         ]
         read_only_fields = [
-            'id', 'username', 'email', 'role', 'tenant',
+            'id', 'username', 'email', 'role', 'app_type', 'tenant',
             'date_joined', 'last_login', 'is_active', 'avatar',
         ]
 
@@ -86,11 +86,11 @@ class StaffSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'email', 'password', 'first_name', 'last_name', 'role',
+            'id', 'username', 'email', 'password', 'first_name', 'last_name', 'role', 'app_type',
             'tenant_name', 'date_joined', 'last_login', 'is_active',
             'phone', 'salary', 'joining_date', 'profile_status',
         ]
-        read_only_fields = ['id', 'tenant_name', 'date_joined', 'last_login', 'is_active']
+        read_only_fields = ['id', 'app_type', 'tenant_name', 'date_joined', 'last_login', 'is_active']
 
     password = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
@@ -173,6 +173,7 @@ class StaffSerializer(serializers.ModelSerializer):
         user = User(**validated_data)
         if request and getattr(request.user, 'tenant_id', None):
             user.tenant = request.user.tenant
+            user.app_type = getattr(request.user, 'app_type', 'MARRIAGE_HALL')
         user.set_password(password)
         user.save()
         if user.tenant_id:
@@ -233,6 +234,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             last_name=validated_data.get('last_name', ''),
             tenant=tenant,
             role='ADMIN',
+            app_type='MARRIAGE_HALL',
         )
         UserSettings.objects.create(user=user)
         return user

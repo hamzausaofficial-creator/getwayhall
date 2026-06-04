@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Sparkles, Trash2, Edit, X, Search, Filter, Plus, ChevronRight } from 'lucide-react';
+import { Sparkles, Trash2, Edit, X, Filter, Plus, ChevronRight } from 'lucide-react';
+import SearchInput from '../components/SearchInput';
 import client from '../api/client';
 import toast from 'react-hot-toast';
 import {
@@ -148,23 +149,19 @@ const DecorationPackages = () => {
           )}
         </div>
 
-        <div className="card" style={{ marginBottom: '24px', padding: '16px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-          <div className="input-group" style={{ flex: '1', minWidth: '200px' }}>
-            <div style={{ position: 'relative' }}>
-              <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input
-                type="text"
-                placeholder="Search packages..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ paddingLeft: '40px', width: '100%' }}
-              />
-            </div>
+        <div className="search-filter-bar" style={{ marginBottom: '24px' }}>
+          <div className="search-filter-bar__search">
+            <SearchInput
+              variant="inset"
+              placeholder="Search packages..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-          <div className="input-group" style={{ width: '200px' }}>
+          <div style={{ width: '200px' }}>
             <div style={{ position: 'relative' }}>
-              <Filter size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <select value={filterTier} onChange={(e) => setFilterTier(e.target.value)} style={{ paddingLeft: '40px', width: '100%' }}>
+              <Filter size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none', zIndex: 1 }} />
+              <select className="search-filter-bar__select" value={filterTier} onChange={(e) => setFilterTier(e.target.value)} style={{ paddingLeft: '40px', width: '100%' }}>
                 <option value="">All tiers</option>
                 {Object.entries(TIER_LABELS).map(([k, label]) => (
                   <option key={k} value={k}>
@@ -174,8 +171,8 @@ const DecorationPackages = () => {
               </select>
             </div>
           </div>
-          <div className="input-group" style={{ width: '180px' }}>
-            <select value={filterActive} onChange={(e) => setFilterActive(e.target.value)} style={{ width: '100%' }}>
+          <div style={{ width: '180px' }}>
+            <select className="search-filter-bar__select" value={filterActive} onChange={(e) => setFilterActive(e.target.value)} style={{ width: '100%' }}>
               <option value="">All statuses</option>
               <option value="true">Active only</option>
               <option value="false">Inactive</option>

@@ -1,0 +1,471 @@
+from rest_framework import viewsets, filters, status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import action
+from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Sum, Count, Q
+from django.db.models.functions import TruncMonth
+from django.utils import timezone
+from django.utils.dateparse import parse_date
+from datetime import timedelta, datetime, time
+from decimal import Decimal
+
+from core.mixins import TenantQuerysetMixin, TenantAssignMixin
+from core.permissions import (
+    IsAdminOrManagerOrReadOnly,
+    IsAdminOrManagerOrStaffWrite,
+    IsAdminOrManagerNoStaff,
+    IsTenantOwner,
+    IsGuestHouseApp,
+)
+from .models import Room, StayBooking, StayPayment, GhExpense
+from .serializers import (
+    RoomSerializer,
+    StayBookingSerializer,
+    StayPaymentSerializer,
+    GhExpenseSerializer,
+)
+
+
+def _gh_stats_date_range(request):
+    """Return (start_dt, end_dt, start_date, end_date) for dashboard period filters."""
+    period = request.GET.get('period', 'all')
+    start_str = request.GET.get('start_date')
+    end_str = request.GET.get('end_date')
+    now = timezone.localtime(timezone.now())
+    start_dt = end_dt = None
+    if start_str and end_str:
+        sd, ed = parse_date(start_str), parse_date(end_str)
+        if sd and ed:
+            start_dt = timezone.make_aware(datetime.combine(sd, time.min))
+            end_dt = timezone.make_aware(datetime.combine(ed, time.max))
+    elif period == 'today':
+        start_dt = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_dt = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+    elif period == 'last7days':
+        start_dt = (now - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0)
+        end_dt = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+    elif period == 'thismonth':
+        start_dt = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_dt = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+    elif period == 'thisyear':
+        start_dt = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_dt = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+    return start_dt, end_dt
+
+
+class GuestHouseDashboardStatsView(APIView):
+    permission_classes = [IsAuthenticated, IsGuestHouseApp]
+
+    def get(self, request):
+        tenant = request.user.tenant
+        if not tenant:
+            return Response({'detail': 'No tenant.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        today = timezone.localdate()
+        start_dt, end_dt = _gh_stats_date_range(request)
+
+        rooms = Room.objects.filter(tenant=tenant)
+        all_stays = StayBooking.objects.filter(tenant=tenant)
+        stays = all_stays.exclude(status='CANCELLED')
+        base_payments = StayPayment.objects.filter(tenant=tenant, status='COMPLETED')
+        payments = base_payments
+        expenses_qs = GhExpense.objects.filter(tenant=tenant)
+        period_stays = stays
+
+        if start_dt and end_dt:
+            payments = payments.filter(payment_date__gte=start_dt, payment_date__lte=end_dt)
+            expenses_qs = expenses_qs.filter(
+                expense_date__gte=start_dt.date(),
+                expense_date__lte=end_dt.date(),
+            )
+            period_stays = stays.filter(
+                created_at__gte=start_dt,
+                created_at__lte=end_dt,
+            )
+
+        total_revenue = payments.aggregate(t=Sum('amount'))['t'] or 0
+        total_expenses = expenses_qs.aggregate(t=Sum('amount'))['t'] or 0
+        total_stays = period_stays.count()
+        pending_due = sum(
+            float(s.remaining_balance)
+            for s in stays.filter(payment_status__in=['UNPAID', 'PARTIAL'])[:300]
+        )
+
+        active_rooms = rooms.filter(status='ACTIVE').count()
+        occupied_today = stays.filter(check_in__lte=today, check_out__gt=today).count()
+        occupancy_rate = 0
+        if active_rooms > 0:
+            occupancy_rate = min(100, round((occupied_today / active_rooms) * 100))
+
+        six_months_ago = timezone.localtime(timezone.now()) - timedelta(days=180)
+        revenue_growth = (
+            base_payments.filter(payment_date__gte=six_months_ago)
+            .annotate(month=TruncMonth('payment_date'))
+            .values('month')
+            .annotate(revenue=Sum('amount'))
+            .order_by('month')[:6]
+        )
+
+        stays_by_room = (
+            period_stays.values('room__room_number')
+            .annotate(value=Count('id'))
+            .order_by('-value')[:8]
+        )
+
+        stays_by_status = period_stays.values('status').annotate(value=Count('id'))
+
+        recent_stays = StayBookingSerializer(
+            all_stays.select_related('customer', 'room').order_by('-created_at')[:8],
+            many=True,
+        ).data
+
+        recent_payments = list(
+            base_payments.select_related('stay', 'stay__customer', 'stay__room')
+            .order_by('-payment_date')[:6]
+            .values(
+                'id', 'amount', 'payment_method', 'payment_date',
+                'stay__booking_ref', 'stay__customer__full_name', 'stay__room__room_number',
+            )
+        )
+        for p in recent_payments:
+            p['booking_ref'] = p.pop('stay__booking_ref', '')
+            p['customer_name'] = p.pop('stay__customer__full_name', '') or 'Guest'
+            p['room_number'] = p.pop('stay__room__room_number', '')
+
+        return Response({
+            'total_rooms': rooms.count(),
+            'active_rooms': active_rooms,
+            'occupied_today': occupied_today,
+            'occupancy_rate': occupancy_rate,
+            'pending_stays': stays.filter(status='PENDING').count(),
+            'upcoming_checkins': stays.filter(
+                check_in__gte=today,
+                status__in=['PENDING', 'CONFIRMED'],
+            ).count(),
+            'check_ins_today': stays.filter(check_in=today).count(),
+            'total_revenue': float(total_revenue),
+            'total_expenses': float(total_expenses),
+            'net_profit': float(total_revenue) - float(total_expenses),
+            'pending_payments': pending_due,
+            'total_stays': total_stays,
+            'revenue_growth': [
+                {'month': item['month'].strftime('%b'), 'revenue': float(item['revenue'] or 0)}
+                for item in revenue_growth if item.get('month')
+            ],
+            'stays_by_room': [
+                {'name': item['room__room_number'] or 'Room', 'value': item['value']}
+                for item in stays_by_room
+            ],
+            'stays_by_status': [
+                {'name': item['status'], 'value': item['value']}
+                for item in stays_by_status
+            ],
+            'recent_stays': recent_stays,
+            'recent_payments': recent_payments,
+        })
+
+
+class GuestHouseReportsView(APIView):
+    permission_classes = [IsAuthenticated, IsGuestHouseApp]
+
+    def get(self, request):
+        tenant = request.user.tenant
+        start = request.GET.get('start_date')
+        end = request.GET.get('end_date')
+        today = timezone.localdate()
+        if not start:
+            start = (today - timedelta(days=180)).isoformat()
+        if not end:
+            end = today.isoformat()
+
+        stays = StayBooking.objects.filter(
+            tenant=tenant,
+            check_in__gte=start,
+            check_in__lte=end,
+        ).exclude(status='CANCELLED')
+        payments = StayPayment.objects.filter(
+            tenant=tenant,
+            status='COMPLETED',
+            payment_date__date__gte=start,
+            payment_date__date__lte=end,
+        )
+        expenses = GhExpense.objects.filter(
+            tenant=tenant,
+            expense_date__gte=start,
+            expense_date__lte=end,
+        )
+
+        revenue = stays.aggregate(t=Sum('total_amount'))['t'] or 0
+        collected = payments.aggregate(t=Sum('amount'))['t'] or 0
+        expense_total = expenses.aggregate(t=Sum('amount'))['t'] or 0
+
+        by_room = (
+            stays.values('room__room_number')
+            .annotate(count=Count('id'), revenue=Sum('total_amount'))
+            .order_by('-count')[:12]
+        )
+        by_status = stays.values('status').annotate(count=Count('id'))
+        expense_by_cat = expenses.values('category').annotate(total=Sum('amount'))
+
+        monthly_income = (
+            payments.annotate(month=TruncMonth('payment_date'))
+            .values('month')
+            .annotate(income=Sum('amount'))
+            .order_by('month')
+        )
+        monthly_expense = (
+            expenses.annotate(month=TruncMonth('expense_date'))
+            .values('month')
+            .annotate(expense=Sum('amount'))
+            .order_by('month')
+        )
+        month_map = {}
+        for row in monthly_income:
+            if row.get('month'):
+                key = row['month'].strftime('%b %Y')
+                month_map[key] = {'month': key, 'income': float(row['income'] or 0), 'expense': 0}
+        for row in monthly_expense:
+            if row.get('month'):
+                key = row['month'].strftime('%b %Y')
+                if key not in month_map:
+                    month_map[key] = {'month': key, 'income': 0, 'expense': 0}
+                month_map[key]['expense'] = float(row['expense'] or 0)
+
+        stay_count = stays.count()
+        revenue_f = float(revenue)
+        collected_f = float(collected)
+        expense_f = float(expense_total)
+
+        return Response({
+            'start_date': start,
+            'end_date': end,
+            'total_revenue': revenue_f,
+            'total_collected': collected_f,
+            'total_expenses': expense_f,
+            'net_profit': collected_f - expense_f,
+            'collection_gap': max(0, revenue_f - collected_f),
+            'avg_stay_value': revenue_f / stay_count if stay_count else 0,
+            'stay_count': stay_count,
+            'monthly_trends': list(month_map.values()),
+            'bookings_by_room': [
+                {
+                    'room': r['room__room_number'] or '—',
+                    'count': r['count'],
+                    'revenue': float(r['revenue'] or 0),
+                }
+                for r in by_room
+            ],
+            'bookings_by_status': [
+                {'status': r['status'], 'count': r['count']}
+                for r in by_status
+            ],
+            'expenses_by_category': [
+                {
+                    'category': r['category'],
+                    'total': float(r['total'] or 0),
+                }
+                for r in expense_by_cat
+            ],
+        })
+
+
+class GuestHouseCalendarView(APIView):
+    permission_classes = [IsAuthenticated, IsGuestHouseApp]
+
+    def get(self, request):
+        tenant = request.user.tenant
+        start = request.GET.get('start')
+        end = request.GET.get('end')
+        if not start or not end:
+            return Response({'detail': 'start and end query params required (YYYY-MM-DD).'}, status=400)
+        stays = StayBooking.objects.filter(
+            tenant=tenant,
+            check_in__lt=end,
+            check_out__gt=start,
+        ).exclude(status='CANCELLED').select_related('customer', 'room')
+        rooms = Room.objects.filter(tenant=tenant, status='ACTIVE').order_by('room_number')
+        return Response({
+            'stays': StayBookingSerializer(stays, many=True).data,
+            'rooms': RoomSerializer(rooms, many=True).data,
+        })
+
+
+class GuestHouseAlertsView(APIView):
+    permission_classes = [IsAuthenticated, IsGuestHouseApp]
+
+    def get(self, request):
+        tenant = request.user.tenant
+        today = timezone.localdate()
+        stays = StayBooking.objects.filter(tenant=tenant).exclude(status='CANCELLED')
+        upcoming = stays.filter(
+            check_in__gte=today,
+            check_in__lte=today + timedelta(days=7),
+            status__in=['PENDING', 'CONFIRMED'],
+        ).select_related('customer', 'room')[:10]
+        due = stays.filter(payment_status__in=['UNPAID', 'PARTIAL']).exclude(
+            status__in=['CANCELLED', 'CHECKED_OUT']
+        ).select_related('customer', 'room')[:10]
+        return Response({
+            'upcoming_checkins': [
+                {
+                    'id': s.id,
+                    'title': f'{s.customer.display_name} — Room {s.room.room_number}',
+                    'desc': f'Check-in {s.check_in}',
+                    'date': str(s.check_in),
+                }
+                for s in upcoming
+            ],
+            'payment_due': [
+                {
+                    'id': s.id,
+                    'title': f'Balance due: {s.booking_ref}',
+                    'desc': f'Rs {s.remaining_balance} remaining — {s.customer.display_name}',
+                    'date': str(s.check_in),
+                }
+                for s in due
+            ],
+        })
+
+
+class GuestHouseSearchView(APIView):
+    permission_classes = [IsAuthenticated, IsGuestHouseApp]
+
+    def get(self, request):
+        q = (request.GET.get('q') or '').strip()
+        if len(q) < 2:
+            return Response({'stays': [], 'customers': [], 'rooms': []})
+        tenant = request.user.tenant
+        stays = StayBooking.objects.filter(tenant=tenant).filter(
+            Q(booking_ref__icontains=q)
+            | Q(customer__full_name__icontains=q)
+            | Q(customer__phone__icontains=q)
+            | Q(room__room_number__icontains=q)
+        )[:8]
+        from customers.models import Customer
+        customers = Customer.objects.filter(tenant=tenant).filter(
+            Q(full_name__icontains=q) | Q(phone__icontains=q) | Q(cnic__icontains=q)
+        )[:8]
+        rooms = Room.objects.filter(tenant=tenant).filter(
+            Q(room_number__icontains=q) | Q(description__icontains=q)
+        )[:8]
+        return Response({
+            'stays': [
+                {
+                    'id': s.id,
+                    'booking_ref': s.booking_ref,
+                    'customer_name': s.customer.display_name,
+                    'room_number': s.room.room_number,
+                }
+                for s in stays.select_related('customer', 'room')
+            ],
+            'customers': [
+                {'id': c.id, 'name': c.display_name, 'phone': c.phone}
+                for c in customers
+            ],
+            'rooms': [{'id': r.id, 'room_number': r.room_number} for r in rooms],
+        })
+
+
+class RoomViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewSet):
+    queryset = Room.objects.all().order_by('room_number')
+    serializer_class = RoomSerializer
+    permission_classes = [IsGuestHouseApp, IsAdminOrManagerOrReadOnly, IsTenantOwner]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'room_type']
+    search_fields = ['room_number', 'description']
+    ordering_fields = ['price_per_night', 'room_number', 'created_at']
+
+
+class StayBookingViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewSet):
+    queryset = StayBooking.objects.select_related('customer', 'room').all()
+    serializer_class = StayBookingSerializer
+    permission_classes = [IsGuestHouseApp, IsAdminOrManagerOrReadOnly, IsTenantOwner]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'payment_status', 'room', 'customer']
+    search_fields = ['booking_ref', 'customer__full_name', 'room__room_number', 'customer__phone']
+    ordering_fields = ['check_in', 'check_out', 'created_at']
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        extra = {'created_by': user}
+        if user.tenant_id:
+            extra['tenant'] = user.tenant
+        stay = serializer.save(**extra)
+        if stay.advance_paid and stay.advance_paid > 0:
+            StayPayment.objects.create(
+                tenant=stay.tenant,
+                stay=stay,
+                amount=stay.advance_paid,
+                payment_method='CASH',
+                status='COMPLETED',
+                notes='Initial advance on booking',
+                recorded_by=user,
+            )
+
+    @action(detail=True, methods=['post'])
+    def check_in(self, request, pk=None):
+        stay = self.get_object()
+        if stay.status == 'CANCELLED':
+            return Response({'detail': 'Cancelled stay cannot be checked in.'}, status=400)
+        stay.status = 'CHECKED_IN'
+        stay.save(update_fields=['status', 'updated_at'])
+        return Response(StayBookingSerializer(stay).data)
+
+    @action(detail=True, methods=['post'])
+    def check_out(self, request, pk=None):
+        stay = self.get_object()
+        stay.status = 'CHECKED_OUT'
+        stay.save(update_fields=['status', 'updated_at'])
+        return Response(StayBookingSerializer(stay).data)
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        stay = self.get_object()
+        if stay.status == 'CHECKED_IN':
+            return Response({'detail': 'Checked-in stay must be checked out first.'}, status=400)
+        stay.status = 'CANCELLED'
+        stay.save(update_fields=['status', 'updated_at'])
+        return Response(StayBookingSerializer(stay).data)
+
+    @action(detail=True, methods=['post'])
+    def confirm(self, request, pk=None):
+        stay = self.get_object()
+        if stay.status == 'PENDING':
+            stay.status = 'CONFIRMED'
+            stay.save(update_fields=['status', 'updated_at'])
+        return Response(StayBookingSerializer(stay).data)
+
+
+class StayPaymentViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewSet):
+    queryset = StayPayment.objects.select_related('stay', 'stay__customer', 'stay__room').all()
+    serializer_class = StayPaymentSerializer
+    permission_classes = [IsGuestHouseApp, IsAdminOrManagerOrStaffWrite, IsTenantOwner]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['status', 'payment_method', 'stay']
+    ordering_fields = ['payment_date', 'amount']
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        extra = {'recorded_by': user}
+        if user.tenant_id:
+            extra['tenant'] = user.tenant
+        serializer.save(**extra)
+
+
+class GhExpenseViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewSet):
+    queryset = GhExpense.objects.all().order_by('-expense_date')
+    serializer_class = GhExpenseSerializer
+    permission_classes = [IsGuestHouseApp, IsAdminOrManagerNoStaff, IsTenantOwner]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['category']
+    search_fields = ['title', 'description']
+    ordering_fields = ['expense_date', 'amount']
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        extra = {'created_by': user}
+        if user.tenant_id:
+            extra['tenant'] = user.tenant
+        serializer.save(**extra)

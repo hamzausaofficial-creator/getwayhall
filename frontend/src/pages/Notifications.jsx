@@ -1,8 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Bell, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Bell, RefreshCw, Calendar, Wallet, Package, MessageSquare } from 'lucide-react';
 import client from '../api/client';
 import toast from 'react-hot-toast';
 import { normalizeList } from '../utils/listData';
+import { useNotifications } from '../hooks/useNotifications';
+import { useAppType } from '../hooks/useAppType';
+import EmptyState from '../components/ui/EmptyState';
 
 const statusColor = {
   SENT: '#166534',
@@ -12,91 +16,232 @@ const statusColor = {
 };
 
 const Notifications = () => {
+  const navigate = useNavigate();
+  const { isGuestHouse } = useAppType();
+  const { notifications, refresh: refreshActivity } = useNotifications();
   const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingLogs, setLoadingLogs] = useState(!isGuestHouse);
   const [filter, setFilter] = useState('ALL');
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchLogs = async () => {
-    setLoading(true);
+  const fetchLogs = useCallback(async () => {
+    if (isGuestHouse) return;
+    setLoadingLogs(true);
     try {
       const res = await client.get('/core/notifications/');
       setLogs(normalizeList(res.data));
-    } catch {
-      toast.error('Failed to load notification log');
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      toast.error(detail || 'Failed to load SMS log');
+      setLogs([]);
     } finally {
-      setLoading(false);
+      setLoadingLogs(false);
     }
-  };
+  }, [isGuestHouse]);
 
   useEffect(() => {
     fetchLogs();
-  }, []);
+  }, [fetchLogs]);
 
-  const filtered = logs.filter((l) => filter === 'ALL' || l.status === filter);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([refreshActivity(), isGuestHouse ? Promise.resolve() : fetchLogs()]);
+    setRefreshing(false);
+  };
+
+  const handleActivityClick = (n) => {
+    if (n.type === 'payment' || n.type === 'payment_due') {
+      const payPath = isGuestHouse ? '/gh/payments' : '/payments';
+      const id = n.stayId || n.bookingId;
+      navigate(payPath, id ? {
+        state: {
+          [isGuestHouse ? 'preselectedStayId' : 'preselectedBookingId']: id,
+          autoOpenRecord: true,
+        },
+      } : undefined);
+      return;
+    }
+    if (n.type === 'inventory') {
+      navigate('/inventory');
+      return;
+    }
+    if (n.stayId) {
+      navigate(`/gh/stays/${n.stayId}`);
+      return;
+    }
+    if (n.bookingId) {
+      navigate(
+        isGuestHouse ? `/gh/stays/${n.bookingId}` : '/bookings',
+        isGuestHouse ? undefined : { state: { editBookingId: n.bookingId } }
+      );
+    }
+  };
+
+  const filteredLogs = logs.filter((l) => filter === 'ALL' || l.status === filter);
+
+  const activityIcon = (type) => {
+    if (type === 'inventory') return Package;
+    if (type === 'payment' || type === 'payment_due') return Wallet;
+    return Calendar;
+  };
+
+  const activityIconClass = (type) => {
+    if (type === 'inventory') return 'dash-notif-item__icon--inventory';
+    if (type === 'payment' || type === 'payment_due') return 'dash-notif-item__icon--payment';
+    return 'dash-notif-item__icon--event';
+  };
 
   return (
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
           <h2 style={{ fontSize: '24px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Bell size={26} /> SMS / WhatsApp Log
+            <Bell size={26} /> Notifications
           </h2>
-          <p style={{ color: 'var(--text-muted)' }}>Outbound messages to customers (skipped if no phone).</p>
+          <p style={{ color: 'var(--text-muted)' }}>
+            {isGuestHouse
+              ? 'Upcoming check-ins, balance due, and recent activity.'
+              : 'Alerts, bookings, payments, and customer SMS / WhatsApp messages.'}
+          </p>
         </div>
-        <button type="button" className="btn-secondary" onClick={fetchLogs} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <RefreshCw size={16} /> Refresh
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          style={{ display: 'flex', gap: '8px', alignItems: 'center' }}
+        >
+          <RefreshCw size={16} style={refreshing ? { animation: 'spin 0.8s linear infinite' } : undefined} /> Refresh
         </button>
       </div>
 
-      <div className="card" style={{ marginBottom: '16px', padding: '12px 16px' }}>
-        <select value={filter} onChange={(e) => setFilter(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px' }}>
-          <option value="ALL">All statuses</option>
-          <option value="SENT">Sent</option>
-          <option value="FAILED">Failed</option>
-          <option value="SKIPPED">Skipped</option>
-          <option value="PENDING">Pending</option>
-        </select>
-      </div>
-
-      <div className="card table-scroll" style={{ padding: 0 }}>
-        {loading ? (
-          <p style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</p>
-        ) : filtered.length === 0 ? (
-          <p style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>No notifications yet.</p>
+      <section className="card" style={{ marginBottom: '24px', padding: '20px 24px' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px' }}>Activity &amp; alerts</h3>
+        {notifications.length === 0 ? (
+          <EmptyState
+            icon={Bell}
+            title="All caught up"
+            description={
+              isGuestHouse
+                ? 'No upcoming check-ins or payment reminders right now.'
+                : 'No upcoming events, payment reminders, or recent bookings/payments.'
+            }
+          />
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border)' }}>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px' }}>When</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px' }}>Type</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px' }}>To</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px' }}>Status</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px' }}>Message</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((log) => (
-                <tr key={log.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '12px 16px', fontSize: '12px' }}>
-                    {new Date(log.created_at).toLocaleString()}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontWeight: '600' }}>{log.notification_type}</td>
-                  <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '12px' }}>{log.recipient}</td>
-                  <td style={{ padding: '12px 16px', fontWeight: '700', color: statusColor[log.status] || '#64748b' }}>
-                    {log.status}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '13px', maxWidth: '320px' }}>
-                    {log.message}
-                    {log.error_message && (
-                      <p style={{ fontSize: '11px', color: '#b91c1c', marginTop: '4px' }}>{log.error_message}</p>
+          <div className="dash-notif-list">
+            {notifications.map((n) => {
+              const Icon = activityIcon(n.type);
+              return (
+                <button
+                  key={n.id}
+                  type="button"
+                  className="dash-notif-item"
+                  onClick={() => handleActivityClick(n)}
+                >
+                  <span className={`dash-notif-item__icon ${activityIconClass(n.type)}`}>
+                    {n.icon ? (
+                      <span style={{ fontSize: '18px', lineHeight: 1 }} aria-hidden>{n.icon}</span>
+                    ) : (
+                      <Icon size={18} />
                     )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </span>
+                  <span>
+                    <p className="dash-notif-item__title">{n.title}</p>
+                    <p className="dash-notif-item__desc">{n.desc}</p>
+                    {n.timeAgo && (
+                      <p style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: '600', marginTop: '4px' }}>
+                        {n.timeAgo}
+                      </p>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         )}
-      </div>
+      </section>
+
+      {!isGuestHouse && (
+        <section className="card table-scroll" style={{ padding: 0 }}>
+          <div
+            style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <MessageSquare size={20} style={{ color: 'var(--text-muted)' }} />
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: '700', margin: 0 }}>SMS / WhatsApp log</h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                  Messages sent to customers (or skipped if no phone / disabled in Settings).
+                </p>
+              </div>
+            </div>
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="search-filter-bar__select"
+              style={{ minHeight: '36px' }}
+            >
+              <option value="ALL">All statuses</option>
+              <option value="SENT">Sent</option>
+              <option value="FAILED">Failed</option>
+              <option value="SKIPPED">Skipped</option>
+              <option value="PENDING">Pending</option>
+            </select>
+          </div>
+
+          {loadingLogs ? (
+            <p style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading SMS log…</p>
+          ) : filteredLogs.length === 0 ? (
+            <div style={{ padding: '24px' }}>
+              <EmptyState
+                icon={MessageSquare}
+                title="No SMS log entries yet"
+                description="Logs appear when bookings or payments trigger customer SMS/WhatsApp (enable channels in Settings → Notifications)."
+              />
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border)' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px' }}>When</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px' }}>Type</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px' }}>To</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px' }}>Status</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px' }}>Message</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredLogs.map((log) => (
+                  <tr key={log.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '12px 16px', fontSize: '12px' }}>
+                      {new Date(log.created_at).toLocaleString()}
+                    </td>
+                    <td style={{ padding: '12px 16px', fontWeight: '600' }}>{log.notification_type}</td>
+                    <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '12px' }}>{log.recipient}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: '700', color: statusColor[log.status] || '#64748b' }}>
+                      {log.status}
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: '13px', maxWidth: '320px' }}>
+                      {log.message}
+                      {log.error_message && (
+                        <p style={{ fontSize: '11px', color: '#b91c1c', marginTop: '4px' }}>{log.error_message}</p>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+      )}
     </div>
   );
 };

@@ -67,7 +67,11 @@ class StaffViewSet(viewsets.ModelViewSet):
             return User.objects.all().order_by('-date_joined')
         if not user.tenant_id:
             return User.objects.none()
-        return User.objects.filter(tenant=user.tenant).order_by('-date_joined')
+        qs = User.objects.filter(tenant=user.tenant)
+        app_type = getattr(user, 'app_type', None)
+        if app_type and not user.is_superuser:
+            qs = qs.filter(app_type=app_type)
+        return qs.order_by('-date_joined')
 
     @action(detail=True, methods=['post'], url_path='reset-password', permission_classes=[IsAdminOnly])
     def reset_password(self, request, pk=None):

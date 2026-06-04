@@ -25,6 +25,7 @@ u = User.objects.create_superuser(
     password='admin123',
     role='ADMIN',
     tenant=tenant,
+    app_type='MARRIAGE_HALL',
     first_name='Admin',
     last_name='User'
 )

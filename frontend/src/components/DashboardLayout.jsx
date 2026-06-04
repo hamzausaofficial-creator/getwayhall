@@ -2,14 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { Bell, Search, User, Menu } from 'lucide-react';
+import SearchInput from './SearchInput';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { globalSearch } from '../api/core';
+import { guestHouseSearch } from '../api/guesthouse';
+import { useAppType } from '../hooks/useAppType';
 
 const DashboardLayout = () => {
   const { user } = useAuth();
+  const { isGuestHouse } = useAppType();
+  const profilePath = isGuestHouse ? '/gh/profile' : '/profile';
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
@@ -29,7 +34,9 @@ const DashboardLayout = () => {
     }
     const t = setTimeout(async () => {
       try {
-        const data = await globalSearch(searchQuery.trim());
+        const data = isGuestHouse
+          ? await guestHouseSearch(searchQuery.trim())
+          : await globalSearch(searchQuery.trim());
         setSearchResults(data);
         setSearchOpen(true);
       } catch {
@@ -37,7 +44,7 @@ const DashboardLayout = () => {
       }
     }, 300);
     return () => clearTimeout(t);
-  }, [searchQuery]);
+  }, [searchQuery, isGuestHouse]);
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -65,8 +72,10 @@ const DashboardLayout = () => {
 
   const hasSearchHits = searchResults && (
     (searchResults.bookings?.length > 0)
+    || (searchResults.stays?.length > 0)
     || (searchResults.customers?.length > 0)
     || (searchResults.venues?.length > 0)
+    || (searchResults.rooms?.length > 0)
     || (searchResults.payments?.length > 0)
     || (searchResults.inventory?.length > 0)
   );
@@ -78,15 +87,19 @@ const DashboardLayout = () => {
       return;
     }
     if (n.type === 'payment' || n.type === 'payment_due') {
-      navigate('/payments', n.bookingId ? {
-        state: { preselectedBookingId: n.bookingId, autoOpenRecord: true, bookingEventName: n.title },
+      const payPath = isGuestHouse ? '/gh/payments' : '/payments';
+      const stateKey = isGuestHouse ? 'preselectedStayId' : 'preselectedBookingId';
+      navigate(payPath, n.bookingId || n.stayId ? {
+        state: { [stateKey]: n.bookingId || n.stayId, autoOpenRecord: true },
       } : undefined);
     } else if (n.type === 'inventory') {
       navigate('/inventory');
+    } else if (n.stayId) {
+      navigate(`/gh/stays/${n.stayId}`);
     } else if (n.bookingId) {
-      navigate('/bookings', { state: { editBookingId: n.bookingId } });
+      navigate(isGuestHouse ? `/gh/stays/${n.bookingId}` : '/bookings', isGuestHouse ? undefined : { state: { editBookingId: n.bookingId } });
     } else if (n.customerId) {
-      navigate('/customers', { state: { selectedCustomerId: n.customerId } });
+      navigate(isGuestHouse ? '/gh/customers' : '/customers', { state: { selectedCustomerId: n.customerId } });
     }
   };
 
@@ -132,16 +145,21 @@ const DashboardLayout = () => {
                 <Search size={20} />
               </button>
             )}
-            <div className={`dashboard-header__search ${isMobile ? '' : ''}`} style={{ position: 'relative', display: isMobile && !mobileSearchOpen ? 'none' : 'block', flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : undefined }}>
-              <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', zIndex: 1 }} />
-              <input
-                type="text"
-                placeholder="Search bookings, customers..."
+            <div
+              className={`dashboard-header__search ${isMobile ? '' : ''}`}
+              style={{
+                display: isMobile && !mobileSearchOpen ? 'none' : 'block',
+                flex: isMobile ? 1 : undefined,
+                minWidth: isMobile ? 0 : undefined,
+              }}
+            >
+              <SearchInput
+                variant="header"
+                placeholder={isGuestHouse ? 'Search stays, guests, rooms...' : 'Search bookings, customers...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => searchResults && setSearchOpen(true)}
                 onBlur={() => setTimeout(() => setSearchOpen(false), 200)}
-                style={{ width: '100%', paddingLeft: '40px', backgroundColor: 'var(--surface-elevated)', border: 'none' }}
               />
               {searchOpen && searchResults && (
                 <div
@@ -154,6 +172,34 @@ const DashboardLayout = () => {
                 >
                   {hasSearchHits ? (
                     <>
+                      {searchResults.stays?.map((s) => (
+                        <button
+                          key={`s-${s.id}`}
+                          type="button"
+                          onMouseDown={() => {
+                            navigate(`/gh/stays/${s.id}`);
+                            closeSearch();
+                          }}
+                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' }}
+                        >
+                          <p style={{ fontSize: '13px', fontWeight: '700' }}>{s.booking_ref}</p>
+                          <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Stay · {s.customer_name} · Room {s.room_number}</p>
+                        </button>
+                      ))}
+                      {searchResults.rooms?.map((r) => (
+                        <button
+                          key={`r-${r.id}`}
+                          type="button"
+                          onMouseDown={() => {
+                            navigate('/gh/rooms');
+                            closeSearch();
+                          }}
+                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' }}
+                        >
+                          <p style={{ fontSize: '13px', fontWeight: '700' }}>Room {r.room_number}</p>
+                          <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Room</p>
+                        </button>
+                      ))}
                       {searchResults.bookings?.map((b) => (
                         <button
                           key={`b-${b.id}`}
@@ -173,7 +219,7 @@ const DashboardLayout = () => {
                           key={`c-${c.id}`}
                           type="button"
                           onMouseDown={() => {
-                            navigate('/customers', { state: { selectedCustomerId: c.id } });
+                            navigate(isGuestHouse ? '/gh/customers' : '/customers', { state: { selectedCustomerId: c.id } });
                             closeSearch();
                           }}
                           style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' }}
@@ -306,7 +352,24 @@ const DashboardLayout = () => {
                     )}
                   </div>
                   <div className="surface-footer-bar" style={{ padding: '10px', textAlign: 'center', backgroundColor: 'var(--background)', borderTop: '1px solid var(--border)' }}>
-                    <p style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Refreshes every 30 seconds</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowNotifications(false);
+                        navigate(isGuestHouse ? '/gh/notifications' : '/notifications');
+                      }}
+                      style={{
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        color: 'var(--primary)',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '4px 8px',
+                      }}
+                    >
+                      View all notifications
+                    </button>
                   </div>
                 </div>
               )}
@@ -314,8 +377,8 @@ const DashboardLayout = () => {
 
             <div
               className="dashboard-header__profile"
-              onClick={() => navigate('/profile')}
-              onKeyDown={(e) => e.key === 'Enter' && navigate('/profile')}
+              onClick={() => navigate(profilePath)}
+              onKeyDown={(e) => e.key === 'Enter' && navigate(profilePath)}
               role="button"
               tabIndex={0}
             >

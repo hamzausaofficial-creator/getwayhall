@@ -7,6 +7,7 @@ from core.permissions import (
     IsAdminOrManagerOrStaffWrite,
     IsAdminOrManagerNoStaff,
     IsTenantOwner,
+    IsMarriageHallApp,
 )
 from .models import Payment, Expense
 from .serializers import PaymentSerializer, ExpenseSerializer
@@ -15,7 +16,7 @@ from .serializers import PaymentSerializer, ExpenseSerializer
 class PaymentViewSet(TenantQuerysetMixin, viewsets.ModelViewSet):
     queryset = Payment.objects.all().order_by('-payment_date', '-id')
     serializer_class = PaymentSerializer
-    permission_classes = [IsAdminOrManagerOrStaffWrite, IsTenantOwner]
+    permission_classes = [IsMarriageHallApp, IsAdminOrManagerOrStaffWrite, IsTenantOwner]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['status', 'payment_method', 'booking']
     ordering_fields = ['payment_date', 'amount']
@@ -29,7 +30,7 @@ class PaymentViewSet(TenantQuerysetMixin, viewsets.ModelViewSet):
 class ExpenseViewSet(TenantQuerysetMixin, viewsets.ModelViewSet):
     queryset = Expense.objects.all().order_by('-expense_date', '-id')
     serializer_class = ExpenseSerializer
-    permission_classes = [IsAdminOrManagerNoStaff, IsTenantOwner]
+    permission_classes = [IsMarriageHallApp, IsAdminOrManagerNoStaff, IsTenantOwner]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['category']
     search_fields = ['title', 'description']

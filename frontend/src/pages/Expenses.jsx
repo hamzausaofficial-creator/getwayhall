@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import SearchInput from '../components/SearchInput';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Plus, 
-  Search, 
   TrendingUp, 
   Calendar as CalendarIcon, 
   Receipt, 
@@ -251,17 +251,13 @@ const Expenses = () => {
       </div>
 
       {/* Realtime Search & Filtration */}
-      <div className="card" style={{ marginBottom: '32px', padding: '16px 24px', display: 'flex', gap: '24px', alignItems: 'center' }}>
-        <div style={{ flex: 1, position: 'relative' }}>
-          <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          <input
-            type="text"
-            placeholder="Search payment receipts by reason, vendor name (ABC Vendor), account title, category or notes..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: '100%', paddingLeft: '44px', backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '8px' }}
-          />
-        </div>
+      <div className="search-toolbar">
+        <SearchInput
+          variant="inset"
+          placeholder="Search payment receipts by reason, vendor name (ABC Vendor), account title, category or notes..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
       </div>
 
       {/* Main Expenses Table */}

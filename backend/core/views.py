@@ -2,7 +2,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from core.permissions import IsAdminOnly
+from core.permissions import IsAdminOnly, IsMarriageHallApp, IsGuestHouseApp
 from django.db.models import Sum, Count, F, Q, DecimalField, ExpressionWrapper
 from django.utils import timezone
 from datetime import timedelta
@@ -19,7 +19,7 @@ from core.mixins import TenantQuerysetMixin
 from core.permissions import IsAdminOrManagerOrReadOnly, IsTenantOwner
 
 class DashboardStatsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsMarriageHallApp]
 
     def get(self, request):
         tenant = request.user.tenant
@@ -204,7 +204,7 @@ class UserSettingsView(APIView):
 
 
 class GlobalSearchView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsMarriageHallApp]
 
     def get(self, request):
         q = (request.GET.get('q') or '').strip()
@@ -293,7 +293,7 @@ class NotificationLogViewSet(TenantQuerysetMixin, viewsets.ReadOnlyModelViewSet)
 
 class AlertsView(APIView):
     """Upcoming events and payment reminders for realtime dashboard/notifications."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsMarriageHallApp]
 
     def get(self, request):
         tenant = request.user.tenant

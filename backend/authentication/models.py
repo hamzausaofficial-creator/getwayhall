@@ -25,9 +25,19 @@ class User(AbstractUser):
         ('MANAGER', 'Manager'),
         ('STAFF', 'Staff'),
     )
+    APP_TYPE_CHOICES = (
+        ('MARRIAGE_HALL', 'Marriage Hall'),
+        ('GUEST_HOUSE', 'Guest House'),
+    )
 
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='STAFF')
+    app_type = models.CharField(
+        max_length=20,
+        choices=APP_TYPE_CHOICES,
+        default='MARRIAGE_HALL',
+        help_text='Which product this user can access after login.',
+    )
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='users', null=True, blank=True)
     profile_picture = models.ImageField(upload_to='avatars/', blank=True, null=True)
 

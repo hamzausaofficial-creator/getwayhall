@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { PackagePlus, Trash2, Edit, X, Search, Filter, ChevronRight } from 'lucide-react';
+import { PackagePlus, Trash2, Edit, X, Filter, ChevronRight } from 'lucide-react';
+import SearchInput from '../components/SearchInput';
 import client from '../api/client';
 import toast from 'react-hot-toast';
 import {
@@ -140,26 +141,23 @@ const Inventory = () => {
           )}
         </div>
 
-        <div className="card filter-toolbar">
-          <div className="input-group filter-toolbar__search">
-            <div style={{ position: 'relative' }}>
-              <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input 
-                type="text" 
-                placeholder="Search inventory..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ paddingLeft: '40px', width: '100%' }}
-              />
-            </div>
+        <div className="search-filter-bar">
+          <div className="search-filter-bar__search">
+            <SearchInput
+              variant="inset"
+              placeholder="Search inventory..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-          <div className="input-group filter-field">
+          <div className="filter-field">
             <div style={{ position: 'relative' }}>
-              <Filter size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <select 
-                value={filterCategory} 
+              <Filter size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none', zIndex: 1 }} />
+              <select
+                className="search-filter-bar__select"
+                value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
-                style={{ paddingLeft: '40px', width: '100%' }}
+                style={{ paddingLeft: '40px', width: '100%', minWidth: '180px' }}
               >
                 <option value="">All Categories</option>
                 {Object.entries(CATEGORY_LABELS).map(([key, label]) => (

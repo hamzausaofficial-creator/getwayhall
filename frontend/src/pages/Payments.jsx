@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
+import SearchInput from '../components/SearchInput';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   CreditCard,
-  Search,
   ChevronRight,
   X,
   Plus,
@@ -355,35 +355,21 @@ const Payments = () => {
       </div>
 
       {/* FILTER & SEARCH */}
-      <div className="card" style={{ 
-        marginBottom: '32px', 
-        padding: '20px 24px', 
-        display: 'flex', 
-        gap: '20px', 
-        alignItems: 'center', 
-        borderRadius: '16px',
-        border: '1px solid var(--border)',
-        boxShadow: 'var(--shadow-sm)'
-      }}>
-        {/* Search */}
-        <div style={{ flex: 1, position: 'relative' }}>
-          <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          <input
-            type="text"
+      <div className="search-filter-bar">
+        <div className="search-filter-bar__search">
+          <SearchInput
+            variant="inset"
             placeholder="Search by customer, event, staff name, booking ref..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: '100%', paddingLeft: '44px', backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '8px' }}
           />
         </div>
-        
-        {/* Method filter */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)' }}>Method:</span>
-          <select 
-            value={filterMethod} 
+          <select
+            className="search-filter-bar__select"
+            value={filterMethod}
             onChange={(e) => setFilterMethod(e.target.value)}
-            style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '13px', fontWeight: '600' }}
           >
             <option value="ALL">All Methods</option>
             <option value="CASH">Cash (نقد)</option>
@@ -396,10 +382,10 @@ const Payments = () => {
         {/* Status filter */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)' }}>Status:</span>
-          <select 
-            value={filterStatus} 
+          <select
+            className="search-filter-bar__select"
+            value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '13px', fontWeight: '600' }}
           >
             <option value="ALL">All Status</option>
             <option value="COMPLETED">Completed</option>

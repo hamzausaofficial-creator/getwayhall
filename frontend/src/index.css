@@ -105,6 +105,125 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(91, 213, 30, 0.1);
 }
 
+.search-field__input:focus,
+.search-field__input:focus-visible {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Premium search field (project-wide) */
+.search-field {
+  position: relative;
+  width: 100%;
+}
+
+.search-field__icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.search-field__input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 16px 10px 44px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text-main);
+  background: var(--input-bg, var(--surface));
+  border: none !important;
+  outline: none !important;
+  border-radius: 12px;
+  box-shadow: none;
+  transition: background-color 0.2s ease;
+}
+
+.search-field__input::-webkit-search-cancel-button {
+  cursor: pointer;
+}
+
+.search-field__input::placeholder {
+  color: var(--text-muted);
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.search-field__input:hover:not(:disabled) {
+  background: var(--surface);
+  border: none !important;
+  outline: none !important;
+  box-shadow: none;
+}
+
+.search-field__input:focus,
+.search-field__input:focus-visible {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none;
+  background: var(--surface);
+}
+
+.search-field--header .search-field__input {
+  min-height: 40px;
+  padding: 8px 14px 8px 42px;
+  font-size: 0.875rem;
+  border-radius: 10px;
+}
+
+.search-field--inset .search-field__input {
+  background: var(--background);
+}
+
+.search-field--inset .search-field__input:focus,
+.search-field--inset .search-field__input:hover:not(:disabled):not(:focus) {
+  background: var(--surface);
+}
+
+/* Page search row — one visible box, no extra card wrapper */
+.search-toolbar {
+  margin-bottom: 32px;
+  width: 100%;
+}
+
+.search-toolbar--compact {
+  margin-bottom: 16px;
+}
+
+/* Filter row: search + dropdowns aligned height */
+.search-filter-bar {
+  margin-bottom: 32px;
+  padding: 20px 24px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.search-filter-bar__search {
+  flex: 1;
+  min-width: 200px;
+}
+
+.search-filter-bar__select {
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: var(--input-bg, var(--surface));
+}
+
 /* Utility Classes */
 .card {
   background: var(--surface);
@@ -180,6 +299,12 @@ textarea:focus {
 }
 
 /* Animations */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

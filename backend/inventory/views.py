@@ -2,7 +2,7 @@ from rest_framework import viewsets, filters
 from django_filters.rest_framework import DjangoFilterBackend
 
 from core.mixins import TenantQuerysetMixin, TenantAssignMixin
-from core.permissions import IsAdminOrManagerOrReadOnly, IsTenantOwner
+from core.permissions import IsAdminOrManagerOrReadOnly, IsTenantOwner, IsMarriageHallApp
 from .models import InventoryItem, BookingInventoryItem
 from .serializers import InventoryItemSerializer, BookingInventoryItemSerializer
 
@@ -10,7 +10,7 @@ from .serializers import InventoryItemSerializer, BookingInventoryItemSerializer
 class InventoryItemViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewSet):
     queryset = InventoryItem.objects.all().order_by('name')
     serializer_class = InventoryItemSerializer
-    permission_classes = [IsAdminOrManagerOrReadOnly, IsTenantOwner]
+    permission_classes = [IsMarriageHallApp, IsAdminOrManagerOrReadOnly, IsTenantOwner]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['category', 'status']
     search_fields = ['name', 'description']
@@ -20,7 +20,7 @@ class InventoryItemViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.Mode
 class BookingInventoryItemViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewSet):
     queryset = BookingInventoryItem.objects.all().order_by('-id')
     serializer_class = BookingInventoryItemSerializer
-    permission_classes = [IsAdminOrManagerOrReadOnly, IsTenantOwner]
+    permission_classes = [IsMarriageHallApp, IsAdminOrManagerOrReadOnly, IsTenantOwner]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['booking', 'inventory_item']
 

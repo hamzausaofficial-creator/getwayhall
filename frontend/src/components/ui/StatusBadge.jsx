@@ -10,6 +10,8 @@ const STATUS_MAP = {
   ACTIVE: 'confirmed',
   INACTIVE: 'default',
   MAINTENANCE: 'pending',
+  CHECKED_IN: 'confirmed',
+  CHECKED_OUT: 'default',
 };
 
 function formatLabel(status) {

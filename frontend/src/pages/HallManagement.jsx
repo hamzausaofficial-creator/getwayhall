@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import SearchInput from '../components/SearchInput';
 import {
   Plus,
-  Search,
   MapPin,
   Users,
   DollarSign,
@@ -140,17 +140,13 @@ const HallManagement = () => {
         )}
       </div>
 
-      <div className="card" style={{ marginBottom: '32px', padding: '16px 24px', display: 'flex', gap: '24px', alignItems: 'center' }}>
-        <div style={{ flex: 1, position: 'relative' }}>
-          <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          <input
-            type="text"
-            placeholder="Search halls by name or location..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: '100%', paddingLeft: '40px', backgroundColor: 'var(--background)' }}
-          />
-        </div>
+      <div className="search-toolbar">
+        <SearchInput
+          variant="inset"
+          placeholder="Search halls by name or location..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
       </div>
 
       {isLoading ? (

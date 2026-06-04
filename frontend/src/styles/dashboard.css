@@ -96,7 +96,7 @@
 .dash-header {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
 }
@@ -162,7 +162,8 @@
 }
 
 .dash-period-select {
-  padding: var(--space-2) var(--space-4);
+  min-width: 148px;
+  padding: var(--space-2) 2.25rem var(--space-2) 2.25rem;
   font-size: 13px;
   font-weight: 600;
   border-radius: var(--dash-radius-md);
@@ -170,6 +171,8 @@
   background: var(--bg-surface);
   color: var(--text-main);
   cursor: pointer;
+  text-align: center;
+  text-align-last: center;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
@@ -770,23 +773,47 @@
 }
 
 /* ─── Payments list ─── */
+.dash-payment-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+
 .dash-payment-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border);
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-3) var(--space-4);
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--dash-radius-md);
+  background: var(--bg-base);
   cursor: pointer;
-  transition: opacity var(--transition-fast);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
-.dash-payment-row:last-child {
-  border-bottom: none;
+.dash-payment-row > div:first-child {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
 }
 
 .dash-payment-row:hover {
-  opacity: 0.85;
+  background: var(--bg-elevated);
+  border-color: color-mix(in srgb, var(--dash-primary) 25%, var(--border));
+}
+
+.dash-payment-row:active {
+  background: color-mix(in srgb, var(--dash-primary) 8%, var(--bg-elevated));
 }
 
 .dash-payment-row__amount {
@@ -917,4 +944,249 @@
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-main);
+}
+
+/* ─── Error banner ─── */
+.dash-error-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--dash-radius-md);
+  border: 1px solid var(--error);
+  background: var(--color-danger-muted);
+  color: var(--error);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ─── Secondary KPI row (compact) ─── */
+.dash-kpi-grid--secondary .dash-stat-card {
+  padding: var(--space-4);
+}
+
+.dash-kpi-grid--secondary .dash-stat-card__value {
+  font-size: 22px;
+}
+
+.dash-kpi-grid--secondary .dash-stat-card__icon {
+  width: 40px;
+  height: 40px;
+}
+
+/* ─── Guest House dashboard hero strip ─── */
+.gh-dash-hero {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-8);
+  border-radius: var(--dash-radius-xl);
+  background: var(--dash-primary-gradient);
+  color: #fff;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.gh-dash-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 85% 20%, rgba(255, 255, 255, 0.18) 0%, transparent 55%);
+  pointer-events: none;
+}
+
+.gh-dash-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.gh-dash-hero__eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.9;
+  margin-bottom: var(--space-2);
+}
+
+.gh-dash-hero__title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.gh-dash-hero__subtitle {
+  font-size: 14px;
+  opacity: 0.92;
+  margin-top: var(--space-2);
+  max-width: 28rem;
+}
+
+.gh-dash-hero__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.gh-dash-hero__chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 88px;
+  padding: var(--space-3) var(--space-4);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: var(--dash-radius-md);
+  backdrop-filter: blur(6px);
+}
+
+.gh-dash-hero__chip-value {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.gh-dash-hero__chip-label {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.88;
+  margin-top: 4px;
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .gh-dash-hero {
+    grid-template-columns: 1fr;
+    padding: var(--space-5);
+  }
+
+  .gh-dash-hero__chips {
+    justify-content: flex-start;
+  }
+
+  .gh-dash-hero__chip {
+    align-items: flex-start;
+  }
+
+  .gh-dash-hero__chip-label {
+    text-align: left;
+  }
+}
+
+/* ─── Guest House occupancy ring ─── */
+.gh-occupancy-hero .dash-chart-card__body,
+.gh-occupancy-hero__body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-height: 180px;
+  padding-top: var(--space-2);
+}
+
+.gh-occupancy-ring {
+  --gh-ring-size: 112px;
+  --gh-ring-track: var(--border);
+  flex-shrink: 0;
+  width: var(--gh-ring-size);
+  height: var(--gh-ring-size);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.gh-occupancy-ring::before {
+  content: '';
+  position: absolute;
+  inset: 10px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.gh-occupancy-ring__value {
+  position: relative;
+  z-index: 1;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-main);
+}
+
+.gh-occupancy-hero__meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.gh-occupancy-hero__meta p {
+  font-size: 14px;
+  color: var(--text-main);
+  line-height: 1.5;
+}
+
+.gh-occupancy-hero__meta strong {
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.gh-occupancy-hero__hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: var(--space-2);
+}
+
+/* ─── Guest House financial boxes ─── */
+.gh-fin-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-4);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--dash-radius-md);
+}
+
+.gh-fin-box__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.gh-fin-box__value {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-main);
+}
+
+.gh-fin-box__value--primary {
+  color: var(--primary);
+}
+
+.gh-fin-profit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--dash-radius-md);
+  border: 2px solid var(--primary);
+  background: var(--primary-light);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.gh-fin-profit strong {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }

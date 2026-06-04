@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import SearchInput from '../components/SearchInput';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   UserPlus,
-  Search,
   Mail,
   Phone,
   Edit2,
@@ -100,6 +100,13 @@ const CustomerManagement = () => {
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state?.selectedCustomerId]);
+
+  useEffect(() => {
+    if (location.state?.openCreate && canManage) {
+      handleOpenFormModal();
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state?.openCreate, canManage, navigate, location.pathname]);
 
   useEffect(() => {
     if (selectedId) fetchSummary(selectedId);
@@ -253,17 +260,13 @@ const CustomerManagement = () => {
 
         <div className={`split-layout ${selectedId ? 'split-layout--customers' : ''}`}>
           <div>
-            <div className="card" style={{ marginBottom: '16px', padding: '16px 20px' }}>
-              <div style={{ position: 'relative' }}>
-                <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input
-                  type="text"
-                  placeholder="Search by name, phone, CNIC, email..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ width: '100%', paddingLeft: '40px', backgroundColor: 'var(--background)' }}
-                />
-              </div>
+            <div className="search-toolbar search-toolbar--compact">
+              <SearchInput
+                variant="inset"
+                placeholder="Search by name, phone, CNIC, email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
 
             <div className="card table-scroll" style={{ padding: 0 }}>

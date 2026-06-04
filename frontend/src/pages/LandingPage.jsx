@@ -59,12 +59,12 @@ const LandingPage = () => {
 
         <button
           type="button"
-          className="btn-menu-mobile"
+          className="btn-menu-mobile landing-nav__menu-toggle"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           aria-label="Toggle menu"
-          style={{ background: '#f1f5f9', border: '1px solid #e2e8f0' }}
+          aria-expanded={mobileMenuOpen}
         >
-          {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
 
         <div className={`landing-nav__links ${mobileMenuOpen ? 'landing-nav__links--open' : ''}`}>
@@ -84,25 +84,8 @@ const LandingPage = () => {
               </a>
             ))}
           </div>
-          <div className="landing-nav__cta" style={{ alignItems: 'center' }}>
+          <div className="landing-nav__cta">
             <ThemeToggle />
-            <button
-              type="button"
-              onClick={() => { setMobileMenuOpen(false); navigate('/login'); }}
-              style={{
-                padding: '10px 24px',
-                borderRadius: '50px',
-                backgroundColor: '#5BD51E',
-                color: 'white',
-                border: 'none',
-                fontWeight: '700',
-                cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(91, 213, 30, 0.3)',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Login
-            </button>
           </div>
         </div>
       </nav>

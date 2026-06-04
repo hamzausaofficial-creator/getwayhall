@@ -51,7 +51,7 @@ export default function NotificationsPanel({ alerts }) {
           className="dash-btn dash-btn--ghost dash-btn--sm"
           onClick={() => navigate('/notifications')}
         >
-          View log <ChevronRight size={14} />
+          View all <ChevronRight size={14} />
         </button>
       </header>
       {items.length === 0 ? (

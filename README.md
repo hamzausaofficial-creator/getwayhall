@@ -2,6 +2,8 @@
 
 Full-stack marriage hall / venue management: bookings, calendar, halls, customers, payments, expenses, inventory, decoration packages, staff, reports, SMS/WhatsApp notification log, and role-based access per tenant.
 
+**Dual product:** the same project also includes a separate **Guest House** app (`/gh/*` routes) with its own login and APIs. See [docs/DUAL_APP_ARCHITECTURE.md](docs/DUAL_APP_ARCHITECTURE.md).
+
 ## Project structure
 
 - `frontend/` — React + Vite (Gateway UI)

@@ -494,7 +494,7 @@ export default function Overview() {
           {payments.length === 0 ? (
             <EmptyPayments />
           ) : (
-            <div>
+            <div className="dash-payment-list">
               {payments.map((p) => (
                 <button
                   key={p.id}
@@ -502,7 +502,7 @@ export default function Overview() {
                   className="dash-payment-row"
                   onClick={() => navigate('/payments')}
                 >
-                  <div style={{ textAlign: 'left', minWidth: 0 }}>
+                  <div>
                     <p
                       className="dash-table__cell-primary"
                       style={{

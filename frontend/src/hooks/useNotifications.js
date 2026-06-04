@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getAlerts, getUserSettings } from '../api/core';
+import { getGuestHouseAlerts } from '../api/guesthouse';
 import client from '../api/client';
 import { normalizeList } from '../utils/listData';
+import { useAppType } from './useAppType';
 
 const POLL_INTERVAL = 30000;
 
@@ -17,6 +19,7 @@ const timeAgo = (dateStr) => {
 };
 
 export const useNotifications = () => {
+  const { isGuestHouse } = useAppType();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [lastFetchedAt, setLastFetchedAt] = useState(null);
@@ -34,6 +37,39 @@ export const useNotifications = () => {
   }, []);
 
   const fetchNotifications = useCallback(async () => {
+    if (isGuestHouse) {
+      try {
+        const alerts = await getGuestHouseAlerts();
+        const all = [
+          ...(alerts.upcoming_checkins || []).map((e) => ({
+            id: `gh-in-${e.id}`,
+            type: 'event',
+            stayId: e.id,
+            title: e.title,
+            desc: e.desc,
+            time: e.date,
+            timeAgo: e.date ? timeAgo(e.date) : 'Soon',
+            icon: '🏨',
+          })),
+          ...(alerts.payment_due || []).map((p) => ({
+            id: `gh-due-${p.id}`,
+            type: 'payment_due',
+            stayId: p.id,
+            title: p.title,
+            desc: p.desc,
+            time: p.date,
+            timeAgo: p.date ? timeAgo(p.date) : 'Due',
+            icon: '💰',
+          })),
+        ];
+        setNotifications(all.slice(0, 12));
+        setUnreadCount(Math.min(all.length, 8));
+        setLastFetchedAt(new Date());
+      } catch {
+        setNotifications([]);
+      }
+      return;
+    }
     try {
       const [alerts, bookRes, payRes] = await Promise.all([
         getAlerts(),
@@ -131,7 +167,7 @@ export const useNotifications = () => {
     } catch {
       /* silent poll failure */
     }
-  }, [lastFetchedAt, prefs]);
+  }, [lastFetchedAt, prefs, isGuestHouse]);
 
   useEffect(() => {
     fetchNotifications();

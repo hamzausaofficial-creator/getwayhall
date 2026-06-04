@@ -72,6 +72,40 @@
   border-color: var(--border);
 }
 
+[data-theme='dark'] .search-field__input,
+[data-theme='dark'] .search-field__input:hover,
+[data-theme='dark'] .search-field__input:focus,
+[data-theme='dark'] .search-field__input:focus-visible {
+  color: var(--text-main);
+  border: none !important;
+  outline: none !important;
+  box-shadow: none;
+}
+
+[data-theme='dark'] .search-field--inset .search-field__input {
+  background: var(--surface-elevated);
+}
+
+[data-theme='dark'] .search-field--inset .search-field__input:focus,
+[data-theme='dark'] .search-field--inset .search-field__input:hover:not(:disabled):not(:focus) {
+  background: var(--input-bg);
+}
+
+[data-theme='dark'] .profile-card {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+[data-theme='dark'] .profile-field-card {
+  background: var(--surface-elevated);
+}
+
+[data-theme='dark'] .profile-form__input {
+  background: var(--input-bg);
+  border-color: var(--border);
+  color: var(--text-main);
+}
+
 [data-theme='dark'] .login-card__error {
   background: rgba(186, 26, 26, 0.15);
   border-color: rgba(239, 68, 68, 0.35);
@@ -200,6 +234,14 @@
   --landing-bg: #0b1120;
   --landing-nav-bg: rgba(15, 23, 42, 0.95);
   --landing-card-bg: #1e293b;
+}
+
+[data-theme='dark'] .landing-nav__menu-toggle {
+  color: var(--text-main);
+}
+
+[data-theme='dark'] .landing-nav__menu-toggle:hover {
+  color: var(--primary);
 }
 
 [data-theme='dark'] .landing-nav {

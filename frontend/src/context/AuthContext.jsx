@@ -28,6 +28,7 @@ export const AuthProvider = ({ children }) => {
         try {
           const userData = await getMe();
           if (userData?.role) localStorage.setItem('user_role', userData.role);
+          if (userData?.app_type) localStorage.setItem('user_app_type', userData.app_type);
           setUser(userData);
           setIsAuthenticated(true);
           await syncThemeFromServer();
@@ -48,6 +49,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('isAuthenticated', 'true');
     const userData = await getMe();
     if (userData?.role) localStorage.setItem('user_role', userData.role);
+    if (userData?.app_type) localStorage.setItem('user_app_type', userData.app_type);
     setUser(userData);
     setIsAuthenticated(true);
     await syncThemeFromServer();
