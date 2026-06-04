@@ -1,26 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { 
-  CreditCard, 
-  Search, 
-  Filter, 
-  Download, 
-  ArrowUpRight, 
-  ArrowDownRight,
+import {
+  CreditCard,
+  Search,
   ChevronRight,
   X,
   Plus,
   Trash2,
+  Edit2,
   Printer,
   Calendar,
   CheckCircle,
   Clock,
-  HelpCircle,
   FileText,
-  DollarSign
+  User,
+  Phone,
 } from 'lucide-react';
 import client from '../api/client';
 import toast from 'react-hot-toast';
+import {
+  formatRs,
+  formatCollectDue,
+  formatCollectDuePKR,
+  bookingCollectDue,
+  hasCollectDue,
+} from '../utils/currency';
 
 const Payments = () => {
   const location = useLocation();
@@ -33,8 +37,10 @@ const Payments = () => {
   
   // Modals state
   const [showModal, setShowModal] = useState(false);
+  const [editingPaymentId, setEditingPaymentId] = useState(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [selectedPayment, setSelectedPayment] = useState(null);
 
   const [searchQuery, setSearchQuery] = useState(navigateState?.bookingEventName || '');
   const [filterMethod, setFilterMethod] = useState('ALL');
@@ -75,8 +81,13 @@ const Payments = () => {
   useEffect(() => {
     if (navigateState?.autoOpenRecord && navigateState?.preselectedBookingId) {
       setShowModal(true);
+      setFormData((prev) => ({
+        ...prev,
+        booking: String(navigateState.preselectedBookingId),
+      }));
+      navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [navigateState]);
+  }, [navigateState?.autoOpenRecord, navigateState?.preselectedBookingId]);
 
   // Update selected booking specs when booking dropdown changes in modal
   useEffect(() => {
@@ -128,12 +139,19 @@ const Payments = () => {
     }
 
     try {
-      await client.post('/finance/payments/', {
+      const payload = {
         ...formData,
-        amount: parseFloat(formData.amount)
-      });
-      toast.success('Payment successfully captured!');
+        amount: parseFloat(formData.amount),
+      };
+      if (editingPaymentId) {
+        await client.patch(`/finance/payments/${editingPaymentId}/`, payload);
+        toast.success('Payment updated');
+      } else {
+        await client.post('/finance/payments/', payload);
+        toast.success('Payment successfully captured!');
+      }
       setShowModal(false);
+      setEditingPaymentId(null);
       
       // Reset form
       setFormData({
@@ -144,6 +162,7 @@ const Payments = () => {
         notes: ''
       });
       setSelectedBookingSpecs(null);
+      if (selectedPayment?.id === editingPaymentId) setSelectedPayment(null);
       fetchData();
     } catch (err) {
       console.error(err);
@@ -151,11 +170,37 @@ const Payments = () => {
     }
   };
 
+  const openEditPayment = (payment) => {
+    setEditingPaymentId(payment.id);
+    setFormData({
+      booking: String(payment.booking),
+      amount: String(payment.amount),
+      payment_method: payment.payment_method || 'CASH',
+      status: payment.status || 'COMPLETED',
+      notes: payment.notes || '',
+    });
+    setShowModal(true);
+  };
+
+  const closePaymentModal = () => {
+    setShowModal(false);
+    setEditingPaymentId(null);
+    setSelectedBookingSpecs(null);
+    setFormData({
+      booking: '',
+      amount: '',
+      payment_method: 'CASH',
+      status: 'COMPLETED',
+      notes: '',
+    });
+  };
+
   const handleDelete = async (paymentId) => {
     if (window.confirm('Are you sure you want to delete/void this transaction? The payment ledger will be reversed!')) {
       try {
         await client.delete(`/finance/payments/${paymentId}/`);
         toast.success('Transaction voided successfully');
+        if (selectedPayment?.id === paymentId) setSelectedPayment(null);
         fetchData();
       } catch (err) {
         toast.error('Failed to void transaction');
@@ -223,6 +268,10 @@ const Payments = () => {
     const q = searchQuery.toLowerCase().trim();
     const formattedId = `pay-${String(p.id).padStart(5, '0')}`;
     const matchesSearch = (p.booking_event_name || '').toLowerCase().includes(q) ||
+                          (p.customer_name || '').toLowerCase().includes(q) ||
+                          (p.recorded_by_name || '').toLowerCase().includes(q) ||
+                          (p.booking_reference || '').toLowerCase().includes(q) ||
+                          (p.venue_name || '').toLowerCase().includes(q) ||
                           (p.payment_method || '').toLowerCase().includes(q) ||
                           (p.transaction_id || '').toLowerCase().includes(q) ||
                           (p.notes || '').toLowerCase().includes(q) ||
@@ -239,7 +288,7 @@ const Payments = () => {
     <>
       <div className="animate-fade-in" style={{ paddingBottom: '40px' }}>
         {/* HEADER ROW */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '32px' }}>
+      <div className="page-header">
         <div>
           <h2 style={{ fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--secondary)' }}>
             Financial Ledger & Payments
@@ -267,7 +316,7 @@ const Payments = () => {
       </div>
 
       {/* METRICS CARDS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '40px' }}>
+      <div className="grid-3 grid-3--mb-lg">
         <div className="premium-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <span style={{ fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', tracking: '0.05em', color: '#166534', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ width: '6px', height: '6px', backgroundColor: '#166534', borderRadius: '50%' }}></span>
@@ -321,7 +370,7 @@ const Payments = () => {
           <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <input
             type="text"
-            placeholder="Search transactions by event name, transaction ID, or payment parameters..."
+            placeholder="Search by customer, event, staff name, booking ref..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{ width: '100%', paddingLeft: '44px', backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '8px' }}
@@ -374,122 +423,175 @@ const Payments = () => {
         )}
       </div>
 
-      {/* TABLE */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid var(--border)' }}>
-              <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Transaction Reference</th>
-              <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Linked Reservation</th>
-              <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Payment Method</th>
-              <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Status</th>
-              <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Amount</th>
-              <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)', width: '100px' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPayments.map((payment) => (
-              <tr key={payment.id} style={{ borderBottom: '1px solid var(--border)' }} className="hover:bg-slate-50">
-                <td style={{ padding: '18px 24px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <span style={{ fontWeight: '800', color: 'var(--secondary)', fontFamily: 'monospace', fontSize: '13px' }}>
-                      PAY-{String(payment.id).padStart(5, '0')}
-                    </span>
-                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Calendar size={10} />
-                      {new Date(payment.payment_date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
-                    </span>
-                  </div>
-                </td>
-                
-                <td style={{ padding: '18px 24px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <span style={{ fontWeight: '700', color: '#0f172a', fontSize: '14px' }}>
-                      {payment.booking_event_name || 'Manual Reservation'}
-                    </span>
-                    {payment.transaction_id && (
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-                        Ref: {payment.transaction_id}
-                      </span>
-                    )}
-                  </div>
-                </td>
-
-                <td style={{ padding: '18px 24px' }}>
-                  <span style={{ 
-                    fontSize: '11px', 
-                    fontWeight: '800', 
-                    color: '#475569', 
-                    backgroundColor: '#f1f5f9',
-                    border: '1px solid #e2e8f0',
-                    padding: '4px 10px',
-                    borderRadius: '20px'
-                  }}>
-                    {payment.payment_method === 'BANK_TRANSFER' ? '🏦 Bank Transfer' : 
-                     payment.payment_method === 'CARD' ? '💳 Card Pay' : '💵 Cash in Hand'}
-                  </span>
-                </td>
-
-                <td style={{ padding: '18px 24px' }}>
-                  <span style={{ 
-                    padding: '4px 12px', 
-                    borderRadius: '20px', 
-                    fontSize: '11px', 
-                    fontWeight: '800',
-                    backgroundColor: payment.status === 'COMPLETED' ? '#dcfce7' : 
-                                     payment.status === 'PENDING' ? '#fef3c7' : '#fee2e2',
-                    color: payment.status === 'COMPLETED' ? '#166534' : 
-                           payment.status === 'PENDING' ? '#b45309' : '#991b1b',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}>
-                    {payment.status === 'COMPLETED' && <CheckCircle size={10} />}
-                    {payment.status === 'PENDING' && <Clock size={10} />}
-                    {payment.status}
-                  </span>
-                </td>
-
-                <td style={{ padding: '18px 24px', fontWeight: '800', fontSize: '14px', color: payment.status === 'COMPLETED' ? '#166534' : '#475569' }}>
-                  +<span style={{ fontSize: '80%', opacity: 0.6, marginRight: '2px' }}>PKR</span> 
-                  {parseFloat(payment.amount).toLocaleString()}
-                </td>
-
-                <td style={{ padding: '18px 24px' }}>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button 
-                      onClick={() => handlePrintSlip(payment)} 
-                      style={{ color: 'var(--primary)', backgroundColor: 'transparent', padding: '6px', borderRadius: '6px' }} 
-                      className="hover:bg-orange-50"
-                      title="Print Payment Receipt"
-                    >
-                      <Printer size={16} />
-                    </button>
-                    <button 
-                      onClick={() => payment.booking && navigate(`/print/${payment.booking}`)} 
-                      style={{ color: 'var(--secondary)', backgroundColor: 'transparent', padding: '6px', borderRadius: '6px' }} 
-                      className="hover:bg-slate-100"
-                      title="View Booking Invoice"
-                    >
-                      <FileText size={16} />
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(payment.id)} 
-                      style={{ color: 'var(--error)', backgroundColor: 'transparent', padding: '6px', borderRadius: '6px' }} 
-                      className="hover:bg-red-50"
-                      title="Void Payment"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </td>
+      <div className={`split-layout ${selectedPayment ? 'split-layout--payments' : ''}`}>
+        <div className="card table-scroll" style={{ padding: 0, borderRadius: '16px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+          <p style={{ padding: '12px 20px', fontSize: '12px', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', margin: 0 }}>
+            Click a row to view customer, order, and payment details
+          </p>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid var(--border)' }}>
+                <th style={{ padding: '14px 16px', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Payment</th>
+                <th style={{ padding: '14px 16px', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Customer (paid)</th>
+                <th style={{ padding: '14px 16px', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Event / Order</th>
+                <th style={{ padding: '14px 16px', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Received by</th>
+                <th style={{ padding: '14px 16px', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Lena (due)</th>
+                <th style={{ padding: '14px 16px', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Amount</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {filteredPayments.length === 0 && !isLoading && (
-          <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px', fontWeight: '500' }}>
-            No payment transactions match your query criteria.
+            </thead>
+            <tbody>
+              {filteredPayments.map((payment) => {
+                const active = selectedPayment?.id === payment.id;
+                return (
+                  <tr
+                    key={payment.id}
+                    onClick={() => setSelectedPayment(payment)}
+                    style={{
+                      borderBottom: '1px solid var(--border)',
+                      cursor: 'pointer',
+                      backgroundColor: active ? 'var(--primary-light)' : 'transparent',
+                    }}
+                  >
+                    <td style={{ padding: '14px 16px' }}>
+                      <span style={{ fontWeight: '800', fontFamily: 'monospace', fontSize: '12px' }}>PAY-{String(payment.id).padStart(5, '0')}</span>
+                      <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                        {new Date(payment.payment_date).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                      </p>
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <span style={{ fontWeight: '700', fontSize: '14px' }}>{payment.customer_name || '—'}</span>
+                      {payment.customer_phone && (
+                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{payment.customer_phone}</p>
+                      )}
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <span style={{ fontWeight: '600', fontSize: '13px' }}>{payment.booking_event_name || '—'}</span>
+                      {payment.booking_reference && (
+                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{payment.booking_reference}</p>
+                      )}
+                    </td>
+                    <td style={{ padding: '14px 16px', fontSize: '13px', color: 'var(--text-muted)' }}>
+                      {payment.recorded_by_name || '—'}
+                    </td>
+                    <td style={{ padding: '14px 16px', fontWeight: '800', fontSize: '13px', color: hasCollectDue(payment.booking_remaining) ? '#b91c1c' : '#64748b' }}>
+                      {formatCollectDue(payment.booking_remaining)}
+                    </td>
+                    <td style={{ padding: '14px 16px', fontWeight: '800', color: '#166534', fontSize: '14px' }}>
+                      {formatRs(payment.amount)}
+                      <ChevronRight size={14} style={{ display: 'inline', marginLeft: '4px', verticalAlign: 'middle' }} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {filteredPayments.length === 0 && !isLoading && (
+            <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
+              No payments match your search.
+            </div>
+          )}
+        </div>
+
+        {selectedPayment && (
+          <div className="card" style={{ padding: '24px', position: 'sticky', top: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: '800' }}>PAY-{String(selectedPayment.id).padStart(5, '0')}</h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Payment & order details</p>
+              </div>
+              <button type="button" onClick={() => setSelectedPayment(null)} style={{ background: 'transparent', color: 'var(--text-muted)', padding: '4px' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: '20px', padding: '16px', borderRadius: '12px', background: '#f8fafc', border: '1px solid var(--border)' }}>
+              <p style={{ fontSize: '11px', fontWeight: '800', color: 'var(--primary)', textTransform: 'uppercase', marginBottom: '10px' }}>Customer (jis ne di)</p>
+              <p style={{ fontWeight: '700', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <User size={18} /> {selectedPayment.customer_name || '—'}
+              </p>
+              {selectedPayment.customer_phone && (
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Phone size={14} /> {selectedPayment.customer_phone}
+                </p>
+              )}
+              {selectedPayment.customer_cnic && (
+                <p style={{ fontSize: '12px', fontFamily: 'monospace', marginTop: '4px' }}>CNIC: {selectedPayment.customer_cnic}</p>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '20px', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+              <p style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '10px' }}>Order / Booking</p>
+              <p style={{ fontWeight: '700', fontSize: '15px' }}>{selectedPayment.booking_event_name}</p>
+              <dl style={{ margin: '12px 0 0', fontSize: '13px', display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 12px' }}>
+                {selectedPayment.booking_reference && (
+                  <>
+                    <dt style={{ color: 'var(--text-muted)' }}>Booking ID</dt>
+                    <dd style={{ fontFamily: 'monospace', fontWeight: '600' }}>{selectedPayment.booking_reference}</dd>
+                  </>
+                )}
+                <dt style={{ color: 'var(--text-muted)' }}>Hall</dt>
+                <dd>{selectedPayment.venue_name || '—'}</dd>
+                <dt style={{ color: 'var(--text-muted)' }}>Event date</dt>
+                <dd>{selectedPayment.event_date || '—'}</dd>
+                <dt style={{ color: 'var(--text-muted)' }}>Slot</dt>
+                <dd style={{ textTransform: 'capitalize' }}>{selectedPayment.booking_slot || '—'}</dd>
+                <dt style={{ color: 'var(--text-muted)' }}>Status</dt>
+                <dd>{selectedPayment.booking_status || '—'}</dd>
+                <dt style={{ color: 'var(--text-muted)' }}>Order total</dt>
+                <dd style={{ fontWeight: '700' }}>{formatRs(selectedPayment.booking_total)}</dd>
+                <dt style={{ color: 'var(--text-muted)' }}>Paid (total)</dt>
+                <dd style={{ color: '#166534', fontWeight: '700' }}>{formatRs(selectedPayment.booking_paid)}</dd>
+                <dt style={{ color: 'var(--text-muted)' }}>Lena (abhi lena)</dt>
+                <dd style={{ color: hasCollectDue(selectedPayment.booking_remaining) ? '#b91c1c' : '#64748b', fontWeight: '700' }}>
+                  {formatCollectDue(selectedPayment.booking_remaining)}
+                </dd>
+              </dl>
+            </div>
+
+            <div style={{ marginBottom: '20px', padding: '16px', borderRadius: '12px', background: 'rgba(91, 213, 30, 0.06)', border: '1px solid rgba(91, 213, 30, 0.2)' }}>
+              <p style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '8px' }}>This payment</p>
+              <p style={{ fontSize: '26px', fontWeight: '900', color: '#166534' }}>{formatRs(selectedPayment.amount)}</p>
+              <p style={{ fontSize: '13px', marginTop: '8px' }}>
+                Method: <strong>{selectedPayment.payment_method}</strong> · Status: <strong>{selectedPayment.status}</strong>
+              </p>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                Received by: <strong>{selectedPayment.recorded_by_name || 'Not recorded'}</strong>
+              </p>
+              {selectedPayment.notes && (
+                <p style={{ fontSize: '12px', marginTop: '8px', fontStyle: 'italic' }}>Notes: {selectedPayment.notes}</p>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => openEditPayment(selectedPayment)}
+                style={{ padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              >
+                <Edit2 size={16} /> Edit payment
+              </button>
+              <button type="button" className="btn-primary" onClick={() => handlePrintSlip(selectedPayment)} style={{ padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <Printer size={16} /> Print receipt
+              </button>
+              {selectedPayment.booking && (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => navigate(`/print/${selectedPayment.booking}`)}
+                  style={{ padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  <FileText size={16} /> View booking invoice
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => handleDelete(selectedPayment.id)}
+                style={{ padding: '10px', color: '#ef4444', background: 'transparent', border: '1px solid #fecaca', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              >
+                <Trash2 size={16} /> Void payment
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -502,21 +604,13 @@ const Payments = () => {
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
               <div>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--secondary)', margin: 0 }}>Record Client Deposit</h3>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--secondary)', margin: 0 }}>
+                  {editingPaymentId ? 'Edit Payment' : 'Record Client Deposit'}
+                </h3>
                 <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>کلائنٹ ادائیگی ریکارڈ فارم</p>
               </div>
               <button 
-                onClick={() => {
-                  setShowModal(false);
-                  setSelectedBookingSpecs(null);
-                  setFormData({
-                    booking: '',
-                    amount: '',
-                    payment_method: 'CASH',
-                    status: 'COMPLETED',
-                    notes: ''
-                  });
-                }} 
+                onClick={closePaymentModal}
                 style={{ backgroundColor: 'transparent', color: 'var(--text-muted)', border: 'none', cursor: 'pointer' }}
               >
                 <X size={24} />
@@ -531,14 +625,15 @@ const Payments = () => {
                 </label>
                 <select 
                   required 
+                  disabled={!!editingPaymentId}
                   value={formData.booking} 
                   onChange={(e) => setFormData({...formData, booking: e.target.value})}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '13px' }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '13px', opacity: editingPaymentId ? 0.7 : 1 }}
                 >
                   <option value="">-- Choose Reservation --</option>
-                  {bookings.map(b => (
+                  {bookings.map((b) => (
                     <option key={b.id} value={b.id}>
-                      {b.event_name} (Date: {b.event_date})
+                      {b.event_name} — {b.customer_name || 'Customer'} ({b.event_date || 'no date'}) — Lena: {formatCollectDue(bookingCollectDue(b))}
                     </option>
                   ))}
                 </select>
@@ -573,9 +668,9 @@ const Payments = () => {
                       </p>
                     </div>
                     <div>
-                      <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '0 0 2px 0' }}>Outstanding</p>
-                      <p style={{ fontSize: '12px', fontWeight: '800', color: '#b91c1c', margin: 0 }}>
-                        PKR {Math.round(selectedBookingSpecs.remaining).toLocaleString()}
+                      <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '0 0 2px 0' }}>Lena (due)</p>
+                      <p style={{ fontSize: '12px', fontWeight: '800', color: hasCollectDue(selectedBookingSpecs.remaining) ? '#b91c1c' : '#64748b', margin: 0 }}>
+                        {formatCollectDuePKR(selectedBookingSpecs.remaining)}
                       </p>
                     </div>
                   </div>
@@ -714,7 +809,9 @@ const Payments = () => {
               <div style={{ marginBottom: '15px' }}>
                 <p style={{ margin: '4px 0' }}><strong>Slip ID:</strong> PAY-{String(selectedReceipt.id).padStart(5, '0')}</p>
                 <p style={{ margin: '4px 0' }}><strong>Date:</strong> {new Date(selectedReceipt.payment_date).toLocaleDateString()} {new Date(selectedReceipt.payment_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                <p style={{ margin: '4px 0' }}><strong>Customer:</strong> {selectedReceipt.customer_name || '—'}</p>
                 <p style={{ margin: '4px 0' }}><strong>Booking Ref:</strong> {selectedReceipt.booking_event_name}</p>
+                <p style={{ margin: '4px 0' }}><strong>Received by:</strong> {selectedReceipt.recorded_by_name || '—'}</p>
                 <p style={{ margin: '4px 0' }}><strong>Method:</strong> {selectedReceipt.payment_method}</p>
                 <p style={{ margin: '4px 0' }}><strong>Status:</strong> {selectedReceipt.status}</p>
               </div>

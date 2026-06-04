@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Plus,
   Search,
@@ -15,16 +15,26 @@ import {
   HelpCircle,
   ChevronRight,
   Sparkles,
-  DollarSign
+  DollarSign,
+  Package
 } from 'lucide-react';
 import client from '../api/client';
+import { formatCollectDue, formatCollectDuePKR, bookingCollectDue, hasCollectDue } from '../utils/currency';
 import toast from 'react-hot-toast';
+import { customerDisplayName, buildCustomerPayload } from '../utils/customer';
+import { usePermissions } from '../hooks/usePermissions';
 
 const Bookings = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { canManage } = usePermissions();
   const [bookings, setBookings] = useState([]);
   const [halls, setHalls] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [decorationPackages, setDecorationPackages] = useState([]);
+  const [selectedDecorationId, setSelectedDecorationId] = useState('');
+  const [inventoryCatalog, setInventoryCatalog] = useState([]);
+  const [inventoryLines, setInventoryLines] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState('list'); // 'list', 'create', 'edit'
   const [editingId, setEditingId] = useState(null);
@@ -39,7 +49,7 @@ const Bookings = () => {
     venue: '',
     booking_date: new Date().toISOString().split('T')[0],
     event_date: '',
-    slot: 'morning',
+    slot: '',
     gents_count: 0,
     ladies_count: 0,
     rate_per_head: 1200,
@@ -56,8 +66,8 @@ const Bookings = () => {
   // Dual-mode customer state
   const [newCustomerMode, setNewCustomerMode] = useState(false);
   const [newCustomer, setNewCustomer] = useState({
-    first_name: '',
-    last_name: '',
+    full_name: '',
+    cnic: '',
     email: '',
     phone: '',
     address: ''
@@ -68,14 +78,20 @@ const Bookings = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [bookingsRes, hallsRes, customersRes] = await Promise.all([
+      const [bookingsRes, hallsRes, customersRes, decoRes, invRes] = await Promise.all([
         client.get('/bookings/'),
         client.get('/venues/'),
-        client.get('/customers/')
+        client.get('/customers/'),
+        client.get('/decorations/packages/?is_active=true').catch(() => ({ data: [] })),
+        client.get('/inventory/items/').catch(() => ({ data: [] })),
       ]);
       setBookings(bookingsRes.data.results || bookingsRes.data || []);
       setHalls(hallsRes.data.results || hallsRes.data || []);
+      const invData = invRes.data?.results || invRes.data || [];
+      setInventoryCatalog(Array.isArray(invData) ? invData : []);
       setCustomers(customersRes.data.results || customersRes.data || []);
+      const decoData = decoRes.data?.results || decoRes.data || [];
+      setDecorationPackages(Array.isArray(decoData) ? decoData.filter((p) => p.is_active !== false) : []);
     } catch (err) {
       toast.error('Failed to load data from server');
     } finally {
@@ -106,10 +122,10 @@ const Bookings = () => {
     setFormData({
       event_name: '',
       customer: '',
-      venue: halls[0]?.id || '',
+      venue: '',
       booking_date: new Date().toISOString().split('T')[0],
       event_date: '',
-      slot: 'morning',
+      slot: '',
       gents_count: 0,
       ladies_count: 0,
       rate_per_head: 1200,
@@ -123,8 +139,8 @@ const Bookings = () => {
       booking_status: 'CONFIRMED'
     });
     setNewCustomer({
-      first_name: '',
-      last_name: '',
+      full_name: '',
+      cnic: '',
       email: '',
       phone: '',
       address: ''
@@ -132,21 +148,60 @@ const Bookings = () => {
     setNewCustomerMode(false);
     setBookingError('');
     setEditingId(null);
+    setSelectedDecorationId('');
+    setInventoryLines([]);
   };
 
-  const handleCreateNewClick = () => {
-    resetForm();
-    if (halls.length > 0) {
-      setFormData(prev => ({
-        ...prev,
-        venue: halls[0].id,
-        rate_per_head: halls[0].price_per_head || 1200
-      }));
+  const loadBookingInventory = async (bookingId) => {
+    try {
+      const res = await client.get(`/inventory/booking-items/?booking=${bookingId}`);
+      const rows = res.data.results || res.data || [];
+      setInventoryLines(
+        rows.map((r) => ({
+          id: r.id,
+          inventory_item: String(r.inventory_item),
+          quantity_used: r.quantity_used,
+        }))
+      );
+    } catch {
+      setInventoryLines([]);
     }
+  };
+
+  const syncBookingInventory = async (bookingId) => {
+    const res = await client.get(`/inventory/booking-items/?booking=${bookingId}`);
+    const existing = res.data.results || res.data || [];
+    await Promise.all(existing.map((e) => client.delete(`/inventory/booking-items/${e.id}/`)));
+    for (const line of inventoryLines) {
+      const itemId = parseInt(line.inventory_item, 10);
+      const qty = parseInt(line.quantity_used, 10);
+      if (!itemId || !qty || qty <= 0) continue;
+      await client.post('/inventory/booking-items/', {
+        booking: bookingId,
+        inventory_item: itemId,
+        quantity_used: qty,
+      });
+    }
+  };
+
+  const hallsForSelect = halls.filter(
+    (h) => h.status !== 'INACTIVE' || String(h.id) === String(formData.venue)
+  );
+
+  const handleCreateNewClick = () => {
+    if (!canManage) {
+      toast.error('You do not have permission to create bookings.');
+      return;
+    }
+    resetForm();
     setViewMode('create');
   };
 
   const handleEditClick = (booking) => {
+    if (!canManage) {
+      toast.error('You do not have permission to edit bookings.');
+      return;
+    }
     setEditingId(booking.id);
     setFormData({
       event_name: booking.event_name,
@@ -154,7 +209,7 @@ const Bookings = () => {
       venue: booking.venue,
       booking_date: booking.booking_date || new Date().toISOString().split('T')[0],
       event_date: booking.event_date || (booking.start_date ? booking.start_date.split('T')[0] : ''),
-      slot: booking.slot || 'morning',
+      slot: booking.slot || '',
       gents_count: booking.gents_count || 0,
       ladies_count: booking.ladies_count || 0,
       rate_per_head: booking.rate_per_head || 1200,
@@ -169,7 +224,31 @@ const Bookings = () => {
     });
     setNewCustomerMode(false);
     setBookingError('');
+    setSelectedDecorationId(booking.decoration_package ? String(booking.decoration_package) : '');
+    loadBookingInventory(booking.id);
     setViewMode('edit');
+  };
+
+  useEffect(() => {
+    const editId = location.state?.editBookingId;
+    if (!editId || bookings.length === 0) return;
+    const booking = bookings.find((b) => String(b.id) === String(editId));
+    if (booking) {
+      handleEditClick(booking);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [bookings, location.state?.editBookingId]);
+
+  const handleDecorationPackageSelect = (packageId) => {
+    setSelectedDecorationId(packageId);
+    if (!packageId) return;
+    const pkg = decorationPackages.find((p) => String(p.id) === String(packageId));
+    if (pkg) {
+      setFormData((prev) => ({
+        ...prev,
+        decoration_charge: Number(pkg.base_price) || 0,
+      }));
+    }
   };
 
   const handlePrintRowClick = (booking) => {
@@ -178,17 +257,14 @@ const Bookings = () => {
 
   const handleSaveNewCustomerInline = async () => {
     setBookingError('');
-    if (!newCustomer.first_name || !newCustomer.last_name || !newCustomer.phone) {
-      setBookingError('Please complete all required Client Info fields (First Name, Last Name, Phone).');
+    if (!newCustomer.full_name?.trim() || !newCustomer.phone?.trim()) {
+      setBookingError('Please enter Full Name and Phone Number.');
       toast.error('Required fields missing');
       return;
     }
     
     try {
-      const customerPayload = {
-        ...newCustomer,
-        email: newCustomer.email || `${newCustomer.first_name.toLowerCase()}.${newCustomer.last_name.toLowerCase()}@example.com`
-      };
+      const customerPayload = buildCustomerPayload(newCustomer);
       const custRes = await client.post('/customers/', customerPayload);
       const savedCust = custRes.data;
       
@@ -196,21 +272,25 @@ const Bookings = () => {
       setCustomers(prev => [...prev, savedCust]);
       
       // Auto-select this newly created client
-      setFormData(prev => ({ ...prev, customer: savedCust.id }));
+      setFormData(prev => ({
+        ...prev,
+        customer: savedCust.id,
+        cnic: savedCust.cnic || newCustomer.cnic || prev.cnic,
+      }));
       
       // Switch back to "Select Client" mode to display the selected new client
       setNewCustomerMode(false);
       
       // Clear inline client fields
       setNewCustomer({
-        first_name: '',
-        last_name: '',
+        full_name: '',
+        cnic: '',
         email: '',
         phone: '',
         address: ''
       });
       
-      toast.success(`Client saved and selected: ${savedCust.first_name} ${savedCust.last_name}`);
+      toast.success(`Client saved and selected: ${customerDisplayName(savedCust)}`);
     } catch (err) {
       const errData = err.response?.data;
       const msg = errData?.non_field_errors?.[0]
@@ -240,18 +320,14 @@ const Bookings = () => {
 
       // 1. If "Create New Customer" is active, call customer API first
       if (newCustomerMode) {
-        if (!newCustomer.first_name || !newCustomer.last_name || !newCustomer.phone) {
-          setBookingError('Please complete all required Client Info fields (First Name, Last Name, Phone).');
+        if (!newCustomer.full_name?.trim() || !newCustomer.phone?.trim()) {
+          setBookingError('Please enter Full Name and Phone Number.');
           return;
         }
-        // Fallback email if empty
-        const customerPayload = {
-          ...newCustomer,
-          email: newCustomer.email || `${newCustomer.first_name.toLowerCase()}.${newCustomer.last_name.toLowerCase()}@example.com`
-        };
+        const customerPayload = buildCustomerPayload(newCustomer);
         const custRes = await client.post('/customers/', customerPayload);
         finalCustomerId = custRes.data.id;
-        toast.success(`Client profile created: ${newCustomer.first_name}`);
+        toast.success(`Client profile created: ${newCustomer.full_name.trim()}`);
       }
 
       if (!finalCustomerId) {
@@ -259,9 +335,26 @@ const Bookings = () => {
         return;
       }
 
-      // 2. Build booking payload
+      if (!formData.venue) {
+        setBookingError('Please select a venue hall.');
+        toast.error('Venue required');
+        return;
+      }
+
+      if (!formData.slot) {
+        setBookingError('Please select a timing slot (Morning or Evening).');
+        toast.error('Timing required');
+        return;
+      }
+
+      // 2. Build booking payload (CNIC only when adding a new client)
+      const selectedCustomer = customers.find((c) => String(c.id) === String(finalCustomerId));
+      const bookingCnic = newCustomerMode
+        ? (newCustomer.cnic || '')
+        : (selectedCustomer?.cnic || '');
       const payload = {
         ...formData,
+        cnic: bookingCnic,
         customer: parseInt(finalCustomerId),
         venue: parseInt(formData.venue),
         gents_count: parseInt(formData.gents_count || 0),
@@ -270,18 +363,29 @@ const Bookings = () => {
         overtime_hours: parseFloat(formData.overtime_hours || 0),
         kitchen_charge: parseFloat(formData.kitchen_charge || 0),
         decoration_charge: parseFloat(formData.decoration_charge || 0),
+        decoration_package: selectedDecorationId ? parseInt(selectedDecorationId, 10) : null,
         deg_count: parseInt(formData.deg_count || 0),
         generator_charge: parseFloat(formData.generator_charge || 0),
         advance_paid: parseFloat(formData.advance_paid || 0),
         total_price: parseFloat(grandTotal) // send computed grand total
       };
 
+      let bookingId = editingId;
       if (viewMode === 'edit') {
         await client.put(`/bookings/${editingId}/`, payload);
         toast.success('Reservation updated successfully');
       } else {
-        await client.post('/bookings/', payload);
+        const created = await client.post('/bookings/', payload);
+        bookingId = created.data.id;
         toast.success('Reservation saved successfully');
+      }
+
+      if (bookingId) {
+        try {
+          await syncBookingInventory(bookingId);
+        } catch {
+          toast.error('Booking saved but inventory allocation failed');
+        }
       }
 
       resetForm();
@@ -298,6 +402,10 @@ const Bookings = () => {
   };
 
   const handleDelete = async (id) => {
+    if (!canManage) {
+      toast.error('You do not have permission to delete bookings.');
+      return;
+    }
     if (window.confirm('Are you absolutely sure you want to cancel and delete this reservation?')) {
       try {
         await client.delete(`/bookings/${id}/`);
@@ -327,14 +435,16 @@ const Bookings = () => {
         {/* LIST VIEW MODE */}
         {viewMode === 'list' && (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '32px' }}>
+            <div className="page-header">
               <div>
                 <h2 style={{ fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--secondary)' }}>Bookings & Reservations</h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>Oversee schedule listings, revenue parameters, and confirm hall draft bookings.</p>
               </div>
+              {canManage && (
               <button className="btn-primary" onClick={handleCreateNewClick} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '10px', fontSize: '14px', fontWeight: '600' }}>
                 <Plus size={18} /> New Reservation
               </button>
+              )}
             </div>
 
             {/* Filter Search */}
@@ -352,7 +462,7 @@ const Bookings = () => {
             </div>
 
             {/* Bookings table */}
-            <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+            <div className="card table-scroll" style={{ padding: 0, borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid var(--border)' }}>
@@ -361,6 +471,7 @@ const Bookings = () => {
                     <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Event Date & Slot</th>
                     <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Status</th>
                     <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Payment</th>
+                    <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Lena (due)</th>
                     <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Grand Total</th>
                     <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Actions</th>
                   </tr>
@@ -415,7 +526,7 @@ const Bookings = () => {
                       </td>
                       <td style={{ padding: '20px 24px' }}>
                         <span 
-                          onClick={() => navigate('/dashboard/payments', { 
+                          onClick={() => navigate('/payments', { 
                             state: { 
                               preselectedBookingId: booking.id,
                               bookingEventName: booking.event_name,
@@ -439,15 +550,22 @@ const Bookings = () => {
                           {booking.payment_status}
                         </span>
                       </td>
+                      <td style={{ padding: '20px 24px', fontWeight: '800', fontSize: '14px', color: hasCollectDue(bookingCollectDue(booking)) ? '#b91c1c' : '#64748b' }}>
+                        {formatCollectDue(bookingCollectDue(booking))}
+                      </td>
                       <td style={{ padding: '20px 24px', fontWeight: '700', fontSize: '14px', color: 'var(--secondary)' }}>
                         <span style={{ fontSize: '80%', opacity: 0.6, marginRight: '2px' }}>PKR</span> 
                         {parseFloat(booking.total_price || 0).toLocaleString()}
                       </td>
                       <td style={{ padding: '20px 24px' }}>
                         <div style={{ display: 'flex', gap: '8px' }}>
+                          {canManage && (
                           <button onClick={() => handleEditClick(booking)} style={{ color: 'var(--secondary)', backgroundColor: 'transparent', padding: '4px', borderRadius: '4px' }} className="hover:bg-slate-200" title="Edit booking"><Edit2 size={16} /></button>
+                          )}
                           <button onClick={() => handlePrintRowClick(booking)} style={{ color: 'var(--primary)', backgroundColor: 'transparent', padding: '4px', borderRadius: '4px' }} className="hover:bg-orange-50" title="Print receipts & reports"><Printer size={16} /></button>
+                          {canManage && (
                           <button onClick={() => handleDelete(booking.id)} style={{ color: 'var(--error)', backgroundColor: 'transparent', padding: '4px', borderRadius: '4px' }} className="hover:bg-red-50" title="Delete booking"><Trash2 size={16} /></button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -457,7 +575,9 @@ const Bookings = () => {
               {filteredBookings.length === 0 && !isLoading && (
                 <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
                   <p style={{ fontSize: '15px', fontWeight: '500' }}>No reservations match your criteria.</p>
+                  {canManage && (
                   <button className="btn-secondary" onClick={handleCreateNewClick} style={{ marginTop: '16px' }}>+ Create New Booking</button>
+                  )}
                 </div>
               )}
             </div>
@@ -494,7 +614,7 @@ const Bookings = () => {
               </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '40px', alignItems: 'start' }}>
+            <div className="booking-layout">
               {/* Form entries - Left hand side */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
                 
@@ -504,7 +624,7 @@ const Bookings = () => {
                     <span style={{ width: '4px', height: '16px', backgroundColor: 'var(--primary)', borderRadius: '2px' }}></span>
                     Essentials
                   </h3>
-                  <div className="premium-card" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', padding: '28px' }}>
+                  <div className="premium-card form-grid-2 form-grid-2--gap-24" style={{ padding: '28px' }}>
                     <div className="input-group">
                       <label>Booking ID</label>
                       <input type="text" readOnly value={formData.booking_id || 'BK-2026-AUTO'} style={{ backgroundColor: '#f8fafc', color: '#64748b', fontWeight: 'bold', fontFamily: 'monospace' }} />
@@ -572,27 +692,37 @@ const Bookings = () => {
                     {!newCustomerMode ? (
                       <div className="input-group">
                         <label>Existing Client / Customer</label>
-                        <select required={!newCustomerMode} disabled={isEdit} value={formData.customer} onChange={(e) => setFormData({ ...formData, customer: e.target.value })} style={isEdit ? { backgroundColor: '#f1f5f9', color: '#64748b', cursor: 'not-allowed' } : {}}>
+                        <select
+                          required={!newCustomerMode}
+                          disabled={isEdit}
+                          value={formData.customer}
+                          onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
+                          style={isEdit ? { backgroundColor: '#f1f5f9', color: '#64748b', cursor: 'not-allowed' } : {}}
+                        >
                           <option value="">Select Customer</option>
-                          {customers.map(c => <option key={c.id} value={c.id}>{c.first_name} {c.last_name} ({c.phone})</option>)}
+                          {customers.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {customerDisplayName(c)} ({c.phone})
+                            </option>
+                          ))}
                         </select>
                       </div>
                     ) : (
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                         <div className="input-group">
-                          <label>First Name</label>
-                          <input type="text" placeholder="First Name" value={newCustomer.first_name} onChange={(e) => setNewCustomer({ ...newCustomer, first_name: e.target.value })} />
+                          <label>Full Name</label>
+                          <input type="text" required placeholder="e.g. Muhammad Ali Khan" value={newCustomer.full_name} onChange={(e) => setNewCustomer({ ...newCustomer, full_name: e.target.value })} />
                         </div>
                         <div className="input-group">
-                          <label>Last Name</label>
-                          <input type="text" placeholder="Last Name" value={newCustomer.last_name} onChange={(e) => setNewCustomer({ ...newCustomer, last_name: e.target.value })} />
+                          <label>CNIC</label>
+                          <input type="text" placeholder="e.g. 35202-1234567-9" value={newCustomer.cnic} onChange={(e) => setNewCustomer({ ...newCustomer, cnic: e.target.value })} style={{ fontFamily: 'monospace' }} />
                         </div>
                         <div className="input-group">
                           <label>Phone Number</label>
-                          <input type="tel" placeholder="+92 300 0000000" value={newCustomer.phone} onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} />
+                          <input type="tel" required placeholder="+92 300 0000000" value={newCustomer.phone} onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} />
                         </div>
                         <div className="input-group">
-                          <label>Email Address</label>
+                          <label>Email Address <span style={{ fontWeight: '400', color: 'var(--text-muted)' }}>(optional)</span></label>
                           <input type="email" placeholder="example@gmail.com" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} />
                         </div>
                         <div className="input-group" style={{ gridColumn: 'span 2' }}>
@@ -625,11 +755,6 @@ const Bookings = () => {
                         </div>
                       </div>
                     )}
-                    
-                    <div className="input-group" style={{ marginTop: '10px', borderTop: '1px dashed var(--border)', paddingTop: '20px' }}>
-                      <label>CNIC (National ID Card Number)</label>
-                      <input type="text" placeholder="e.g. 35202-1234567-9" disabled={isEdit} value={formData.cnic} onChange={(e) => setFormData({ ...formData, cnic: e.target.value })} style={isEdit ? { fontFamily: 'monospace', backgroundColor: '#f1f5f9', color: '#64748b', cursor: 'not-allowed' } : { fontFamily: 'monospace' }} />
-                    </div>
                   </div>
                 </section>
 
@@ -639,21 +764,33 @@ const Bookings = () => {
                     <span style={{ width: '4px', height: '16px', backgroundColor: 'var(--primary)', borderRadius: '2px' }}></span>
                     Venue & Logistics
                   </h3>
-                  <div className="premium-card" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '28px', padding: '28px' }}>
+                  <div className="premium-card form-grid-2 form-grid-2--gap-24" style={{ padding: '28px' }}>
                     
                     {/* Venue & Slot Segmented control */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                       <div className="input-group">
                         <label>Select Venue Hall</label>
-                        <div style={{ display: 'flex', gap: '6px', backgroundColor: '#e2e8f0', borderRadius: '8px', padding: '3px' }}>
-                          {halls.map(h => {
-                            const isSel = String(formData.venue) === String(h.id);
+                        {!formData.venue && !isEdit && (
+                          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>No hall selected — tap a hall below</p>
+                        )}
+                        <div style={{ display: 'flex', gap: '6px', backgroundColor: '#e2e8f0', borderRadius: '8px', padding: '3px', flexWrap: 'wrap' }}>
+                          {halls.length === 0 && (
+                            <span style={{ fontSize: '12px', color: '#64748b', padding: '8px 12px' }}>No halls available. Add a hall first.</span>
+                          )}
+                          {hallsForSelect.map(h => {
+                            const isSel = formData.venue !== '' && String(formData.venue) === String(h.id);
                             return (
                               <button
                                 key={h.id}
                                 type="button"
                                 disabled={isEdit}
-                                onClick={() => setFormData({ ...formData, venue: h.id, rate_per_head: h.price_per_head || 1200 })}
+                                onClick={() => {
+                                  if (isSel) {
+                                    setFormData({ ...formData, venue: '', rate_per_head: 1200 });
+                                  } else {
+                                    setFormData({ ...formData, venue: h.id, rate_per_head: h.price_per_head || 1200 });
+                                  }
+                                }}
                                 style={{
                                   flex: 1,
                                   fontSize: '12px',
@@ -675,6 +812,9 @@ const Bookings = () => {
 
                       <div className="input-group">
                         <label>Select Slot</label>
+                        {!formData.slot && !isEdit && (
+                          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>No timing selected — choose Morning or Evening</p>
+                        )}
                         <div style={{ display: 'flex', gap: '6px', backgroundColor: '#e2e8f0', borderRadius: '8px', padding: '3px' }}>
                           {['morning', 'evening'].map(s => {
                             const isSel = formData.slot === s;
@@ -683,7 +823,7 @@ const Bookings = () => {
                                 key={s}
                                 type="button"
                                 disabled={isEdit}
-                                onClick={() => setFormData({ ...formData, slot: s })}
+                                onClick={() => setFormData({ ...formData, slot: isSel ? '' : s })}
                                 style={{
                                   flex: 1,
                                   fontSize: '12px',
@@ -707,13 +847,13 @@ const Bookings = () => {
 
                     {/* Attendance aggregation box */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                      <div className="form-grid-2">
                         <div className="input-group">
-                          <label>Gents Guest Count</label>
+                          <label>Gents Guest</label>
                           <input type="number" min="0" value={formData.gents_count} onChange={(e) => setFormData({ ...formData, gents_count: parseInt(e.target.value) || 0 })} />
                         </div>
                         <div className="input-group">
-                          <label>Ladies Guest Count</label>
+                          <label>Ladies Guest</label>
                           <input type="number" min="0" value={formData.ladies_count} onChange={(e) => setFormData({ ...formData, ladies_count: parseInt(e.target.value) || 0 })} />
                         </div>
                       </div>
@@ -753,8 +893,23 @@ const Bookings = () => {
                       <input type="number" value={formData.kitchen_charge} onChange={(e) => setFormData({ ...formData, kitchen_charge: parseFloat(e.target.value) || 0 })} />
                     </div>
 
-                    <div className="input-group">
-                      <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Decorations (PKR)</label>
+                    <div className="input-group" style={{ gridColumn: '1 / -1' }}>
+                      <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Sparkles size={12} /> Decoration package (optional)
+                      </label>
+                      <select
+                        value={selectedDecorationId}
+                        onChange={(e) => handleDecorationPackageSelect(e.target.value)}
+                        style={{ width: '100%', marginBottom: '8px' }}
+                      >
+                        <option value="">— Custom amount only —</option>
+                        {decorationPackages.map((pkg) => (
+                          <option key={pkg.id} value={pkg.id}>
+                            {pkg.name} ({pkg.tier}) — Rs {Number(pkg.base_price || 0).toLocaleString()}
+                          </option>
+                        ))}
+                      </select>
+                      <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Decorations charge (PKR)</label>
                       <input type="number" value={formData.decoration_charge} onChange={(e) => setFormData({ ...formData, decoration_charge: parseFloat(e.target.value) || 0 })} />
                     </div>
 
@@ -767,6 +922,66 @@ const Bookings = () => {
                       <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Generator Usage (PKR)</label>
                       <input type="number" value={formData.generator_charge} onChange={(e) => setFormData({ ...formData, generator_charge: parseFloat(e.target.value) || 0 })} />
                     </div>
+                  </div>
+                </section>
+
+                <section style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <h3 style={{ fontSize: '13px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Package size={14} /> Inventory for this event
+                  </h3>
+                  <div className="premium-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {inventoryLines.map((line, idx) => (
+                      <div key={line.id || `line-${idx}`} className="form-grid-2" style={{ alignItems: 'end' }}>
+                        <div className="input-group">
+                          <label style={{ fontSize: '11px' }}>Item</label>
+                          <select
+                            value={line.inventory_item}
+                            onChange={(e) => {
+                              const next = [...inventoryLines];
+                              next[idx] = { ...next[idx], inventory_item: e.target.value };
+                              setInventoryLines(next);
+                            }}
+                          >
+                            <option value="">Select item</option>
+                            {inventoryCatalog.map((item) => (
+                              <option key={item.id} value={item.id}>
+                                {item.name} ({item.quantity} {item.unit} available)
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <div className="input-group" style={{ flex: 1 }}>
+                            <label style={{ fontSize: '11px' }}>Qty used</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={line.quantity_used}
+                              onChange={(e) => {
+                                const next = [...inventoryLines];
+                                next[idx] = { ...next[idx], quantity_used: e.target.value };
+                                setInventoryLines(next);
+                              }}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setInventoryLines(inventoryLines.filter((_, i) => i !== idx))}
+                            style={{ alignSelf: 'flex-end', padding: '10px', background: 'transparent', color: '#b91c1c' }}
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => setInventoryLines([...inventoryLines, { inventory_item: '', quantity_used: 1 }])}
+                      style={{ alignSelf: 'flex-start' }}
+                    >
+                      + Add inventory item
+                    </button>
                   </div>
                 </section>
 
@@ -807,8 +1022,24 @@ const Bookings = () => {
                       </div>
                     </div>
 
+                    {isEdit && (
+                      <div className="input-group" style={{ marginBottom: '4px' }}>
+                        <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)' }}>Booking status</label>
+                        <select
+                          value={formData.booking_status}
+                          onChange={(e) => setFormData({ ...formData, booking_status: e.target.value })}
+                          style={{ width: '100%' }}
+                        >
+                          <option value="PENDING">Pending</option>
+                          <option value="CONFIRMED">Confirmed</option>
+                          <option value="COMPLETED">Completed</option>
+                          <option value="CANCELLED">Cancelled</option>
+                        </select>
+                      </div>
+                    )}
+
                     {/* Total billing block */}
-                    <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    <div style={{ backgroundColor: 'var(--background)', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                         <span style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Grand Total</span>
                         <div style={{ textAlign: 'right' }}>
@@ -823,10 +1054,9 @@ const Bookings = () => {
                       </div>
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderTop: '1px dashed var(--border)', paddingTop: '12px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--error)' }}>Remaining</span>
+                        <span style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', tracking: '0.05em', color: hasCollectDue(remainingBalance) ? 'var(--error)' : '#64748b' }}>Lena (due)</span>
                         <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--error)', marginRight: '4px' }}>PKR</span>
-                          <span style={{ fontSize: '18px', fontWeight: '900', color: 'var(--error)', tracking: '-0.02em' }}>{remainingBalance.toLocaleString()}</span>
+                          <span style={{ fontSize: '18px', fontWeight: '900', color: hasCollectDue(remainingBalance) ? 'var(--error)' : '#64748b', tracking: '-0.02em' }}>{formatCollectDuePKR(remainingBalance)}</span>
                         </div>
                       </div>
                     </div>

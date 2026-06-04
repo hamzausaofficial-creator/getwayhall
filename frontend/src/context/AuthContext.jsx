@@ -1,5 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getMe, login as loginApi, updateMe } from '../api/auth';
+import { getUserSettings } from '../api/core';
+
+const syncThemeFromServer = async () => {
+  try {
+    const prefs = await getUserSettings();
+    if (prefs?.theme === 'dark' || prefs?.theme === 'light') {
+      localStorage.setItem('theme', prefs.theme);
+      window.dispatchEvent(new CustomEvent('hallora-theme', { detail: prefs.theme }));
+    }
+  } catch {
+    /* settings optional */
+  }
+};
 
 const AuthContext = createContext();
 
@@ -14,8 +27,10 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         try {
           const userData = await getMe();
+          if (userData?.role) localStorage.setItem('user_role', userData.role);
           setUser(userData);
           setIsAuthenticated(true);
+          await syncThemeFromServer();
         } catch (error) {
           console.error('Session expired');
           logout();
@@ -32,8 +47,10 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('refresh_token', data.refresh);
     localStorage.setItem('isAuthenticated', 'true');
     const userData = await getMe();
+    if (userData?.role) localStorage.setItem('user_role', userData.role);
     setUser(userData);
     setIsAuthenticated(true);
+    await syncThemeFromServer();
     return userData;
   };
 

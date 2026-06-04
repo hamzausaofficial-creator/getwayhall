@@ -1,7 +1,12 @@
 import axios from 'axios';
 
+/** Dev: Vite proxy `/api` → Django. Prod: set VITE_API_BASE_URL or same host. */
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? '/api' : 'http://127.0.0.1:8000/api');
+
 const client = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: API_BASE,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -31,7 +36,7 @@ client.interceptors.response.use(
       const refreshToken = localStorage.getItem('refresh_token');
       if (refreshToken) {
         try {
-          const response = await axios.post('http://localhost:8000/api/auth/token/refresh/', {
+          const response = await axios.post(`${API_BASE}/auth/token/refresh/`, {
             refresh: refreshToken,
           });
           localStorage.setItem('access_token', response.data.access);

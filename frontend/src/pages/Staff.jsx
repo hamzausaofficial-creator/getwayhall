@@ -1,27 +1,81 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Mail, X, Trash2 } from 'lucide-react';
+import {
+  UserPlus,
+  Mail,
+  X,
+  Trash2,
+  Edit2,
+  ChevronRight,
+  Shield,
+  Calendar,
+  Clock,
+  Building2,
+  Hash,
+  User,
+  Lock,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 import client from '../api/client';
 import toast from 'react-hot-toast';
 
 const ROLE_COLORS = {
-  ADMIN:   { bg: '#fef3c7', color: '#92400e' },
-  MANAGER: { bg: '#dbeafe', color: '#1e40af' },
-  STAFF:   { bg: '#dcfce7', color: '#166534' },
+  ADMIN: { bg: '#fef3c7', color: '#92400e', label: 'Admin' },
+  MANAGER: { bg: '#dbeafe', color: '#1e40af', label: 'Manager' },
+  STAFF: { bg: '#dcfce7', color: '#166534', label: 'Staff' },
+};
+
+const formatDateTime = (value) => {
+  if (!value) return '—';
+  return new Date(value).toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+};
+
+const formatDate = (value) => {
+  if (!value) return '—';
+  return new Date(value).toLocaleDateString(undefined, { dateStyle: 'medium' });
+};
+
+const staffDisplayName = (member) =>
+  `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.email;
+
+const staffInitials = (member) => {
+  const fromName = `${member.first_name?.[0] || ''}${member.last_name?.[0] || ''}`;
+  if (fromName) return fromName.toUpperCase();
+  return (member.email?.[0] || '?').toUpperCase();
 };
 
 const Staff = () => {
   const [staff, setStaff] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [editingMember, setEditingMember] = useState(null);
   const [formData, setFormData] = useState({
-    first_name: '', last_name: '', email: '', role: 'STAFF',
+    username: '',
+    first_name: '',
+    last_name: '',
+    email: '',
+    role: 'STAFF',
+    phone: '',
+    salary: '',
+    joining_date: '',
+    password: '',
+    confirm_password: '',
   });
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [resetPassword, setResetPassword] = useState('');
 
   const fetchStaff = async () => {
     setIsLoading(true);
     try {
       const response = await client.get('/auth/staff/');
-      setStaff(response.data.results || response.data || []);
+      const list = response.data.results || response.data || [];
+      setStaff(Array.isArray(list) ? list : []);
     } catch (err) {
       toast.error('Failed to fetch staff');
     } finally {
@@ -29,27 +83,141 @@ const Staff = () => {
     }
   };
 
-  useEffect(() => { fetchStaff(); }, []);
+  const fetchStaffDetail = async (id) => {
+    setDetailLoading(true);
+    try {
+      const response = await client.get(`/auth/staff/${id}/`);
+      setSelectedMember(response.data);
+    } catch (err) {
+      toast.error('Failed to load staff details');
+      setSelectedId(null);
+      setSelectedMember(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStaff();
+  }, []);
+
+  useEffect(() => {
+    if (selectedId) {
+      fetchStaffDetail(selectedId);
+    } else {
+      setSelectedMember(null);
+    }
+  }, [selectedId]);
+
+  const handleSelectStaff = (member) => {
+    setSelectedId(member.id);
+  };
+
+  const openAddModal = () => {
+    setEditingMember(null);
+    setFormData({
+      username: '', first_name: '', last_name: '', email: '', role: 'STAFF',
+      phone: '', salary: '', joining_date: '', password: '', confirm_password: '',
+    });
+    setShowCreatePassword(false);
+    setShowModal(true);
+  };
+
+  const openEditModal = (member) => {
+    setEditingMember(member);
+    setFormData({
+      username: member.username || '',
+      first_name: member.first_name || '',
+      last_name: member.last_name || '',
+      email: member.email || '',
+      role: member.role || 'STAFF',
+      phone: member.phone || '',
+      salary: member.salary ?? '',
+      joining_date: member.joining_date || '',
+    });
+    setShowModal(true);
+  };
+
+  const handleResetPassword = async () => {
+    if (!selectedMember || resetPassword.length < 8) {
+      toast.error('Enter a new password (min 8 characters)');
+      return;
+    }
+    try {
+      await client.post(`/auth/staff/${selectedMember.id}/reset-password/`, { new_password: resetPassword });
+      toast.success('Password reset successfully');
+      setResetPassword('');
+    } catch (err) {
+      toast.error(err.response?.data?.new_password?.[0] || 'Failed to reset password');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!editingMember) {
+      if (formData.password.length < 8) {
+        toast.error('Password must be at least 8 characters');
+        return;
+      }
+      if (formData.password !== formData.confirm_password) {
+        toast.error('Password and confirmation do not match');
+        return;
+      }
+    }
+
     try {
-      await client.post('/auth/staff/', formData);
-      toast.success('Staff added! Default password: staff123');
+      const profilePayload = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        role: formData.role,
+        phone: formData.phone,
+        salary: formData.salary === '' ? 0 : formData.salary,
+        joining_date: formData.joining_date || null,
+      };
+      if (editingMember) {
+        await client.patch(`/auth/staff/${editingMember.id}/`, profilePayload);
+        toast.success('Staff member updated');
+        if (selectedId === editingMember.id) fetchStaffDetail(editingMember.id);
+      } else {
+        await client.post('/auth/staff/', {
+          username: formData.username.trim(),
+          email: formData.email.trim(),
+          password: formData.password,
+          ...profilePayload,
+        });
+        toast.success(`Staff account created. They can log in with username "${formData.username.trim()}".`);
+      }
       setShowModal(false);
-      setFormData({ first_name: '', last_name: '', email: '', role: 'STAFF' });
+      setEditingMember(null);
+      setFormData({
+        username: '', first_name: '', last_name: '', email: '', role: 'STAFF',
+        phone: '', salary: '', joining_date: '', password: '', confirm_password: '',
+      });
       fetchStaff();
     } catch (err) {
-      const msg = err.response?.data?.email?.[0] || 'Failed to add staff';
+      const data = err.response?.data;
+      const msg =
+        data?.password?.[0] ||
+        data?.username?.[0] ||
+        data?.email?.[0] ||
+        data?.role?.[0] ||
+        data?.detail ||
+        'Failed to save staff';
       toast.error(msg);
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, e) => {
+    e?.stopPropagation();
     if (window.confirm('Remove this staff member?')) {
       try {
         await client.delete(`/auth/staff/${id}/`);
         toast.success('Staff member removed');
+        if (selectedId === id) {
+          setSelectedId(null);
+          setSelectedMember(null);
+        }
         fetchStaff();
       } catch (err) {
         toast.error('Failed to remove staff');
@@ -57,111 +225,513 @@ const Staff = () => {
     }
   };
 
+  const roleStyle = selectedMember
+    ? ROLE_COLORS[selectedMember.role] || ROLE_COLORS.STAFF
+    : null;
+
   return (
     <>
       <div className="animate-fade-in">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '32px' }}>
+        <div className="page-header">
           <div>
             <h2 style={{ fontSize: '24px', fontWeight: '700' }}>Staff Management</h2>
-            <p style={{ color: 'var(--text-muted)' }}>Manage your team and their access levels.</p>
+            <p style={{ color: 'var(--text-muted)' }}>
+              Manage your team — click a staff member to view full details.
+            </p>
           </div>
-          <button className="btn-primary" onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={openAddModal}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
             <UserPlus size={18} /> Add Staff Member
           </button>
         </div>
 
         {isLoading ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading staff...</div>
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            Loading staff...
+          </div>
         ) : staff.length === 0 ? (
           <div className="card" style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
             <UserPlus size={48} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
             <p style={{ fontSize: '16px', fontWeight: '600' }}>No staff members yet</p>
-            <p style={{ fontSize: '14px', marginTop: '8px' }}>Click "Add Staff Member" to get started.</p>
+            <p style={{ fontSize: '14px', marginTop: '8px' }}>Click &quot;Add Staff Member&quot; to get started.</p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
-            {staff.map(member => {
-              const roleStyle = ROLE_COLORS[member.role] || ROLE_COLORS.STAFF;
-              const initials = `${member.first_name?.[0] || ''}${member.last_name?.[0] || ''}` || member.email[0].toUpperCase();
-              return (
-                <div key={member.id} className="premium-card" style={{ position: 'relative' }}>
-                  <button
-                    onClick={() => handleDelete(member.id)}
-                    style={{ position: 'absolute', top: '16px', right: '16px', backgroundColor: 'transparent', color: '#ef4444' }}
-                  >
-                    <Trash2 size={18} />
-                  </button>
+          <div className={`split-layout ${selectedId ? 'split-layout--customers' : ''}`}>
+            <div>
+              <div className="halls-grid" style={{ marginBottom: 0 }}>
+                {staff.map((member) => {
+                  const rs = ROLE_COLORS[member.role] || ROLE_COLORS.STAFF;
+                  const active = selectedId === member.id;
+                  return (
+                    <button
+                      key={member.id}
+                      type="button"
+                      onClick={() => handleSelectStaff(member)}
+                      className="premium-card"
+                      style={{
+                        position: 'relative',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        border: active ? '2px solid var(--primary)' : '1px solid var(--border)',
+                        boxShadow: active ? '0 0 0 3px rgba(91, 213, 30, 0.15)' : undefined,
+                        width: '100%',
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '16px',
+                          right: '16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                        }}
+                      >
+                        <ChevronRight
+                          size={18}
+                          color={active ? 'var(--primary)' : '#94a3b8'}
+                        />
+                      </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-                    <div style={{
-                      width: '52px', height: '52px', borderRadius: '14px', flexShrink: 0,
-                      backgroundColor: 'var(--primary-light)', color: 'var(--primary)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontWeight: '700', fontSize: '18px'
-                    }}>
-                      {initials}
-                    </div>
-                    <div>
-                      <h3 style={{ fontSize: '15px', fontWeight: '700' }}>{member.first_name} {member.last_name}</h3>
-                      <span style={{
-                        display: 'inline-block', marginTop: '4px',
-                        padding: '2px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700',
-                        backgroundColor: roleStyle.bg, color: roleStyle.color
-                      }}>
-                        {member.role}
-                      </span>
-                    </div>
-                  </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+                        <div
+                          style={{
+                            width: '52px',
+                            height: '52px',
+                            borderRadius: '14px',
+                            flexShrink: 0,
+                            backgroundColor: active ? 'var(--primary)' : 'var(--primary-light)',
+                            color: active ? 'white' : 'var(--primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: '700',
+                            fontSize: '18px',
+                          }}
+                        >
+                          {staffInitials(member)}
+                        </div>
+                        <div style={{ paddingRight: '28px' }}>
+                          <h3 style={{ fontSize: '15px', fontWeight: '700' }}>
+                            {staffDisplayName(member)}
+                          </h3>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              marginTop: '4px',
+                              padding: '2px 10px',
+                              borderRadius: '20px',
+                              fontSize: '11px',
+                              fontWeight: '700',
+                              backgroundColor: rs.bg,
+                              color: rs.color,
+                            }}
+                          >
+                            {rs.label}
+                          </span>
+                        </div>
+                      </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>
-                    <Mail size={14} /> {member.email}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          fontSize: '13px',
+                          color: 'var(--text-muted)',
+                        }}
+                      >
+                        <Mail size={14} /> {member.email}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {selectedId && (
+              <div className="card" style={{ padding: '24px', position: 'sticky', top: '24px' }}>
+                {detailLoading ? (
+                  <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    Loading staff profile…
                   </div>
-                </div>
-              );
-            })}
+                ) : selectedMember ? (
+                  <>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        marginBottom: '24px',
+                        gap: '12px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                        <div
+                          style={{
+                            width: '64px',
+                            height: '64px',
+                            borderRadius: '16px',
+                            backgroundColor: 'var(--primary-light)',
+                            color: 'var(--primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: '800',
+                            fontSize: '22px',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {staffInitials(selectedMember)}
+                        </div>
+                        <div>
+                          <h3 style={{ fontSize: '20px', fontWeight: '800' }}>
+                            {staffDisplayName(selectedMember)}
+                          </h3>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              marginTop: '6px',
+                              padding: '4px 12px',
+                              borderRadius: '20px',
+                              fontSize: '12px',
+                              fontWeight: '700',
+                              backgroundColor: roleStyle.bg,
+                              color: roleStyle.color,
+                            }}
+                          >
+                            {roleStyle.label}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(selectedMember)}
+                          style={{ padding: '8px', color: 'var(--primary)', background: 'transparent' }}
+                          title="Edit staff"
+                        >
+                          <Edit2 size={18} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDelete(selectedId, e)}
+                          style={{ padding: '8px', color: '#ef4444', background: 'transparent' }}
+                          title="Remove staff"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(null)}
+                          style={{ padding: '8px', color: 'var(--text-muted)', background: 'transparent' }}
+                          title="Close"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        padding: '16px',
+                        backgroundColor: 'var(--background)',
+                        borderRadius: '12px',
+                        marginBottom: '20px',
+                        fontSize: '13px',
+                        color: 'var(--text-muted)',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      New staff log in with the username below and the password set when
+                      their account was created. Use &quot;Reset password&quot; below to change it.
+                    </div>
+
+                    <h4
+                      style={{
+                        fontSize: '12px',
+                        fontWeight: '800',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.08em',
+                        color: 'var(--text-muted)',
+                        marginBottom: '12px',
+                      }}
+                    >
+                      Account details
+                    </h4>
+                    <div
+                      className="form-grid-2"
+                      style={{ gap: '14px', marginBottom: '24px', fontSize: '14px' }}
+                    >
+                      <DetailRow icon={User} label="Username" value={selectedMember.username} mono />
+                      <DetailRow icon={Mail} label="Email" value={selectedMember.email} />
+                      <DetailRow icon={User} label="Phone" value={selectedMember.phone || '—'} />
+                      <DetailRow icon={Shield} label="Access role" value={roleStyle.label} />
+                      <DetailRow
+                        icon={Hash}
+                        label="Salary (PKR)"
+                        value={selectedMember.salary != null ? Number(selectedMember.salary).toLocaleString() : '—'}
+                      />
+                      <DetailRow
+                        icon={Calendar}
+                        label="Joining date"
+                        value={formatDate(selectedMember.joining_date)}
+                      />
+                      <DetailRow icon={Hash} label="Staff ID" value={`#${selectedMember.id}`} mono />
+                      <DetailRow
+                        icon={User}
+                        label="Account status"
+                        value={selectedMember.is_active ? 'Active' : 'Inactive'}
+                        valueColor={selectedMember.is_active ? '#166534' : '#991b1b'}
+                      />
+                      {selectedMember.tenant_name && (
+                        <DetailRow
+                          icon={Building2}
+                          label="Venue / tenant"
+                          value={selectedMember.tenant_name}
+                          span2
+                        />
+                      )}
+                      <DetailRow
+                        icon={Calendar}
+                        label="Joined"
+                        value={formatDate(selectedMember.date_joined)}
+                      />
+                      <DetailRow
+                        icon={Clock}
+                        label="Last login"
+                        value={formatDateTime(selectedMember.last_login)}
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: '20px' }}>
+                      <p style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Reset password (admin)
+                      </p>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                          type="password"
+                          placeholder="New password (min 8 chars)"
+                          value={resetPassword}
+                          onChange={(e) => setResetPassword(e.target.value)}
+                          style={{ flex: 1 }}
+                        />
+                        <button type="button" className="btn-secondary" onClick={handleResetPassword}>
+                          Reset
+                        </button>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        padding: '14px 16px',
+                        borderRadius: '12px',
+                        border: '1px dashed var(--border)',
+                        fontSize: '13px',
+                        color: 'var(--text-muted)',
+                      }}
+                    >
+                      This account can sign in with the username above. Admins can remove access
+                      using the delete button — the user will no longer be able to log in.
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            )}
           </div>
         )}
       </div>
 
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
-          <div className="card" style={{ width: '100%', maxWidth: '480px', padding: '32px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+        <div className="modal-overlay">
+          <div className="card modal-panel modal-panel--sm">
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                marginBottom: '24px',
+              }}
+            >
               <div>
-                <h3 style={{ fontSize: '20px', fontWeight: '700' }}>Add Staff Member</h3>
+                <h3 style={{ fontSize: '20px', fontWeight: '700' }}>
+                  {editingMember ? 'Edit Staff Member' : 'Add Staff Member'}
+                </h3>
                 <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  Default login password: <strong>staff123</strong>
+                  {editingMember
+                    ? 'Update name and access role for this account.'
+                    : 'Set a login password so this person can sign in to the system.'}
                 </p>
               </div>
-              <button onClick={() => setShowModal(false)} style={{ backgroundColor: 'transparent', color: 'var(--text-muted)' }}>
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                style={{ backgroundColor: 'transparent', color: 'var(--text-muted)' }}
+              >
                 <X size={24} />
               </button>
             </div>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="input-group">
+                <label>Username (for login)</label>
+                <input
+                  required={!editingMember}
+                  disabled={!!editingMember}
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value.replace(/\s/g, '') })}
+                  placeholder="e.g. jane_smith"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="form-grid-2">
                 <div className="input-group">
                   <label>First Name</label>
-                  <input required value={formData.first_name} onChange={(e) => setFormData({ ...formData, first_name: e.target.value })} placeholder="Jane" />
+                  <input
+                    required
+                    value={formData.first_name}
+                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                    placeholder="Jane"
+                  />
                 </div>
                 <div className="input-group">
                   <label>Last Name</label>
-                  <input required value={formData.last_name} onChange={(e) => setFormData({ ...formData, last_name: e.target.value })} placeholder="Smith" />
+                  <input
+                    required
+                    value={formData.last_name}
+                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                    placeholder="Smith"
+                  />
                 </div>
               </div>
               <div className="input-group">
                 <label>Work Email</label>
-                <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="jane@gateway.com" />
+                <input
+                  type="email"
+                  required={!editingMember}
+                  disabled={!!editingMember}
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="jane@gateway.com"
+                />
               </div>
               <div className="input-group">
                 <label>Role</label>
-                <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })}>
+                <select
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                >
                   <option value="STAFF">Staff</option>
                   <option value="MANAGER">Manager</option>
                   <option value="ADMIN">Admin</option>
                 </select>
               </div>
+              {!editingMember && (
+                <>
+                  <div className="input-group">
+                    <label>Login password</label>
+                    <div style={{ position: 'relative' }}>
+                      <Lock
+                        size={18}
+                        style={{
+                          position: 'absolute',
+                          left: '12px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          color: 'var(--text-muted)',
+                          pointerEvents: 'none',
+                        }}
+                      />
+                      <input
+                        type={showCreatePassword ? 'text' : 'password'}
+                        required
+                        minLength={8}
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        placeholder="Min. 8 characters"
+                        autoComplete="new-password"
+                        style={{ paddingLeft: '40px', paddingRight: '40px', width: '100%' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCreatePassword(!showCreatePassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '8px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'transparent',
+                          color: 'var(--text-muted)',
+                          padding: '4px',
+                        }}
+                        aria-label={showCreatePassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showCreatePassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <label>Confirm password</label>
+                    <div style={{ position: 'relative' }}>
+                      <Lock
+                        size={18}
+                        style={{
+                          position: 'absolute',
+                          left: '12px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          color: 'var(--text-muted)',
+                          pointerEvents: 'none',
+                        }}
+                      />
+                      <input
+                        type={showCreatePassword ? 'text' : 'password'}
+                        required
+                        minLength={8}
+                        value={formData.confirm_password}
+                        onChange={(e) =>
+                          setFormData({ ...formData, confirm_password: e.target.value })
+                        }
+                        placeholder="Re-enter password"
+                        autoComplete="new-password"
+                        style={{ paddingLeft: '40px', width: '100%' }}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+              <div className="form-grid-2">
+                <div className="input-group">
+                  <label>Phone</label>
+                  <input
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="03xx-xxxxxxx"
+                  />
+                </div>
+                <div className="input-group">
+                  <label>Salary (PKR)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.salary}
+                    onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="input-group">
+                <label>Joining date</label>
+                <input
+                  type="date"
+                  value={formData.joining_date}
+                  onChange={(e) => setFormData({ ...formData, joining_date: e.target.value })}
+                />
+              </div>
               <button type="submit" className="btn-primary" style={{ width: '100%', padding: '12px' }}>
-                Create Staff Account
+                {editingMember ? 'Save changes' : 'Create Staff Account'}
               </button>
             </form>
           </div>
@@ -170,5 +740,28 @@ const Staff = () => {
     </>
   );
 };
+
+const DetailRow = ({ icon: Icon, label, value, mono, valueColor, span2 }) => (
+  <div style={{ gridColumn: span2 ? 'span 2' : undefined }}>
+    <p style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '4px' }}>
+      {label}
+    </p>
+    <p
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        fontWeight: '600',
+        color: valueColor || 'var(--text-main)',
+        fontFamily: mono ? 'monospace' : 'inherit',
+        fontSize: mono ? '13px' : '14px',
+        wordBreak: 'break-word',
+      }}
+    >
+      <Icon size={16} style={{ flexShrink: 0, color: 'var(--primary)' }} />
+      {value}
+    </p>
+  </div>
+);
 
 export default Staff;

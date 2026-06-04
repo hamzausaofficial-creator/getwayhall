@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { uploadAvatar } from '../api/auth';
 import { User, Mail, Shield, Building, Edit3, Settings, Camera, Save, X, Loader } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getTenant } from '../api/core';
 
 const Profile = () => {
   const { user, updateProfile } = useAuth();
+  const [tenantName, setTenantName] = useState('');
   const fileInputRef = useRef(null);
 
   // Form states
@@ -32,35 +35,38 @@ const Profile = () => {
     }
   }, [user]);
 
+  useEffect(() => {
+    getTenant()
+      .then((t) => setTenantName(t.name || ''))
+      .catch(() => setTenantName(user?.tenant?.name || ''));
+  }, [user]);
+
   // Handle Photo upload
   const handlePhotoClick = () => {
     fileInputRef.current.click();
   };
 
-  const handlePhotoChange = (e) => {
+  const handlePhotoChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error('Image size must be less than 2MB');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result;
-        setProfileImage(base64String);
-        localStorage.setItem(`profile_pic_${user.email}`, base64String);
-        toast.success('Profile photo updated successfully!');
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image size must be less than 2MB');
+      return;
+    }
+    try {
+      const updated = await uploadAvatar(file);
+      setProfileImage(updated.avatar || '');
+      toast.success('Profile photo updated.');
+    } catch {
+      toast.error('Failed to upload photo');
     }
   };
 
   // Handle Save
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!firstName.trim() || !lastName.trim() || !email.trim()) {
-      toast.error('First Name, Last Name, and Email are required.');
+    if (!firstName.trim() || !lastName.trim()) {
+      toast.error('First name and last name are required.');
       return;
     }
 
@@ -69,7 +75,6 @@ const Profile = () => {
       await updateProfile({
         first_name: firstName,
         last_name: lastName,
-        email: email
       });
       toast.success('Profile updated successfully!');
       setIsEditing(false);
@@ -301,7 +306,7 @@ const Profile = () => {
               textTransform: 'uppercase',
               letterSpacing: '0.05em'
             }}>
-              <Shield size={12} /> {user?.role || 'Administrator'}
+              <Shield size={12} /> {user?.role || 'Staff'}
             </span>
           </div>
 
@@ -344,7 +349,7 @@ const Profile = () => {
                 </div>
                 <div>
                   <p style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px 0' }}>Organization</p>
-                  <p style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: 0 }}>Gateway Marriage Hall</p>
+                  <p style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: 0 }}>{tenantName || user?.tenant?.name || 'Your venue'}</p>
                 </div>
               </div>
             </div>
@@ -406,10 +411,10 @@ const Profile = () => {
                 <input 
                   type="email" 
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter email address"
-                  style={inputStyle}
-                  required
+                  readOnly
+                  disabled
+                  placeholder="Email cannot be changed here"
+                  style={{ ...inputStyle, opacity: 0.85, cursor: 'not-allowed' }}
                   onFocus={(e) => {
                     e.target.style.borderColor = 'var(--primary)';
                     e.target.style.backgroundColor = 'white';

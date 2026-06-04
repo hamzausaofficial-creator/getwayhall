@@ -91,3 +91,29 @@ class Staff(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.role})"
+
+class InventoryItem(models.Model):
+    CATEGORY_CHOICES = [
+        ('FOOD', 'Food & Beverage'),
+        ('DECORATION', 'Decoration'),
+        ('UTENSIL', 'Utensils & Cutlery'),
+        ('ELECTRONIC', 'Electronics & Lighting'),
+        ('FURNITURE', 'Furniture'),
+        ('OTHER', 'Other'),
+    ]
+    STATUS_CHOICES = [
+        ('IN_STOCK', 'In Stock'),
+        ('LOW_STOCK', 'Low Stock'),
+        ('OUT_OF_STOCK', 'Out of Stock'),
+    ]
+    name = models.CharField(max_length=255)
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, default='OTHER')
+    quantity = models.IntegerField(default=0)
+    unit = models.CharField(max_length=50, help_text="e.g., kg, pcs, liters, units")
+    price_per_unit = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    description = models.TextField(blank=True)
+    last_restocked = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='IN_STOCK')
+
+    def __str__(self):
+        return f"{self.name} ({self.quantity} {self.unit})"

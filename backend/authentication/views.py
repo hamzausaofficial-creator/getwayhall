@@ -1,13 +1,25 @@
 from rest_framework import generics, status, permissions, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import RegisterSerializer, UserSerializer, StaffSerializer
+
+from core.permissions import IsAdminOrManagerWriteStaffRead, IsAdminOnly
+from .serializers import (
+    RegisterSerializer,
+    UserSerializer,
+    StaffSerializer,
+    ChangePasswordSerializer,
+    StaffResetPasswordSerializer,
+)
 from .models import StaffProfile, User
+
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = (permissions.AllowAny,)
     serializer_class = RegisterSerializer
+
 
 class UserDetailView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer
@@ -16,9 +28,54 @@ class UserDetailView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return self.request.user
 
+    def patch(self, request, *args, **kwargs):
+        user = self.get_object()
+        if 'profile_picture' in request.FILES:
+            user.profile_picture = request.FILES['profile_picture']
+            user.save(update_fields=['profile_picture'])
+        return super().patch(request, *args, **kwargs)
+
+
+class ChangePasswordView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(
+            data=request.data,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {'detail': 'Password updated successfully.'},
+            status=status.HTTP_200_OK,
+        )
+
+
 class StaffViewSet(viewsets.ModelViewSet):
     serializer_class = StaffSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminOrManagerWriteStaffRead]
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
 
     def get_queryset(self):
-        return User.objects.all()
+        user = self.request.user
+        if user.is_superuser and not user.tenant_id:
+            return User.objects.all().order_by('-date_joined')
+        if not user.tenant_id:
+            return User.objects.none()
+        return User.objects.filter(tenant=user.tenant).order_by('-date_joined')
+
+    @action(detail=True, methods=['post'], url_path='reset-password', permission_classes=[IsAdminOnly])
+    def reset_password(self, request, pk=None):
+        staff_user = self.get_object()
+        if staff_user.tenant_id != request.user.tenant_id and not request.user.is_superuser:
+            return Response({'detail': 'Not allowed.'}, status=status.HTTP_403_FORBIDDEN)
+        serializer = StaffResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        staff_user.set_password(serializer.validated_data['new_password'])
+        staff_user.save(update_fields=['password'])
+        return Response({'detail': 'Password reset successfully.'})

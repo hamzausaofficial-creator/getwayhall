@@ -25,6 +25,13 @@ class Payment(models.Model):
     payment_date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='COMPLETED')
     notes = models.TextField(blank=True, null=True)
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='recorded_payments',
+    )
 
     def __str__(self):
         return f"PAY-{self.id} for {self.booking.event_name}"

@@ -13,9 +13,12 @@ import {
 } from 'lucide-react';
 import client from '../api/client';
 import toast from 'react-hot-toast';
+import { usePermissions } from '../hooks/usePermissions';
 
 const HallManagement = () => {
+  const { canManage } = usePermissions();
   const [halls, setHalls] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -46,6 +49,10 @@ const HallManagement = () => {
   }, []);
 
   const handleOpenModal = (hall = null) => {
+    if (!canManage) {
+      toast.error('You do not have permission to modify halls.');
+      return;
+    }
     if (hall) {
       setCurrentHall({ ...hall, image: null }); // Don't try to submit the URL as a file
       setIsEditing(true);
@@ -95,7 +102,18 @@ const HallManagement = () => {
     }
   };
 
+  const filteredHalls = halls.filter((hall) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      (hall.name || '').toLowerCase().includes(q) ||
+      (hall.location || '').toLowerCase().includes(q) ||
+      (hall.description || '').toLowerCase().includes(q)
+    );
+  });
+
   const handleDelete = async (id) => {
+    if (!canManage) return;
     if (window.confirm('Are you sure you want to delete this hall?')) {
       try {
         await client.delete(`/venues/${id}/`);
@@ -110,14 +128,16 @@ const HallManagement = () => {
   return (
     <>
     <div className="animate-fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '32px' }}>
+      <div className="page-header">
         <div>
           <h2 style={{ fontSize: '24px', fontWeight: '700' }}>Hall Management</h2>
           <p style={{ color: 'var(--text-muted)' }}>Overview of all your available venues and halls.</p>
         </div>
+        {canManage && (
         <button className="btn-primary" onClick={() => handleOpenModal()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Plus size={18} /> Add New Hall
         </button>
+        )}
       </div>
 
       <div className="card" style={{ marginBottom: '32px', padding: '16px 24px', display: 'flex', gap: '24px', alignItems: 'center' }}>
@@ -126,6 +146,8 @@ const HallManagement = () => {
           <input
             type="text"
             placeholder="Search halls by name or location..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             style={{ width: '100%', paddingLeft: '40px', backgroundColor: 'var(--background)' }}
           />
         </div>
@@ -134,8 +156,12 @@ const HallManagement = () => {
       {isLoading ? (
         <div style={{ textAlign: 'center', padding: '40px' }}>Loading halls...</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
-          {halls.map(hall => (
+        <div className="halls-grid">
+          {filteredHalls.length === 0 ? (
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+              {searchQuery ? 'No halls match your search.' : 'No halls yet.'}
+            </div>
+          ) : filteredHalls.map(hall => (
             <div key={hall.id} className="premium-card" style={{ padding: 0, overflow: 'hidden' }}>
               <div style={{ height: '180px', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', position: 'relative' }}>
                 {hall.image ? (
@@ -143,6 +169,7 @@ const HallManagement = () => {
                 ) : (
                   <ImageIcon size={48} />
                 )}
+                {canManage && (
                 <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '8px' }}>
                   <button onClick={() => handleOpenModal(hall)} style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'white', color: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
                     <Edit2 size={14} />
@@ -151,6 +178,7 @@ const HallManagement = () => {
                     <Trash2 size={14} />
                   </button>
                 </div>
+                )}
               </div>
               <div style={{ padding: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
@@ -188,7 +216,7 @@ const HallManagement = () => {
 
       {/* Add/Edit Modal */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
+        <div className="modal-overlay">
           <div className="card" style={{ width: '100%', maxWidth: '500px', padding: '32px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h3 style={{ fontSize: '20px', fontWeight: '700' }}>{isEditing ? 'Edit Hall' : 'Add New Hall'}</h3>
@@ -217,7 +245,7 @@ const HallManagement = () => {
                   placeholder="e.g. 1st Floor"
                 />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="form-grid-2">
                 <div className="input-group">
                   <label>Capacity</label>
                   <input
@@ -248,6 +276,17 @@ const HallManagement = () => {
                   placeholder="Tell us about this hall..."
                   style={{ width: '100%', resize: 'none' }}
                 />
+              </div>
+              <div className="input-group">
+                <label>Status</label>
+                <select
+                  value={currentHall.status}
+                  onChange={(e) => setCurrentHall({ ...currentHall, status: e.target.value })}
+                  style={{ width: '100%' }}
+                >
+                  <option value="ACTIVE">Active — available for bookings</option>
+                  <option value="INACTIVE">Inactive — hidden from new bookings</option>
+                </select>
               </div>
               <div className="input-group">
                 <label>Hall Image</label>

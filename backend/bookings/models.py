@@ -51,6 +51,13 @@ class Booking(models.Model):
     # Special services charges
     overtime_hours = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     kitchen_charge = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    decoration_package = models.ForeignKey(
+        'decorations.DecorationPackage',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='bookings',
+    )
     decoration_charge = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     deg_count = models.PositiveIntegerField(default=0)
     generator_charge = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -88,6 +95,9 @@ class Booking(models.Model):
         # Calculate subtotal = guest_count * rate_per_head
         subtotal = Decimal(str(self.guest_count)) * Decimal(str(self.rate_per_head))
         
+        if self.decoration_package_id and self.decoration_charge <= 0:
+            self.decoration_charge = Decimal(str(self.decoration_package.base_price))
+
         # Calculate extra services = (overtime_hours * 5000) + kitchen_charge + decoration_charge + generator_charge
         extra_services = (Decimal(str(self.overtime_hours)) * Decimal('5000.00')) + \
                          Decimal(str(self.kitchen_charge)) + \

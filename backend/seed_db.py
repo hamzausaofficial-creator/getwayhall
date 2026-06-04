@@ -18,24 +18,27 @@ def seed_db():
     
     # 1. Create Tenant
     tenant, _ = Tenant.objects.get_or_create(
-        name="Hallora Premier Venues",
-        subdomain="premier",
-        plan_type="PREMIUM"
+        subdomain="gateway",
+        defaults={
+            "name": "Gateway Marriage Hall",
+            "plan_type": "PREMIUM"
+        }
     )
 
     # 2. Create Admin User
-    if not User.objects.filter(email="admin@hallora.com").exists():
-        admin = User.objects.create_user(
-            email="admin@hallora.com",
-            password="password123",
+    if not User.objects.filter(username="admin").exists():
+        admin = User.objects.create_superuser(
+            username="admin",
+            email="admin@gateway.com",
+            password="admin123",
             first_name="Alex",
             last_name="Admin",
             role="ADMIN",
             tenant=tenant
         )
-        print(f"Created Admin: {admin.email} / password123")
+        print(f"Created Admin: username {admin.username} / admin123")
     else:
-        admin = User.objects.get(email="admin@hallora.com")
+        admin = User.objects.get(username="admin")
 
     # 3. Create Venues
     venues_data = [

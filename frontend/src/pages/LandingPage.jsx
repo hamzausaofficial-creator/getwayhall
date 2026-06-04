@@ -19,10 +19,12 @@ import {
   Minus,
   Quote
 } from 'lucide-react';
+import ThemeToggle from '../components/ThemeToggle';
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeFaq, setActiveFaq] = useState(null);
 
   useEffect(() => {
@@ -33,71 +35,80 @@ const LandingPage = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const heroImage = "/hero.png";
-  const dashboardPreview = "C:\\Users\\Al Rehman Laptop\\.gemini\\antigravity\\brain\\25b9a93e-4da3-4588-9914-d6942dccdf61\\hallora_dashboard_preview_1778926603933.png";
+  const heroImage = '/hero.png';
+  const dashboardPreview = '/hero.png';
 
   const toggleFaq = (index) => {
     setActiveFaq(activeFaq === index ? null : index);
   };
 
   return (
-    <div style={{ backgroundColor: '#f7f9fb', color: '#191c1e', fontFamily: 'Inter, sans-serif' }}>
+    <div className="landing-root">
       {/* Navigation */}
-      <nav style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: '80px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 8%',
-        backgroundColor: isScrolled ? 'rgba(255, 255, 255, 0.8)' : 'transparent',
-        backdropFilter: isScrolled ? 'blur(12px)' : 'none',
-        borderBottom: isScrolled ? '1px solid #e2e8f0' : 'none',
-        zIndex: 1000,
-        transition: 'all 0.3s ease'
-      }}>
-        <div style={{ fontSize: '28px', fontWeight: '800', color: '#191c1e' }}>
+      <nav
+        className="landing-nav"
+        style={{
+          backgroundColor: isScrolled ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(12px)',
+          borderBottom: isScrolled ? '1px solid #e2e8f0' : '1px solid transparent',
+        }}
+      >
+        <div style={{ fontSize: 'clamp(18px, 4vw, 28px)', fontWeight: '800', color: '#191c1e' }}>
           Gateway <span style={{ color: '#5BD51E' }}>Marriage Hall</span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '40px' }}>
-          <div style={{ display: 'flex', gap: '32px' }}>
-            {['Features', 'Solutions', 'Pricing', 'Resources'].map(item => (
-              <a key={item} href={`#${item.toLowerCase()}`} style={{ fontWeight: '600', color: '#594139', fontSize: '15px' }}>{item}</a>
+        <button
+          type="button"
+          className="btn-menu-mobile"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label="Toggle menu"
+          style={{ background: '#f1f5f9', border: '1px solid #e2e8f0' }}
+        >
+          {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+
+        <div className={`landing-nav__links ${mobileMenuOpen ? 'landing-nav__links--open' : ''}`}>
+          <div className="landing-nav__menu-items">
+            {[
+              { label: 'Features', href: '#features' },
+              { label: 'Pricing', href: '#pricing' },
+              { label: 'Resources', href: '#resources' },
+            ].map(item => (
+              <a
+                key={item.label}
+                href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+                style={{ fontWeight: '600', color: '#594139', fontSize: '15px' }}
+              >
+                {item.label}
+              </a>
             ))}
           </div>
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <button 
-              onClick={() => navigate('/dashboard')}
-              style={{ padding: '10px 24px', fontWeight: '700', backgroundColor: 'transparent', color: '#191c1e', border: 'none', cursor: 'pointer' }}
-            >
-              Dashboard
-            </button>
-            <button 
-              onClick={() => navigate('/dashboard')}
-              style={{ 
-                padding: '12px 28px', 
-                borderRadius: '50px', 
-                backgroundColor: '#5BD51E', 
-                color: 'white', 
-                border: 'none', 
+          <div className="landing-nav__cta" style={{ alignItems: 'center' }}>
+            <ThemeToggle />
+            <button
+              type="button"
+              onClick={() => { setMobileMenuOpen(false); navigate('/login'); }}
+              style={{
+                padding: '10px 24px',
+                borderRadius: '50px',
+                backgroundColor: '#5BD51E',
+                color: 'white',
+                border: 'none',
                 fontWeight: '700',
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(91, 213, 30, 0.3)'
+                boxShadow: '0 4px 14px rgba(91, 213, 30, 0.3)',
+                whiteSpace: 'nowrap',
               }}
             >
-              Get Started
+              Login
             </button>
           </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section style={{ 
-        padding: '160px 8% 100px 8%',
+      <section className="landing-hero" style={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -120,9 +131,7 @@ const LandingPage = () => {
         </div>
         
         <h1 style={{ 
-          fontSize: '64px', 
           fontWeight: '800', 
-          lineHeight: '1.1', 
           maxWidth: '1000px', 
           marginBottom: '32px',
           color: '#191c1e',
@@ -143,7 +152,7 @@ const LandingPage = () => {
 
         <div style={{ display: 'flex', gap: '20px', marginBottom: '80px' }}>
           <button 
-            onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/login')}
             style={{ 
               padding: '20px 48px', 
               fontSize: '18px', 
@@ -159,9 +168,12 @@ const LandingPage = () => {
               boxShadow: '0 20px 40px rgba(91, 213, 30, 0.25)'
             }}
           >
-            Start Free Trial <ArrowRight size={22} />
+            Sign In <ArrowRight size={22} />
           </button>
-          <button style={{ 
+          <button
+            type="button"
+            onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+            style={{ 
             padding: '20px 48px', 
             fontSize: '18px', 
             borderRadius: '50px', 
@@ -189,7 +201,7 @@ const LandingPage = () => {
 
       {/* Stats Section */}
       <section style={{ padding: '100px 8%', backgroundColor: '#0f172a', color: 'white' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '40px', textAlign: 'center' }}>
+        <div className="landing-grid-4">
           {[
             { label: 'Client Satisfaction', value: '98%' },
             { label: 'Events Managed', value: '12k+' },
@@ -213,7 +225,7 @@ const LandingPage = () => {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '60px' }}>
+        <div className="landing-grid-2">
           {[
             { 
               title: 'Automated Bookings', 
@@ -265,7 +277,7 @@ const LandingPage = () => {
           <p style={{ fontSize: '18px', color: '#594139' }}>Choose the plan that fits your venue's growth stage.</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
+        <div className="landing-grid-3">
           {[
             { 
               name: 'Starter', 
@@ -325,7 +337,10 @@ const LandingPage = () => {
                   </div>
                 ))}
               </div>
-              <button style={{ 
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                style={{ 
                 width: '100%', 
                 padding: '16px', 
                 borderRadius: '12px', 
@@ -335,7 +350,7 @@ const LandingPage = () => {
                 border: 'none',
                 cursor: 'pointer'
               }}>
-                Get Started Now
+                Sign In
               </button>
             </div>
           ))}
@@ -412,7 +427,7 @@ const LandingPage = () => {
           Join hundreds of premier halls that trust Gateway Marriage Hall to power their business. No credit card required to start.
         </p>
         <button 
-          onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/login')}
           style={{ 
             padding: '20px 60px', 
             fontSize: '20px', 
@@ -425,13 +440,13 @@ const LandingPage = () => {
             boxShadow: '0 20px 40px rgba(91, 213, 30, 0.3)'
           }}
         >
-          Get Started for Free
+          Sign In
         </button>
       </section>
 
       {/* Footer */}
       <footer style={{ padding: '80px 8% 40px 8%', backgroundColor: '#f7f9fb', borderTop: '1px solid #e2e8f0' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '60px', marginBottom: '80px' }}>
+        <div className="landing-footer-grid">
           <div>
             <div style={{ fontSize: '28px', fontWeight: '800', color: '#191c1e', marginBottom: '24px' }}>
               Gateway <span style={{ color: '#5BD51E' }}>Marriage Hall</span>

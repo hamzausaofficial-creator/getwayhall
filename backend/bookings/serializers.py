@@ -11,6 +11,7 @@ class BookingSerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField(source='customer.__str__', read_only=True)
     venue_name = serializers.CharField(source='venue.name', read_only=True)
     venue_capacity = serializers.IntegerField(source='venue.capacity', read_only=True)
+    decoration_package_name = serializers.CharField(source='decoration_package.name', read_only=True, allow_null=True)
 
     class Meta:
         model = Booking
@@ -88,9 +89,23 @@ class BookingSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         request = self.context.get('request')
-        if request and hasattr(request, 'user'):
-            validated_data['created_by'] = request.user
-            if hasattr(request.user, 'tenant') and request.user.tenant:
-                validated_data['tenant'] = request.user.tenant
-        return super().create(validated_data)
+        user = request.user if request and hasattr(request, 'user') else None
+        if user:
+            validated_data['created_by'] = user
+            if getattr(user, 'tenant', None):
+                validated_data['tenant'] = user.tenant
+        advance = validated_data.get('advance_paid') or 0
+        booking = super().create(validated_data)
+        if advance and float(advance) > 0:
+            from finance.models import Payment
+            Payment.objects.create(
+                booking=booking,
+                amount=advance,
+                payment_method='CASH',
+                status='COMPLETED',
+                notes='Initial advance at booking',
+                tenant=booking.tenant,
+                recorded_by=user if user and user.is_authenticated else None,
+            )
+        return booking
 

@@ -20,6 +20,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Django generated / uploads
+backend/staticfiles/
+backend/media/
+
 # Databases & local state
 db.sqlite3
 *.db

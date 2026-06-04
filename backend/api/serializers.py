@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Venue, Customer, Booking, Payment, Expense, Staff
+from .models import Venue, Customer, Booking, Payment, Expense, Staff, InventoryItem
 
 class VenueSerializer(serializers.ModelSerializer):
     class Meta:
@@ -32,4 +32,9 @@ class ExpenseSerializer(serializers.ModelSerializer):
 class StaffSerializer(serializers.ModelSerializer):
     class Meta:
         model = Staff
+        fields = '__all__'
+
+class InventoryItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InventoryItem
         fields = '__all__'

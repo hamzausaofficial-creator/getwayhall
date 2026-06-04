@@ -1,68 +1,256 @@
-import React, { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { Bell, Search, User } from 'lucide-react';
+import { Bell, Search, User, Menu } from 'lucide-react';
+import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
+import { useIsMobile } from '../hooks/useMediaQuery';
+import { globalSearch } from '../api/core';
 
 const DashboardLayout = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isMobile = useIsMobile();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const { notifications, unreadCount, markAllRead } = useNotifications();
+
+  useEffect(() => {
+    if (searchQuery.trim().length < 2) {
+      setSearchResults(null);
+      return undefined;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const data = await globalSearch(searchQuery.trim());
+        setSearchResults(data);
+        setSearchOpen(true);
+      } catch {
+        setSearchResults(null);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isMobile) setMobileMenuOpen(false);
+  }, [isMobile]);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileMenuOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileMenuOpen]);
 
   const handleBellClick = () => {
     setShowNotifications(!showNotifications);
     if (!showNotifications) markAllRead();
   };
 
+  const closeSearch = () => {
+    setSearchQuery('');
+    setSearchOpen(false);
+    setMobileSearchOpen(false);
+  };
+
+  const hasSearchHits = searchResults && (
+    (searchResults.bookings?.length > 0)
+    || (searchResults.customers?.length > 0)
+    || (searchResults.venues?.length > 0)
+    || (searchResults.payments?.length > 0)
+    || (searchResults.inventory?.length > 0)
+  );
+
+  const handleNotificationClick = (n) => {
+    setShowNotifications(false);
+    if (n.route) {
+      navigate(n.route, n.routeState ? { state: n.routeState } : undefined);
+      return;
+    }
+    if (n.type === 'payment' || n.type === 'payment_due') {
+      navigate('/payments', n.bookingId ? {
+        state: { preselectedBookingId: n.bookingId, autoOpenRecord: true, bookingEventName: n.title },
+      } : undefined);
+    } else if (n.type === 'inventory') {
+      navigate('/inventory');
+    } else if (n.bookingId) {
+      navigate('/bookings', { state: { editBookingId: n.bookingId } });
+    } else if (n.customerId) {
+      navigate('/customers', { state: { selectedCustomerId: n.customerId } });
+    }
+  };
+
+  const shellClass = [
+    'dashboard-shell',
+    !isMobile && isCollapsed ? 'dashboard-shell--collapsed' : '',
+  ].filter(Boolean).join(' ');
+
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: isCollapsed ? '80px 1fr' : '240px 1fr',
-      minHeight: '100vh',
-      transition: 'grid-template-columns 0.3s ease'
-    }}>
-      <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-      <main style={{ backgroundColor: 'var(--background)', overflowY: 'auto' }}>
-        <header style={{
-          height: 'var(--header-height)',
-          backgroundColor: 'var(--surface)',
-          borderBottom: '1px solid var(--border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 32px',
-          position: 'sticky',
-          top: 0,
-          zIndex: 10
-        }}>
-          {/* Search */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1 }}>
-            <div style={{ position: 'relative', width: '300px' }}>
-              <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+    <div className={shellClass}>
+      <div
+        className={`sidebar-backdrop ${mobileMenuOpen ? 'sidebar-backdrop--visible' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+        aria-hidden={!mobileMenuOpen}
+      />
+      <Sidebar
+        isCollapsed={isMobile ? false : isCollapsed}
+        setIsCollapsed={setIsCollapsed}
+        isMobile={isMobile}
+        isMobileOpen={mobileMenuOpen}
+        onMobileClose={() => setMobileMenuOpen(false)}
+      />
+      <main className="dashboard-main">
+        <header className="dashboard-header">
+          <div className="dashboard-header__left">
+            {isMobile && (
+              <button
+                type="button"
+                className="btn-menu-mobile"
+                onClick={() => setMobileMenuOpen(true)}
+                aria-label="Open menu"
+              >
+                <Menu size={20} />
+              </button>
+            )}
+            {isMobile && (
+              <button
+                type="button"
+                className="btn-menu-mobile"
+                onClick={() => setMobileSearchOpen((v) => !v)}
+                aria-label="Search"
+              >
+                <Search size={20} />
+              </button>
+            )}
+            <div className={`dashboard-header__search ${isMobile ? '' : ''}`} style={{ position: 'relative', display: isMobile && !mobileSearchOpen ? 'none' : 'block', flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : undefined }}>
+              <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', zIndex: 1 }} />
               <input
                 type="text"
                 placeholder="Search bookings, customers..."
-                style={{ width: '100%', paddingLeft: '40px', backgroundColor: '#f1f5f9', border: 'none' }}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => searchResults && setSearchOpen(true)}
+                onBlur={() => setTimeout(() => setSearchOpen(false), 200)}
+                style={{ width: '100%', paddingLeft: '40px', backgroundColor: 'var(--surface-elevated)', border: 'none' }}
               />
+              {searchOpen && searchResults && (
+                <div
+                  className="surface-dropdown"
+                  style={{
+                    position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0,
+                    backgroundColor: 'var(--surface)', borderRadius: '12px', boxShadow: 'var(--shadow-lg)',
+                    border: '1px solid var(--border)', zIndex: 9999, maxHeight: '320px', overflowY: 'auto',
+                  }}
+                >
+                  {hasSearchHits ? (
+                    <>
+                      {searchResults.bookings?.map((b) => (
+                        <button
+                          key={`b-${b.id}`}
+                          type="button"
+                          onMouseDown={() => {
+                            navigate('/bookings', { state: { editBookingId: b.id } });
+                            closeSearch();
+                          }}
+                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' }}
+                        >
+                          <p style={{ fontSize: '13px', fontWeight: '700' }}>{b.event_name}</p>
+                          <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Booking · {b.booking_id} · {b.customer_name}</p>
+                        </button>
+                      ))}
+                      {searchResults.customers?.map((c) => (
+                        <button
+                          key={`c-${c.id}`}
+                          type="button"
+                          onMouseDown={() => {
+                            navigate('/customers', { state: { selectedCustomerId: c.id } });
+                            closeSearch();
+                          }}
+                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' }}
+                        >
+                          <p style={{ fontSize: '13px', fontWeight: '700' }}>{c.name}</p>
+                          <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Customer · {c.phone || '—'}</p>
+                        </button>
+                      ))}
+                      {searchResults.venues?.map((v) => (
+                        <button
+                          key={`v-${v.id}`}
+                          type="button"
+                          onMouseDown={() => {
+                            navigate('/halls');
+                            closeSearch();
+                          }}
+                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' }}
+                        >
+                          <p style={{ fontSize: '13px', fontWeight: '700' }}>{v.name}</p>
+                          <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Hall · {v.location}</p>
+                        </button>
+                      ))}
+                      {searchResults.payments?.map((p) => (
+                        <button
+                          key={`p-${p.id}`}
+                          type="button"
+                          onMouseDown={() => {
+                            navigate('/payments', {
+                              state: { preselectedBookingId: p.booking_id, autoOpenRecord: true, bookingEventName: p.event_name },
+                            });
+                            closeSearch();
+                          }}
+                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' }}
+                        >
+                          <p style={{ fontSize: '13px', fontWeight: '700' }}>Rs {Number(p.amount).toLocaleString()}</p>
+                          <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Payment · {p.event_name}</p>
+                        </button>
+                      ))}
+                      {searchResults.inventory?.map((item) => (
+                        <button
+                          key={`i-${item.id}`}
+                          type="button"
+                          onMouseDown={() => {
+                            navigate('/inventory');
+                            closeSearch();
+                          }}
+                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', background: 'transparent', cursor: 'pointer' }}
+                        >
+                          <p style={{ fontSize: '13px', fontWeight: '700' }}>{item.name}</p>
+                          <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Inventory · {item.quantity} in stock</p>
+                        </button>
+                      ))}
+                    </>
+                  ) : (
+                    <p style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)' }}>No results</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Right side */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-
-            {/* Notification Bell */}
-            <div style={{ position: 'relative' }}>
-              <button onClick={handleBellClick} style={{ backgroundColor: 'transparent', position: 'relative' }}>
-                <Bell size={20} color="var(--text-muted)" />
+          <div className="dashboard-header__actions">
+            <ThemeToggle />
+            <div className="dashboard-header__bell-wrap">
+              <button
+                type="button"
+                className="dashboard-header__icon-btn"
+                onClick={handleBellClick}
+                aria-label="Notifications"
+              >
+                <Bell size={20} color="currentColor" />
                 {unreadCount > 0 && (
                   <span style={{
                     position: 'absolute', top: '-4px', right: '-4px',
                     minWidth: '16px', height: '16px',
                     backgroundColor: 'var(--primary)', borderRadius: '8px',
-                    border: '2px solid white', fontSize: '9px', fontWeight: '700',
+                    border: '2px solid var(--surface)', fontSize: '9px', fontWeight: '700',
                     color: 'white', display: 'flex', alignItems: 'center',
                     justifyContent: 'center', padding: '0 3px'
                   }}>
@@ -72,21 +260,18 @@ const DashboardLayout = () => {
               </button>
 
               {showNotifications && (
-                <div className="animate-fade-in" style={{
-                  position: 'absolute', top: '44px', right: 0, width: '340px',
-                  backgroundColor: 'white', borderRadius: '16px',
-                  boxShadow: '0 10px 40px rgba(0,0,0,0.12)',
+                <div className="animate-fade-in surface-dropdown" style={{
+                  position: 'absolute', top: '44px', right: 0, width: 'min(340px, calc(100vw - 32px))',
+                  backgroundColor: 'var(--surface)', borderRadius: '16px',
+                  boxShadow: 'var(--shadow-lg)',
                   border: '1px solid var(--border)', zIndex: 9999, overflow: 'hidden'
                 }}>
-                  {/* Header */}
                   <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h4 style={{ fontSize: '14px', fontWeight: '700' }}>Notifications</h4>
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: '20px', fontWeight: '600' }}>
-                      🟢 Live
+                    <span className="surface-muted-chip" style={{ fontSize: '10px', color: 'var(--text-muted)', backgroundColor: 'var(--surface-elevated)', padding: '2px 8px', borderRadius: '20px', fontWeight: '600' }}>
+                      Live
                     </span>
                   </div>
-
-                  {/* Notification List */}
                   <div style={{ maxHeight: '380px', overflowY: 'auto' }}>
                     {notifications.length === 0 ? (
                       <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -97,6 +282,10 @@ const DashboardLayout = () => {
                       notifications.map((n, i) => (
                         <div
                           key={n.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleNotificationClick(n)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleNotificationClick(n)}
                           style={{
                             padding: '13px 20px',
                             borderBottom: i === notifications.length - 1 ? 'none' : '1px solid var(--border)',
@@ -116,37 +305,30 @@ const DashboardLayout = () => {
                       ))
                     )}
                   </div>
-
-                  {/* Footer */}
-                  <div style={{ padding: '10px', textAlign: 'center', backgroundColor: '#f8fafc', borderTop: '1px solid var(--border)' }}>
+                  <div className="surface-footer-bar" style={{ padding: '10px', textAlign: 'center', backgroundColor: 'var(--background)', borderTop: '1px solid var(--border)' }}>
                     <p style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Refreshes every 30 seconds</p>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* User Profile */}
-            <div 
-              onClick={() => navigate('/dashboard/profile')}
-              style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '12px', 
-                paddingLeft: '24px', 
-                borderLeft: '1px solid var(--border)',
-                cursor: 'pointer'
-              }}
+            <div
+              className="dashboard-header__profile"
+              onClick={() => navigate('/profile')}
+              onKeyDown={(e) => e.key === 'Enter' && navigate('/profile')}
+              role="button"
+              tabIndex={0}
             >
-              <div style={{ textAlign: 'right' }}>
+              <div className="dashboard-header__profile-text hide-mobile">
                 <p style={{ fontSize: '14px', fontWeight: '600' }}>{user?.first_name} {user?.last_name}</p>
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{user?.role}</p>
               </div>
               <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                {user?.email && localStorage.getItem(`profile_pic_${user.email}`) ? (
-                  <img 
-                    src={localStorage.getItem(`profile_pic_${user.email}`)} 
-                    alt="Profile" 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt="Profile"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 ) : (
                   <User size={20} color="var(--primary)" />
@@ -156,7 +338,7 @@ const DashboardLayout = () => {
           </div>
         </header>
 
-        <div style={{ padding: '32px', maxWidth: 'var(--container-max)', margin: '0 auto' }}>
+        <div className="dashboard-content">
           <Outlet />
         </div>
       </main>

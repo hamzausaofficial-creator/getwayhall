@@ -1,7 +1,9 @@
 import client from './client';
 
-export const getPayments = async (params) => {
-  const response = await client.get('/finance/payments/', { params });
+export const getPayments = async (params = {}) => {
+  const response = await client.get('/finance/payments/', {
+    params: { ...params, _t: Date.now() },
+  });
   return response.data;
 };
 
@@ -12,6 +14,11 @@ export const createPayment = async (data) => {
 
 export const getExpenses = async (params) => {
   const response = await client.get('/finance/expenses/', { params });
+  return response.data;
+};
+
+export const getExpense = async (id) => {
+  const response = await client.get(`/finance/expenses/${id}/`);
   return response.data;
 };
 

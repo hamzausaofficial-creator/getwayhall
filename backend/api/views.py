@@ -1,6 +1,6 @@
 from rest_framework import viewsets
-from .models import Venue, Customer, Booking, Payment, Expense, Staff
-from .serializers import VenueSerializer, CustomerSerializer, BookingSerializer, PaymentSerializer, ExpenseSerializer, StaffSerializer
+from .models import Venue, Customer, Booking, Payment, Expense, Staff, InventoryItem
+from .serializers import VenueSerializer, CustomerSerializer, BookingSerializer, PaymentSerializer, ExpenseSerializer, StaffSerializer, InventoryItemSerializer
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.db.models import Count, Sum
@@ -43,3 +43,10 @@ class ExpenseViewSet(viewsets.ModelViewSet):
 class StaffViewSet(viewsets.ModelViewSet):
     queryset = Staff.objects.all()
     serializer_class = StaffSerializer
+
+class InventoryItemViewSet(viewsets.ModelViewSet):
+    queryset = InventoryItem.objects.all()
+    serializer_class = InventoryItemSerializer
+    filterset_fields = ['category', 'status']
+    search_fields = ['name', 'description']
+    ordering_fields = ['name', 'quantity', 'price_per_unit', 'last_restocked']

@@ -1,42 +1,78 @@
-# Hallora Venue Management SaaS
+# Gateway Marriage Hall Management
 
-A full-stack venue management system built with ReactJS, Django, and PostgreSQL, based on the Stitch design system.
+Full-stack marriage hall / venue management: bookings, calendar, halls, customers, payments, expenses, inventory, decoration packages, staff, reports, SMS/WhatsApp notification log, and role-based access per tenant.
 
-## Project Structure
+## Project structure
 
-- `/frontend`: React + Vite application with the premium Hallora design system.
-- `/backend`: Django REST Framework API with PostgreSQL integration.
+- `frontend/` — React + Vite (Gateway UI)
+- `backend/` — Django REST API (`hallora_backend`)
 
-## Design System
-- **Primary Color**: #FF6B2C (Hallora Orange)
-- **Typography**: Inter
-- **Aesthetic**: Modern, Corporate SaaS (Linear/Stripe inspired)
+## Tech stack
 
-## Tech Stack
-- **Frontend**: React, React Router, Axios, Lucide React, CSS Variables
-- **Backend**: Django, DRF, Django-CORS-Headers
-- **Database**: PostgreSQL (Ready for integration)
+- **Frontend:** React, React Router, Axios, Lucide, date-fns
+- **Backend:** Django, DRF, SimpleJWT, django-filter
+- **Database:** SQLite (default dev) or PostgreSQL
 
-## Getting Started
+## Environment variables
 
-### Prerequisites
-- Python 3.x
-- Node.js & npm
-- PostgreSQL (optional for local dev, can switch back to SQLite in settings.py)
+Copy `.env.example` to `backend/.env` (or project root as your setup expects):
 
-### Backend Setup
-1. Navigate to `backend/`
-2. Activate venv: `.\venv\Scripts\activate`
-3. Run migrations: `python manage.py makemigrations` and `python manage.py migrate` (ensure PSQL is running or switch to SQLite)
-4. Start server: `python manage.py runserver`
+| Variable | Purpose |
+|----------|---------|
+| `SECRET_KEY` | Django secret |
+| `NOTIFICATION_BACKEND` | `console` (dev) or `twilio` (live SMS/WhatsApp) |
+| `TWILIO_*` | Twilio credentials when using live notifications |
+| `DB_*` | PostgreSQL connection (optional) |
 
-### Frontend Setup
-1. Navigate to `frontend/`
-2. Install dependencies: `npm install`
-3. Start dev server: `npm run dev`
+## Getting started
 
-## Features Implemented
-- **Landing Page**: Premium hero section, features grid, and trusted brands section.
-- **Dashboard Overview**: Revenue, bookings, and customer statistics with interactive tables.
-- **Sidebar Navigation**: Intuitive access to halls, customers, and calendar modules.
-- **Venue/Customer/Booking Models**: Robust backend structure for event management.
+### Backend
+
+```powershell
+cd backend
+.\venv\Scripts\activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py seed_db
+python manage.py runserver
+```
+
+### Frontend
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Default API base: `http://127.0.0.1:8000/api` (see `frontend/src/api/client.js`).
+
+## Features
+
+- **Bookings** — overlap checks, decoration package link, inventory allocation per event, lena (amount due) / `00` when nothing due
+- **Calendar** — view, create, edit (navigate to bookings), cancel, record payment
+- **Halls** — ACTIVE/INACTIVE; inactive halls hidden from new booking dropdowns
+- **Payments** — `advance_paid` synced from completed payments
+- **Notifications** — in-app bell prefs, optional SMS/WhatsApp to customers (skips if no phone; no form validation)
+- **Security** — tenant-scoped querysets, ADMIN / MANAGER / STAFF permissions
+- **Staff** — HR fields (phone, salary, joining date), admin password reset
+
+## Roles
+
+| Role | Typical access |
+|------|----------------|
+| ADMIN | Full access, staff, settings |
+| MANAGER | Operations except staff write |
+| STAFF | Read bookings/customers, record payments |
+
+## Cron (payment reminders)
+
+```powershell
+python manage.py send_payment_reminders
+```
+
+Schedule daily via Windows Task Scheduler or cron on Linux.
+
+## Deprecated
+
+The legacy `backend/api/` app is unused; see `backend/api/DEPRECATED.md`.

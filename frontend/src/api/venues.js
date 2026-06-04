@@ -1,7 +1,9 @@
 import client from './client';
 
-export const getVenues = async (params) => {
-  const response = await client.get('/venues/', { params });
+export const getVenues = async (params = {}) => {
+  const response = await client.get('/venues/', {
+    params: { ...params, _t: Date.now() },
+  });
   return response.data;
 };
 

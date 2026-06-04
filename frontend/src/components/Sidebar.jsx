@@ -1,7 +1,7 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard,
+  Calculator,
   Calendar,
   Users,
   Building2,
@@ -12,154 +12,270 @@ import {
   CreditCard,
   Receipt,
   BadgeCheck,
-  BarChart3
+  BarChart3,
+  Package,
+  Sparkles,
+  CalendarDays,
+  Bell,
+  X,
+  UserCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 
-const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
+const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobileClose }) => {
   const { logout } = useAuth();
+  const {
+    user,
+    loading,
+    role,
+    isStaff,
+    canAccessExpenses,
+    canAccessReports,
+    canAccessNotifications,
+    canAccessStaff,
+    canAccessSettings,
+    canAccessDashboard,
+  } = usePermissions();
 
-  const navItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-    { name: 'Bookings', icon: Calendar, path: '/dashboard/bookings' },
-    { name: 'Calendar', icon: Calendar, path: '/dashboard/calendar' },
-    { name: 'Halls', icon: Building2, path: '/dashboard/halls' },
-    { name: 'Customers', icon: Users, path: '/dashboard/customers' },
-    { name: 'Payments', icon: CreditCard, path: '/dashboard/payments' },
-    { name: 'Expenses', icon: Receipt, path: '/dashboard/expenses' },
-    { name: 'Staff', icon: BadgeCheck, path: '/dashboard/staff' },
-    { name: 'Reports', icon: BarChart3, path: '/dashboard/reports' },
+  const mainNavItems = [
+    { name: 'Bookings', icon: Calendar, path: '/bookings' },
+    { name: 'Calendar', icon: CalendarDays, path: '/calendar' },
+    { name: 'Halls', icon: Building2, path: '/halls' },
+    { name: 'Customers', icon: Users, path: '/customers' },
+    { name: 'Payments', icon: CreditCard, path: '/payments' },
+    ...(canAccessExpenses ? [{ name: 'Expenses', icon: Receipt, path: '/expenses' }] : []),
+    ...(canAccessStaff ? [{ name: 'Staff', icon: BadgeCheck, path: '/staff' }] : []),
+    { name: 'Inventory', icon: Package, path: '/inventory' },
+    { name: 'Decoration Packages', icon: Sparkles, path: '/decoration-packages' },
+    ...(canAccessReports ? [{ name: 'Reports', icon: BarChart3, path: '/reports' }] : []),
+    ...(canAccessNotifications ? [{ name: 'SMS Log', icon: Bell, path: '/notifications' }] : []),
   ];
+
+  const accountantNavItem = { name: 'Accountant', icon: Calculator, path: '/dashboard' };
+
+  if (loading || !user) {
+    return (
+      <aside className="app-sidebar" style={{ padding: '24px', color: '#94a3b8', fontSize: '13px' }}>
+        Loading menu…
+      </aside>
+    );
+  }
 
   const handleSignOut = () => {
     logout();
+    onMobileClose?.();
   };
 
-  return (
-    <aside style={{
-      width: isCollapsed ? '88px' : '240px',
-      backgroundColor: 'var(--secondary)',
-      color: 'white',
-      display: 'flex',
-      flexDirection: 'column',
-      padding: isCollapsed ? '24px 12px' : '24px 16px',
-      height: '100vh',
-      position: 'sticky',
-      top: 0,
-      transition: 'width 0.3s ease, padding 0.3s ease',
-      overflow: 'visible',
-      zIndex: 50
-    }}>
-      {/* Floating Toggle Button */}
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        style={{
-          position: 'absolute',
-          right: '-14px',
-          top: '40px',
-          width: '28px',
-          height: '28px',
-          borderRadius: '50%',
-          backgroundColor: 'var(--primary)',
-          color: 'white',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          border: '2px solid white',
-          cursor: 'pointer',
-          zIndex: 1000,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          padding: '0',
-          transition: 'transform 0.2s ease'
-        }}
-        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-      >
-        {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-      </button>
+  const handleNavClick = () => {
+    if (isMobile) onMobileClose?.();
+  };
 
-      <div style={{ marginBottom: '40px', padding: isCollapsed ? '0' : '0 8px', display: 'flex', flexDirection: 'column', alignItems: isCollapsed ? 'center' : 'flex-start' }}>
+  const sidebarClass = [
+    'app-sidebar',
+    !isMobile && isCollapsed ? 'app-sidebar--collapsed' : '',
+    isMobile && isMobileOpen ? 'app-sidebar--mobile-open' : '',
+  ].filter(Boolean).join(' ');
+
+  return (
+    <aside className={sidebarClass}>
+      {!isMobile && (
+        <button
+          type="button"
+          className="app-sidebar__collapse-btn"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </button>
+      )}
+
+      {isMobile && (
+        <button
+          type="button"
+          onClick={onMobileClose}
+          style={{
+            position: 'absolute',
+            top: '20px',
+            right: '16px',
+            background: 'transparent',
+            color: '#94a3b8',
+            padding: '4px',
+          }}
+          aria-label="Close menu"
+        >
+          <X size={22} />
+        </button>
+      )}
+
+      <div style={{ marginBottom: '40px', padding: isCollapsed && !isMobile ? '0' : '0 8px', display: 'flex', flexDirection: 'column', alignItems: isCollapsed && !isMobile ? 'center' : 'flex-start' }}>
         <h1 style={{
-          fontSize: isCollapsed ? '20px' : '24px',
+          fontSize: isCollapsed && !isMobile ? '36px' : '24px',
           fontWeight: '700',
           color: 'var(--primary)',
           display: 'flex',
           alignItems: 'center',
           gap: '8px'
         }}>
-          G{isCollapsed ? '' : 'ateway'}
+          G{isCollapsed && !isMobile ? '' : 'ateway'}
         </h1>
-        {!isCollapsed && <p style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px' }}>Marriage Hall Management</p>}
+        {(!isCollapsed || isMobile) && (
+          <p style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px' }}>
+            Marriage Hall Management
+            {role && (
+              <span
+                style={{
+                  display: 'inline-block',
+                  marginLeft: '8px',
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  background: isStaff ? 'rgba(91,213,30,0.2)' : 'rgba(255,255,255,0.1)',
+                  color: isStaff ? '#86efac' : '#cbd5e1',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  fontSize: '9px',
+                }}
+              >
+                {role}
+              </span>
+            )}
+          </p>
+        )}
       </div>
 
       <nav style={{
         flex: 1,
         overflowY: 'auto',
-        paddingRight: isCollapsed ? '0' : '4px',
-        marginRight: isCollapsed ? '0' : '-8px'
+        paddingRight: isCollapsed && !isMobile ? '0' : '4px',
+        marginRight: isCollapsed && !isMobile ? '0' : '-8px'
       }} className="custom-scrollbar">
-        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', alignItems: isCollapsed ? 'center' : 'stretch' }}>
-          {navItems.map((item) => (
-            <li key={item.name} style={{ marginBottom: '4px', width: '100%' }}>
+        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: isCollapsed && !isMobile ? '16px' : '4px', alignItems: isCollapsed && !isMobile ? 'center' : 'stretch' }}>
+          {mainNavItems.map((item) => (
+            <li key={item.name} style={{ width: isCollapsed && !isMobile ? 'auto' : '100%', display: 'flex', justifyContent: 'center' }}>
               <NavLink
                 to={item.path}
-                title={isCollapsed ? item.name : ''}
+                title={isCollapsed && !isMobile ? item.name : ''}
+                onClick={handleNavClick}
                 style={({ isActive }) => ({
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: isCollapsed ? 'center' : 'flex-start',
+                  justifyContent: isCollapsed && !isMobile ? 'center' : 'flex-start',
                   padding: '12px',
+                  width: isCollapsed && !isMobile ? '44px' : '100%',
+                  height: isCollapsed && !isMobile ? '44px' : 'auto',
                   borderRadius: 'var(--radius-md)',
                   color: isActive ? 'white' : '#94a3b8',
                   backgroundColor: isActive ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
                   transition: 'all 0.2s ease',
                   fontSize: '14px',
                   fontWeight: '500',
-                  gap: isCollapsed ? '0' : '12px'
+                  gap: isCollapsed && !isMobile ? '0' : '12px'
                 })}
               >
                 <item.icon size={20} />
-                {!isCollapsed && <span>{item.name}</span>}
+                {(!isCollapsed || isMobile) && <span>{item.name}</span>}
               </NavLink>
             </li>
           ))}
+          {canAccessDashboard && (
+          <li
+            style={{
+              width: isCollapsed && !isMobile ? 'auto' : '100%',
+              display: 'flex',
+              justifyContent: 'center',
+              marginTop: isCollapsed && !isMobile ? '8px' : '12px',
+              paddingTop: isCollapsed && !isMobile ? '0' : '12px',
+              borderTop: isCollapsed && !isMobile ? 'none' : '1px solid rgba(255, 255, 255, 0.1)',
+            }}
+          >
+            <NavLink
+              to={accountantNavItem.path}
+              title={isCollapsed && !isMobile ? accountantNavItem.name : ''}
+              onClick={handleNavClick}
+              style={({ isActive }) => ({
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: isCollapsed && !isMobile ? 'center' : 'flex-start',
+                padding: '12px',
+                width: isCollapsed && !isMobile ? '44px' : '100%',
+                height: isCollapsed && !isMobile ? '44px' : 'auto',
+                borderRadius: 'var(--radius-md)',
+                color: isActive ? 'white' : '#94a3b8',
+                backgroundColor: isActive ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                transition: 'all 0.2s ease',
+                fontSize: '14px',
+                fontWeight: '500',
+                gap: isCollapsed && !isMobile ? '0' : '12px'
+              })}
+            >
+              <accountantNavItem.icon size={20} />
+              {(!isCollapsed || isMobile) && <span>{accountantNavItem.name}</span>}
+            </NavLink>
+          </li>
+          )}
         </ul>
       </nav>
 
       <div style={{ marginTop: 'auto', borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '24px' }}>
-        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', alignItems: isCollapsed ? 'center' : 'stretch' }}>
-          <li style={{ marginBottom: '8px', width: '100%' }}>
-            <NavLink to="/dashboard/settings" style={{
+        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: isCollapsed && !isMobile ? '16px' : '8px', alignItems: isCollapsed && !isMobile ? 'center' : 'stretch' }}>
+          <li style={{ width: isCollapsed && !isMobile ? 'auto' : '100%', display: 'flex', justifyContent: 'center' }}>
+            <NavLink to="/profile" onClick={handleNavClick} style={{
               display: 'flex',
               alignItems: 'center',
-              justifyContent: isCollapsed ? 'center' : 'flex-start',
+              justifyContent: isCollapsed && !isMobile ? 'center' : 'flex-start',
               padding: '12px',
+              width: isCollapsed && !isMobile ? '44px' : '100%',
+              height: isCollapsed && !isMobile ? '44px' : 'auto',
+              borderRadius: 'var(--radius-md)',
               color: '#94a3b8',
-              gap: isCollapsed ? '0' : '12px',
+              gap: isCollapsed && !isMobile ? '0' : '12px',
+              fontSize: '14px',
+            }}>
+              <UserCircle size={20} />
+              {(!isCollapsed || isMobile) && <span>Profile</span>}
+            </NavLink>
+          </li>
+          {canAccessSettings && (
+          <li style={{ width: isCollapsed && !isMobile ? 'auto' : '100%', display: 'flex', justifyContent: 'center' }}>
+            <NavLink to="/settings" onClick={handleNavClick} style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: isCollapsed && !isMobile ? 'center' : 'flex-start',
+              padding: '12px',
+              width: isCollapsed && !isMobile ? '44px' : '100%',
+              height: isCollapsed && !isMobile ? '44px' : 'auto',
+              borderRadius: 'var(--radius-md)',
+              color: '#94a3b8',
+              gap: isCollapsed && !isMobile ? '0' : '12px',
               fontSize: '14px'
             }}>
               <Settings size={20} />
-              {!isCollapsed && <span>Settings</span>}
+              {(!isCollapsed || isMobile) && <span>Settings</span>}
             </NavLink>
           </li>
-          <li>
+          )}
+          <li style={{ width: isCollapsed && !isMobile ? 'auto' : '100%', display: 'flex', justifyContent: 'center' }}>
             <button
+              type="button"
               onClick={handleSignOut}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: isCollapsed ? 'center' : 'flex-start',
+                justifyContent: isCollapsed && !isMobile ? 'center' : 'flex-start',
                 padding: '12px',
+                width: isCollapsed && !isMobile ? '44px' : '100%',
+                height: isCollapsed && !isMobile ? '44px' : 'auto',
+                borderRadius: 'var(--radius-md)',
                 color: '#ef4444',
                 backgroundColor: 'transparent',
-                gap: isCollapsed ? '0' : '12px',
+                gap: isCollapsed && !isMobile ? '0' : '12px',
                 fontSize: '14px',
-                width: '100%',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                border: 'none'
               }}
             >
               <LogOut size={20} />
-              {!isCollapsed && <span>Sign Out</span>}
+              {(!isCollapsed || isMobile) && <span>Sign Out</span>}
             </button>
           </li>
         </ul>

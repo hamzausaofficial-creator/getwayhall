@@ -10,6 +10,14 @@
   --accent: #6366f1;
   --background: #f8fafc;
   --surface: #ffffff;
+  --surface-elevated: #f1f5f9;
+
+  /* Semantic tokens (used by dashboard + app) */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #3b82f6;
+  --input-bg: #ffffff;
   --border: #e2e8f0;
   --text-main: #191c1e;
   --text-muted: #594139;
@@ -186,6 +194,18 @@ textarea:focus {
 
 .animate-fade-in {
   animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes dashboardLivePulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
 }
 
 /* Custom Scrollbar for Sidebar */

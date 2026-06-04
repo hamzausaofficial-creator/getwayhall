@@ -3,14 +3,16 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, Users, Building, User } from 'lucide-react';
 import { register } from '../api/auth';
 import toast from 'react-hot-toast';
+import ThemeToggle from '../components/ThemeToggle';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
+    username: '',
     email: '',
     password: '',
     first_name: '',
     last_name: '',
-    tenant_name: ''
+    tenant_name: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -36,16 +38,17 @@ const RegisterPage = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: '#f8fafc' }}>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 10%' }}>
-        <div style={{ maxWidth: '440px', width: '100%' }}>
+    <div className="auth-layout">
+      <ThemeToggle className="theme-toggle--floating" />
+      <div className="auth-layout__form">
+        <div className="auth-layout__form-inner" style={{ maxWidth: '520px' }}>
           <div style={{ marginBottom: '40px' }}>
             <h1 style={{ fontSize: '32px', fontWeight: '800', color: '#1e293b', marginBottom: '12px' }}>Create your account</h1>
             <p style={{ color: '#64748b', fontSize: '16px' }}>Start your 14-day free trial today.</p>
           </div>
 
           <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+             <div className="form-grid-2">
                 <div className="input-group">
                   <label>First Name</label>
                   <div style={{ position: 'relative' }}>
@@ -65,6 +68,18 @@ const RegisterPage = () => {
                 <Building size={20} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                 <input name="tenant_name" type="text" required value={formData.tenant_name} onChange={handleChange} placeholder="Grand Ballroom Elite" style={{ width: '100%', paddingLeft: '44px' }} />
               </div>
+            </div>
+
+            <div className="input-group">
+              <label>Username (for login)</label>
+              <input
+                name="username"
+                type="text"
+                value={formData.username}
+                onChange={handleChange}
+                placeholder="Leave blank to auto-generate"
+                style={{ width: '100%' }}
+              />
             </div>
 
             <div className="input-group">
@@ -96,8 +111,8 @@ const RegisterPage = () => {
           </p>
         </div>
       </div>
-      
-      <div style={{ flex: 1, backgroundColor: '#0f172a', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: 'white', padding: '0 5%' }}>
+
+      <div className="auth-layout__brand" style={{ alignItems: 'center' }}>
         <div style={{ maxWidth: '480px' }}>
           <h2 style={{ fontSize: '36px', fontWeight: '800', marginBottom: '24px', lineHeight: '1.2' }}>The complete operating system for venue owners.</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>

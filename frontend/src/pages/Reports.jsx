@@ -3,7 +3,7 @@ import {
   TrendingUp, 
   Calendar as CalendarIcon, 
   Download, 
-  DollarSign, 
+  Wallet, 
   Activity, 
   Printer, 
   FileText, 
@@ -196,12 +196,29 @@ const Reports = () => {
     window.print();
   };
 
+  const handleExportCsv = () => {
+    const rows = [
+      ['Type', 'Description', 'Date', 'Amount (Rs)'],
+      ...filteredPayments.map((p) => ['INCOME', p.booking_event_name || 'Payment', p.payment_date, p.amount]),
+      ...filteredExpenses.map((e) => ['EXPENSE', e.title, e.expense_date, e.amount]),
+    ];
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hallora-report-${startDate}-to-${endDate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Report exported as CSV');
+  };
+
   return (
     <>
     <div className="animate-fade-in print-hide">
       
       {/* Title */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '32px' }}>
+      <div className="page-header">
         <div>
           <h2 style={{ fontSize: '28px', fontWeight: '800', color: 'var(--secondary)', letterSpacing: '-0.02em' }}>
             Reports & Analytics
@@ -210,7 +227,7 @@ const Reports = () => {
             Generate and examine financial balance sheets, hall utilization reports, and cost analysis.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div className="page-header__actions">
           <button 
             className="btn-secondary" 
             onClick={loadData}
@@ -218,8 +235,17 @@ const Reports = () => {
           >
             <RefreshCw size={16} /> Refresh
           </button>
-          <button 
-            className="btn-primary" 
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={handleExportCsv}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '8px' }}
+          >
+            <Download size={16} /> Export CSV
+          </button>
+          <button
+            type="button"
+            className="btn-primary"
             onClick={handlePrintReport}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '8px' }}
           >
@@ -258,7 +284,7 @@ const Reports = () => {
       </div>
 
       {/* Interactive Tabs Menu */}
-      <div style={{ display: 'flex', gap: '12px', backgroundColor: '#e2e8f0', padding: '4px', borderRadius: '10px', marginBottom: '32px', maxWidth: '580px' }}>
+      <div className="reports-tabs">
         <button
           onClick={() => setActiveTab('financial')}
           style={{
@@ -278,7 +304,7 @@ const Reports = () => {
             cursor: 'pointer'
           }}
         >
-          <DollarSign size={16} /> Financial Balance
+          <Wallet size={16} /> Financial Balance
         </button>
         <button
           onClick={() => setActiveTab('utilization')}
@@ -334,11 +360,11 @@ const Reports = () => {
           {/* TAB 1: FINANCIAL STATEMENT */}
           {activeTab === 'financial' && (
             <div className="animate-fade-in">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '32px' }}>
+              <div className="grid-3 grid-3--mb">
                 <div className="premium-card">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ padding: '12px', backgroundColor: 'var(--primary-light)', borderRadius: '12px', color: 'var(--primary)' }}>
-                      <DollarSign size={24} />
+                      <Wallet size={24} />
                     </div>
                   </div>
                   <div style={{ marginTop: '20px' }}>
@@ -456,7 +482,7 @@ const Reports = () => {
           {/* TAB 2: VENUE UTILIZATION */}
           {activeTab === 'utilization' && (
             <div className="animate-fade-in">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '32px' }}>
+              <div className="grid-3 grid-3--mb">
                 <div className="premium-card">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ padding: '12px', backgroundColor: 'var(--primary-light)', borderRadius: '12px', color: 'var(--primary)' }}>
@@ -537,7 +563,7 @@ const Reports = () => {
           {/* TAB 3: EXPENSE ANALYSIS */}
           {activeTab === 'expenses' && (
             <div className="animate-fade-in">
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px' }}>
+              <div className="grid-charts-2">
                 
                 {/* Table */}
                 <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
