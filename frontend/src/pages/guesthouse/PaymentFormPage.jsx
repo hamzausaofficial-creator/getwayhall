@@ -16,6 +16,7 @@ const emptyForm = {
   payment_method: 'CASH',
   status: 'COMPLETED',
   notes: '',
+  transaction_id: '',
 };
 
 const METHOD_OPTIONS = [
@@ -83,6 +84,7 @@ export default function PaymentFormPage() {
             payment_method: p.payment_method || 'CASH',
             status: p.status || 'COMPLETED',
             notes: p.notes || '',
+            transaction_id: p.transaction_id || '',
           });
         }
       } catch {
@@ -128,6 +130,7 @@ export default function PaymentFormPage() {
       payment_method: form.payment_method,
       status: form.status,
       notes: form.notes,
+      transaction_id: form.transaction_id,
     };
     try {
       if (isEdit) {
@@ -283,6 +286,16 @@ export default function PaymentFormPage() {
                       <option key={m.value} value={m.value}>{m.label}</option>
                     ))}
                   </select>
+                </div>
+
+                <div className="input-group">
+                  <label>Transaction / receipt ref <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
+                  <input
+                    type="text"
+                    value={form.transaction_id}
+                    onChange={(e) => setForm({ ...form, transaction_id: e.target.value })}
+                    placeholder="Cheque no., UPI ref, bank slip…"
+                  />
                 </div>
 
                 <div className="input-group">

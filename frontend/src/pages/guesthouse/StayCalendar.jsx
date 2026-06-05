@@ -1,22 +1,38 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, BedDouble, X,
+  ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon,
+  ChevronRight as ChevronRightIcon,
 } from 'lucide-react';
 import {
-  format, addMonths, subMonths, startOfMonth, endOfMonth,
-  startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, parseISO,
+  format, addMonths, subMonths, addDays, startOfMonth, endOfMonth,
+  startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, parseISO, isBefore, startOfDay,
 } from 'date-fns';
 import { getGuestHouseCalendar } from '../../api/guesthouse';
 import toast from 'react-hot-toast';
+import { formatCollectDue, hasCollectDue } from '../../utils/currency';
+import { usePermissions } from '../../hooks/usePermissions';
+import StatusBadge from '../../components/ui/StatusBadge';
+
+const STATUS_COLORS = {
+  PENDING: '#fbbf24',
+  CONFIRMED: '#22c55e',
+  CHECKED_IN: '#3b82f6',
+  CHECKED_OUT: '#94a3b8',
+  CANCELLED: '#ef4444',
+};
+
+const openStay = (navigate, stay) => {
+  navigate(`/gh/stays/${stay.id}`, { state: { from: '/gh/calendar', fromLabel: 'Back to calendar' } });
+};
 
 export default function StayCalendar() {
   const navigate = useNavigate();
+  const { canManage } = usePermissions();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [stays, setStays] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [detailStay, setDetailStay] = useState(null);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -27,16 +43,16 @@ export default function StayCalendar() {
   const fetchCal = async () => {
     setLoading(true);
     try {
-      const data = await getGuestHouseCalendar({
+      const calData = await getGuestHouseCalendar({
         start: format(calStart, 'yyyy-MM-dd'),
         end: format(calEnd, 'yyyy-MM-dd'),
       });
       setStays(
-        (data.stays || []).map((s) => ({
+        (calData.stays || []).map((s) => ({
           ...s,
           checkInObj: parseISO(s.check_in),
           checkOutObj: parseISO(s.check_out),
-        }))
+        })),
       );
     } catch {
       toast.error('Failed to load calendar');
@@ -52,143 +68,197 @@ export default function StayCalendar() {
     return s.check_in <= d && s.check_out > d;
   });
 
-  const STATUS_COLORS = {
-    PENDING: '#fbbf24',
-    CONFIRMED: '#22c55e',
-    CHECKED_IN: '#3b82f6',
-    CHECKED_OUT: '#94a3b8',
+  const goToBook = (date = null) => {
+    if (!canManage) {
+      toast.error('You do not have permission to create stays.');
+      return;
+    }
+    const checkIn = date ? format(date, 'yyyy-MM-dd') : format(selectedDate, 'yyyy-MM-dd');
+    const checkOut = format(addDays(date || selectedDate, 1), 'yyyy-MM-dd');
+    navigate(`/gh/book?check_in=${checkIn}&check_out=${checkOut}`);
   };
+
+  const isFutureDay = (day) => !isBefore(startOfDay(day), startOfDay(new Date()));
 
   return (
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h2 style={{ fontSize: '24px', fontWeight: '700' }}>Stay Calendar</h2>
-          <p style={{ color: 'var(--text-muted)' }}>Room occupancy by date.</p>
+          <h2 style={{ fontSize: 'clamp(22px, 4vw, 28px)', fontWeight: '800', margin: 0 }}>Stay Calendar</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '6px' }}>
+            Click a stay to open its full detail page. Double-click a future date to book.
+          </p>
         </div>
-        <button type="button" className="btn-primary" onClick={() => navigate('/gh/stays/new')} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Plus size={18} /> New Stay
-        </button>
-      </div>
-
-      <div className="premium-card" style={{ padding: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <button type="button" className="btn-secondary" onClick={() => setCurrentDate(subMonths(currentDate, 1))}><ChevronLeft /></button>
-          <h3 style={{ fontSize: '18px', fontWeight: '700' }}>{format(currentDate, 'MMMM yyyy')}</h3>
-          <button type="button" className="btn-secondary" onClick={() => setCurrentDate(addMonths(currentDate, 1))}><ChevronRight /></button>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', marginBottom: '8px' }}>
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-            <div key={d} style={{ textAlign: 'center', fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)' }}>{d}</div>
-          ))}
-        </div>
-
-        {loading ? (
-          <p style={{ textAlign: 'center', padding: '32px' }}>Loading calendar…</p>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
-            {days.map((day) => {
-              const dayStays = staysOnDay(day);
-              const selected = isSameDay(day, selectedDate);
-              return (
-                <button
-                  key={day.toISOString()}
-                  type="button"
-                  onClick={() => setSelectedDate(day)}
-                  style={{
-                    minHeight: '90px',
-                    padding: '8px',
-                    borderRadius: '12px',
-                    border: selected ? '2px solid var(--primary)' : '1px solid var(--border)',
-                    background: isSameMonth(day, currentDate) ? 'var(--surface)' : 'var(--background)',
-                    opacity: isSameMonth(day, currentDate) ? 1 : 0.5,
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <span style={{ fontSize: '13px', fontWeight: '700' }}>{format(day, 'd')}</span>
-                  <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    {dayStays.slice(0, 3).map((s) => (
-                      <span
-                        key={s.id}
-                        onClick={(e) => { e.stopPropagation(); setDetailStay(s); }}
-                        style={{
-                          fontSize: '9px',
-                          fontWeight: '600',
-                          padding: '2px 4px',
-                          borderRadius: '4px',
-                          background: STATUS_COLORS[s.status] || '#94a3b8',
-                          color: 'white',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {s.room_number}
-                      </span>
-                    ))}
-                    {dayStays.length > 3 && <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>+{dayStays.length - 3}</span>}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+        {canManage && (
+          <button type="button" className="btn-primary" onClick={() => goToBook()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Plus size={18} /> Book Stay
+          </button>
         )}
       </div>
 
-      <div className="card" style={{ marginTop: '24px', padding: '20px' }}>
-        <h4 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <CalendarIcon size={18} /> {format(selectedDate, 'EEEE, MMM d, yyyy')}
-        </h4>
-        {staysOnDay(selectedDate).length === 0 ? (
-          <p style={{ color: 'var(--text-muted)' }}>No stays on this date.</p>
-        ) : (
-          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {staysOnDay(selectedDate).map((s) => (
-              <li key={s.id}>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/gh/stays/${s.id}`)}
-                  style={{
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: '12px',
-                    borderRadius: '10px',
-                    border: '1px solid var(--border)',
-                    background: 'var(--surface)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <strong>{s.booking_ref}</strong> — {s.customer_name} — Room {s.room_number} ({s.status})
-                </button>
-              </li>
+      <div className="calendar-layout">
+        <div className="premium-card" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <button type="button" className="btn-secondary" onClick={() => setCurrentDate(subMonths(currentDate, 1))} aria-label="Previous month"><ChevronLeft /></button>
+            <h3 style={{ fontSize: '18px', fontWeight: '700' }}>{format(currentDate, 'MMMM yyyy')}</h3>
+            <button type="button" className="btn-secondary" onClick={() => setCurrentDate(addMonths(currentDate, 1))} aria-label="Next month"><ChevronRight /></button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', marginBottom: '8px' }}>
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+              <div key={d} style={{ textAlign: 'center', fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)' }}>{d}</div>
             ))}
-          </ul>
-        )}
-      </div>
-
-      {detailStay && (
-        <div className="modal-overlay" onClick={() => setDetailStay(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <h3 style={{ fontWeight: '700' }}>{detailStay.booking_ref}</h3>
-              <button type="button" onClick={() => setDetailStay(null)}><X size={22} /></button>
-            </div>
-            <p><BedDouble size={14} style={{ display: 'inline' }} /> Room {detailStay.room_number}</p>
-            <p style={{ marginTop: '8px' }}>{detailStay.customer_name}</p>
-            <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{detailStay.check_in} → {detailStay.check_out}</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px' }}>
-              <button type="button" className="btn-primary" style={{ width: '100%' }} onClick={() => navigate(`/gh/stays/${detailStay.id}`)}>
-                View details
-              </button>
-              <button type="button" className="btn-secondary" style={{ width: '100%' }} onClick={() => navigate(`/gh/print/stay/${detailStay.id}`)}>
-                Print invoice
-              </button>
-            </div>
           </div>
+
+          {loading ? (
+            <p style={{ textAlign: 'center', padding: '32px' }}>Loading calendar…</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
+              {days.map((day) => {
+                const dayStays = staysOnDay(day);
+                const selected = isSameDay(day, selectedDate);
+                const future = isFutureDay(day);
+                return (
+                  <button
+                    key={day.toISOString()}
+                    type="button"
+                    onClick={() => setSelectedDate(day)}
+                    onDoubleClick={() => future && canManage && goToBook(day)}
+                    style={{
+                      minHeight: '90px',
+                      padding: '8px',
+                      borderRadius: '12px',
+                      border: selected ? '2px solid var(--primary)' : '1px solid var(--border)',
+                      background: isSameMonth(day, currentDate) ? 'var(--surface)' : 'var(--background)',
+                      opacity: isSameMonth(day, currentDate) ? 1 : 0.5,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span style={{ fontSize: '13px', fontWeight: '700', display: 'flex', justifyContent: 'space-between' }}>
+                      {format(day, 'd')}
+                      {future && isSameMonth(day, currentDate) && canManage && (
+                        <Plus size={12} color="var(--primary)" />
+                      )}
+                    </span>
+                    <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      {dayStays.slice(0, 3).map((s) => (
+                        <span
+                          key={s.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => { e.stopPropagation(); openStay(navigate, s); }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              openStay(navigate, s);
+                            }
+                          }}
+                          style={{
+                            fontSize: '9px',
+                            fontWeight: '600',
+                            padding: '2px 4px',
+                            borderRadius: '4px',
+                            background: STATUS_COLORS[s.status] || '#94a3b8',
+                            color: 'white',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {s.room_number}
+                        </span>
+                      ))}
+                      {dayStays.length > 3 && <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>+{dayStays.length - 3}</span>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
+
+        <div className="premium-card" style={{ padding: '20px' }}>
+          <h4 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <CalendarIcon size={18} /> {format(selectedDate, 'EEEE, MMM d, yyyy')}
+            {isFutureDay(selectedDate) && (
+              <span style={{ fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '12px', background: 'var(--primary-light)', color: 'var(--primary)' }}>
+                Future
+              </span>
+            )}
+          </h4>
+          {staysOnDay(selectedDate).length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)' }}>
+              <p>No stays on this date.</p>
+              {canManage && (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => goToBook(selectedDate)}
+                  style={{ marginTop: '16px', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 20px' }}
+                >
+                  <Plus size={16} /> Book stay for this date
+                </button>
+              )}
+            </div>
+          ) : (
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {staysOnDay(selectedDate).map((s) => {
+                const due = Math.max(0, Number(s.total_amount) - Number(s.advance_paid));
+                return (
+                  <li key={s.id}>
+                    <button
+                      type="button"
+                      onClick={() => openStay(navigate, s)}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '14px',
+                        borderRadius: '12px',
+                        border: '1px solid var(--border)',
+                        background: 'var(--surface)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '10px',
+                        transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(91, 213, 30, 0.4)';
+                        e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ fontWeight: '800', fontSize: '14px', margin: '0 0 4px 0' }}>{s.customer_name}</p>
+                        <p style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--primary)', margin: '0 0 6px 0' }}>{s.booking_ref}</p>
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 8px 0' }}>
+                          Room {s.room_number}
+                        </p>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                          <StatusBadge status={s.status} />
+                          {hasCollectDue(due) && (
+                            <span style={{ fontSize: '11px', fontWeight: '700', color: '#b91c1c' }}>
+                              Due {formatCollectDue(due)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronRightIcon size={18} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

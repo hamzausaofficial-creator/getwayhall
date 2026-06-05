@@ -19,7 +19,8 @@ from core.permissions import (
     IsTenantOwner,
     IsGuestHouseApp,
 )
-from .models import Room, StayBooking, StayPayment, GhExpense
+from .models import Room, StayBooking, StayPayment, GhExpense, GuestHousePageVisibility
+from .page_visibility import ensure_tenant_gh_pages
 from .serializers import (
     RoomSerializer,
     StayBookingSerializer,
@@ -292,6 +293,46 @@ class GuestHouseCalendarView(APIView):
         })
 
 
+class GuestHouseRoomAvailabilityView(APIView):
+    """Return rooms available for a check-in / check-out date range (standard PMS feature)."""
+    permission_classes = [IsAuthenticated, IsGuestHouseApp]
+
+    def get(self, request):
+        tenant = request.user.tenant
+        check_in = request.GET.get('check_in')
+        check_out = request.GET.get('check_out')
+        exclude_stay = request.GET.get('exclude_stay')
+        if not check_in or not check_out:
+            return Response({'detail': 'check_in and check_out required (YYYY-MM-DD).'}, status=400)
+        if check_out <= check_in:
+            return Response({'detail': 'check_out must be after check_in.'}, status=400)
+
+        booked_qs = StayBooking.objects.filter(
+            tenant=tenant,
+            check_in__lt=check_out,
+            check_out__gt=check_in,
+        ).exclude(status='CANCELLED')
+        if exclude_stay:
+            booked_qs = booked_qs.exclude(pk=exclude_stay)
+        booked_room_ids = booked_qs.values_list('room_id', flat=True)
+
+        all_rooms = Room.objects.filter(tenant=tenant, status='ACTIVE').order_by('room_number')
+        available = all_rooms.exclude(id__in=booked_room_ids)
+        booked_ids = list(booked_room_ids)
+        room_data = RoomSerializer(all_rooms, many=True).data
+        for room in room_data:
+            room['is_available'] = room['id'] not in booked_ids
+        return Response({
+            'check_in': check_in,
+            'check_out': check_out,
+            'all_rooms': room_data,
+            'available_rooms': RoomSerializer(available, many=True).data,
+            'booked_room_ids': booked_ids,
+            'total_available': available.count(),
+            'total_rooms': all_rooms.count(),
+        })
+
+
 class GuestHouseAlertsView(APIView):
     permission_classes = [IsAuthenticated, IsGuestHouseApp]
 
@@ -392,13 +433,22 @@ class StayBookingViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelV
         extra = {'created_by': user}
         if user.tenant_id:
             extra['tenant'] = user.tenant
+        advance_method = self.request.data.get('advance_payment_method', 'CASH')
+        if advance_method not in dict(StayPayment.METHOD_CHOICES):
+            advance_method = 'CASH'
+        try:
+            advance_amount = Decimal(str(self.request.data.get('advance_paid', 0) or 0))
+        except Exception:
+            advance_amount = Decimal('0')
+        if advance_amount < 0:
+            advance_amount = Decimal('0')
         stay = serializer.save(**extra)
-        if stay.advance_paid and stay.advance_paid > 0:
+        if advance_amount > 0:
             StayPayment.objects.create(
                 tenant=stay.tenant,
                 stay=stay,
-                amount=stay.advance_paid,
-                payment_method='CASH',
+                amount=advance_amount,
+                payment_method=advance_method,
                 status='COMPLETED',
                 notes='Initial advance on booking',
                 recorded_by=user,
@@ -409,13 +459,30 @@ class StayBookingViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelV
         stay = self.get_object()
         if stay.status == 'CANCELLED':
             return Response({'detail': 'Cancelled stay cannot be checked in.'}, status=400)
+        balance_due = stay.remaining_balance
+        if balance_due > 0 and not request.data.get('acknowledge_balance'):
+            return Response({
+                'detail': f'Balance due: Rs {balance_due}. Collect payment or acknowledge to proceed.',
+                'balance_due': float(balance_due),
+                'requires_acknowledgement': True,
+            }, status=400)
         stay.status = 'CHECKED_IN'
         stay.save(update_fields=['status', 'updated_at'])
-        return Response(StayBookingSerializer(stay).data)
+        data = StayBookingSerializer(stay).data
+        if balance_due > 0:
+            data['check_in_warning'] = f'Checked in with Rs {balance_due} balance due.'
+        return Response(data)
 
     @action(detail=True, methods=['post'])
     def check_out(self, request, pk=None):
         stay = self.get_object()
+        balance_due = stay.remaining_balance
+        if balance_due > 0 and not request.data.get('acknowledge_balance'):
+            return Response({
+                'detail': f'Cannot check out — Rs {balance_due} still due.',
+                'balance_due': float(balance_due),
+                'requires_acknowledgement': True,
+            }, status=400)
         stay.status = 'CHECKED_OUT'
         stay.save(update_fields=['status', 'updated_at'])
         return Response(StayBookingSerializer(stay).data)
@@ -425,8 +492,20 @@ class StayBookingViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelV
         stay = self.get_object()
         if stay.status == 'CHECKED_IN':
             return Response({'detail': 'Checked-in stay must be checked out first.'}, status=400)
+        refund_advance = request.data.get('refund_advance', False)
+        paid = stay.advance_paid or Decimal('0')
         stay.status = 'CANCELLED'
         stay.save(update_fields=['status', 'updated_at'])
+        if refund_advance and paid > 0:
+            StayPayment.objects.create(
+                tenant=stay.tenant,
+                stay=stay,
+                amount=-paid,
+                payment_method='CASH',
+                status='COMPLETED',
+                notes='Refund on cancellation',
+                recorded_by=request.user,
+            )
         return Response(StayBookingSerializer(stay).data)
 
     @action(detail=True, methods=['post'])
@@ -469,3 +548,27 @@ class GhExpenseViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelVie
         if user.tenant_id:
             extra['tenant'] = user.tenant
         serializer.save(**extra)
+
+
+class GuestHousePageVisibilityView(APIView):
+    """Return per-tenant Guest House page visibility for the frontend sidebar and route guards."""
+
+    permission_classes = [IsAuthenticated, IsGuestHouseApp]
+
+    def get(self, request):
+        tenant = request.user.tenant
+        if not tenant:
+            return Response({'detail': 'No tenant.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        ensure_tenant_gh_pages(tenant)
+        pages = GuestHousePageVisibility.objects.filter(tenant=tenant).order_by('sort_order', 'page_key')
+        return Response({
+            'pages': [
+                {
+                    'key': p.page_key,
+                    'label': p.label,
+                    'is_visible': p.is_visible,
+                }
+                for p in pages
+            ],
+        })

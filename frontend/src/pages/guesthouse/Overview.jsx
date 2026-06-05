@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { format, parseISO } from 'date-fns';
 import {
   Wallet,
   CalendarCheck,
@@ -8,8 +9,6 @@ import {
   Plus,
   UserPlus,
   CreditCard,
-  Eye,
-  Pencil,
   ChevronRight,
   DoorOpen,
   LogIn,
@@ -18,7 +17,6 @@ import '../../styles/dashboard.css';
 import { getGuestHouseStats, getGuestHouseAlerts } from '../../api/guesthouse';
 import { useAuth } from '../../context/AuthContext';
 import StatCard from '../../components/ui/StatCard';
-import DataTable from '../../components/ui/DataTable';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { DashboardSkeleton } from '../../components/ui/LoadingSkeleton';
 import {
@@ -61,6 +59,16 @@ const toNum = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+const formatStayDates = (checkIn, checkOut) => {
+  try {
+    const inD = format(parseISO(checkIn), 'dd MMM');
+    const outD = format(parseISO(checkOut), 'dd MMM yyyy');
+    return `${inD} → ${outD}`;
+  } catch {
+    return `${checkIn || '—'} → ${checkOut || '—'}`;
+  }
+};
+
 const normalizeStats = (data) => ({
   ...EMPTY_STATS,
   ...(data && typeof data === 'object' ? data : {}),
@@ -97,18 +105,6 @@ export default function GuestHouseOverview() {
   const revenueTrend = useMemo(
     () => revenueTrendPercent(stats.revenue_growth),
     [stats.revenue_growth],
-  );
-
-  const recentRows = useMemo(
-    () =>
-      stats.recent_stays.map((s) => ({
-        id: s.id,
-        customer: s.customer_name,
-        room: `Room ${s.room_number}`,
-        dates: `${s.check_in} → ${s.check_out}`,
-        status: s.status,
-      })),
-    [stats.recent_stays],
   );
 
   const fetchAlerts = useCallback(async () => {
@@ -282,8 +278,8 @@ export default function GuestHouseOverview() {
       </section>
 
       <div className="dash-quick-actions">
-        <button type="button" className="dash-btn dash-btn--primary" onClick={() => navigate('/gh/stays/new')}>
-          <Plus size={16} /> New stay
+        <button type="button" className="dash-btn dash-btn--primary" onClick={() => navigate('/gh/book')}>
+          <Plus size={16} /> Book future stay
         </button>
         <button type="button" className="dash-btn dash-btn--secondary" onClick={() => navigate('/gh/customers')}>
           <UserPlus size={16} /> Add customer
@@ -361,36 +357,39 @@ export default function GuestHouseOverview() {
               View all <ChevronRight size={14} />
             </button>
           </header>
-          <DataTable
-            columns={[
-              { key: 'customer', label: 'Guest' },
-              { key: 'room', label: 'Room' },
-              { key: 'dates', label: 'Dates' },
-              { key: 'status', label: 'Status', width: '120px' },
-            ]}
-            data={recentRows}
-            pageSize={5}
-            emptyTitle="No stays yet"
-            emptyDescription="Create your first stay booking to see activity here."
-            onRowClick={(row) => row.id && navigate(`/gh/stays/${row.id}`)}
-            rowActions={(row) => [
-              { label: 'View', icon: <Eye size={14} />, onClick: () => row.id && navigate(`/gh/stays/${row.id}`) },
-              { label: 'Edit', icon: <Pencil size={14} />, onClick: () => row.id && navigate(`/gh/stays/${row.id}/edit`) },
-            ]}
-            renderCell={(row, key) => {
-              if (key === 'customer') {
-                const initial = (row.customer || '?')[0]?.toUpperCase();
+          {stats.recent_stays.length === 0 ? (
+            <EmptyState
+              icon={BedDouble}
+              title="No stays yet"
+              description="Create your first stay booking to see activity here."
+            />
+          ) : (
+            <div className="dash-stay-list">
+              {stats.recent_stays.map((s) => {
+                const initial = (s.customer_name || '?')[0]?.toUpperCase();
                 return (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span className="dash-table__avatar">{initial}</span>
-                    <p className="dash-table__cell-primary">{row.customer}</p>
-                  </div>
+                  <button
+                    key={s.id}
+                    type="button"
+                    className="dash-stay-row"
+                    onClick={() => navigate(`/gh/stays/${s.id}`)}
+                  >
+                    <span className="dash-stay-row__avatar">{initial}</span>
+                    <div className="dash-stay-row__body">
+                      <p className="dash-stay-row__name">{s.customer_name || 'Guest'}</p>
+                      <p className="dash-stay-row__meta">
+                        {s.booking_ref && <span className="dash-stay-row__ref">{s.booking_ref}</span>}
+                        Room {s.room_number} · {formatStayDates(s.check_in, s.check_out)}
+                      </p>
+                    </div>
+                    <span className="dash-stay-row__status">
+                      <StatusBadge status={s.status} />
+                    </span>
+                  </button>
                 );
-              }
-              if (key === 'status') return <StatusBadge status={row.status} />;
-              return <span className="dash-table__cell-primary">{row[key]}</span>;
-            }}
-          />
+              })}
+            </div>
+          )}
         </article>
 
         <article className="dash-panel">

@@ -26,6 +26,7 @@ class Room(models.Model):
     beds = models.PositiveIntegerField(default=1)
     price_per_night = models.DecimalField(max_digits=12, decimal_places=2)
     description = models.TextField(blank=True, default='')
+    image = models.ImageField(upload_to='gh_rooms/', blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -184,3 +185,30 @@ class GhExpense(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class GuestHousePageVisibility(models.Model):
+    """Per-tenant toggle for Guest House sidebar pages (managed in Django admin)."""
+
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name='gh_page_visibility',
+    )
+    page_key = models.CharField(max_length=32)
+    label = models.CharField(max_length=64)
+    is_visible = models.BooleanField(
+        default=True,
+        help_text='Uncheck to hide this page from the Guest House app sidebar and block direct access.',
+    )
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'page_key']
+        unique_together = [('tenant', 'page_key')]
+        verbose_name = 'GH page hide/show'
+        verbose_name_plural = 'GH pages hide/show'
+
+    def __str__(self):
+        status = 'Visible' if self.is_visible else 'Hidden'
+        return f'{self.label} ({self.tenant.name}) — {status}'

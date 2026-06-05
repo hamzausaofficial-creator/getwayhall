@@ -38,13 +38,15 @@ export default function GhPrintPayment() {
 
   const slipId = `PAY-${String(payment.id).padStart(5, '0')}`;
 
+  const isAdvanceReceipt = (payment.notes || '').includes('Initial advance');
+
   return (
     <GhPrintShell
-      title="Payment receipt"
+      title={isAdvanceReceipt ? 'Advance receipt' : 'Payment receipt'}
       subtitle={slipId}
       backTo="/gh/payments"
     >
-      <GhPrintHeader docType="Payment receipt" />
+      <GhPrintHeader docType={isAdvanceReceipt ? 'Advance receipt / ایڈوانس رسیڈ' : 'Payment receipt'} />
 
       <div style={{ textAlign: 'center', marginBottom: '24px', padding: '16px', background: '#f0fdf4', borderRadius: '12px', border: '1px dashed #5BD51E' }}>
         <p style={{ margin: '0 0 6px 0', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: '#64748b' }}>

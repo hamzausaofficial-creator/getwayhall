@@ -9,6 +9,7 @@ import BookingDetail from './pages/BookingDetail';
 import BookingCalendar from './pages/BookingCalendar';
 import HallManagement from './pages/HallManagement';
 import CustomerManagement from './pages/CustomerManagement';
+import GhCustomers from './pages/guesthouse/GhCustomers';
 import Payments from './pages/Payments';
 import Expenses from './pages/Expenses';
 import ExpenseDetail from './pages/ExpenseDetail';
@@ -38,10 +39,17 @@ import StayCalendar from './pages/guesthouse/StayCalendar';
 import GuestHouseReports from './pages/guesthouse/Reports';
 import GhPrintStay from './pages/guesthouse/GhPrintStay';
 import GhPrintPayment from './pages/guesthouse/GhPrintPayment';
+import BookFutureStayPage from './pages/guesthouse/BookFutureStayPage';
 
 import { useAuth } from './context/AuthContext';
 import { AdminRoute, ManagerRoute, StaffBlockedRoute } from './components/RoleRoute';
 import { MarriageHallRoute, GuestHouseRoute } from './components/AppTypeRoute';
+import { GhPageRoute } from './components/GhPageRoute';
+import { GH_PAGE_KEYS } from './constants/ghPages';
+
+const ghPage = (pageKey, element) => (
+  <GhPageRoute pageKey={pageKey}>{element}</GhPageRoute>
+);
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading, user } = useAuth();
@@ -112,27 +120,28 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route path="/gh/dashboard" element={<StaffBlockedRoute><GuestHouseOverview /></StaffBlockedRoute>} />
-          <Route path="/gh/stays/new" element={<StayFormPage />} />
-          <Route path="/gh/stays/:stayId/edit" element={<StayFormPage />} />
-          <Route path="/gh/stays" element={<GuestHouseStays />} />
-          <Route path="/gh/stays/:stayId" element={<StayDetail />} />
-          <Route path="/gh/calendar" element={<StayCalendar />} />
-          <Route path="/gh/rooms/new" element={<RoomFormPage />} />
-          <Route path="/gh/rooms/:roomId/edit" element={<RoomFormPage />} />
-          <Route path="/gh/rooms" element={<GuestHouseRooms />} />
-          <Route path="/gh/customers" element={<CustomerManagement />} />
-          <Route path="/gh/payments/new" element={<PaymentFormPage />} />
-          <Route path="/gh/payments/:paymentId/edit" element={<PaymentFormPage />} />
-          <Route path="/gh/payments" element={<GuestHousePayments />} />
-          <Route path="/gh/expenses/new" element={<ManagerRoute><ExpenseFormPage /></ManagerRoute>} />
-          <Route path="/gh/expenses/:expenseId/edit" element={<ManagerRoute><ExpenseFormPage /></ManagerRoute>} />
-          <Route path="/gh/expenses" element={<ManagerRoute><GuestHouseExpenses /></ManagerRoute>} />
-          <Route path="/gh/reports" element={<ManagerRoute><GuestHouseReports /></ManagerRoute>} />
-          <Route path="/gh/notifications" element={<ManagerRoute><Notifications /></ManagerRoute>} />
-          <Route path="/gh/staff" element={<AdminRoute><Staff /></AdminRoute>} />
-          <Route path="/gh/profile" element={<Profile />} />
-          <Route path="/gh/settings" element={<AdminRoute><Settings /></AdminRoute>} />
+          <Route path="/gh/dashboard" element={ghPage(GH_PAGE_KEYS.DASHBOARD, <StaffBlockedRoute><GuestHouseOverview /></StaffBlockedRoute>)} />
+          <Route path="/gh/book" element={ghPage(GH_PAGE_KEYS.BOOK, <BookFutureStayPage />)} />
+          <Route path="/gh/stays/new" element={ghPage(GH_PAGE_KEYS.STAYS, <StayFormPage />)} />
+          <Route path="/gh/stays/:stayId/edit" element={ghPage(GH_PAGE_KEYS.STAYS, <StayFormPage />)} />
+          <Route path="/gh/stays" element={ghPage(GH_PAGE_KEYS.STAYS, <GuestHouseStays />)} />
+          <Route path="/gh/stays/:stayId" element={ghPage(GH_PAGE_KEYS.STAYS, <StayDetail />)} />
+          <Route path="/gh/calendar" element={ghPage(GH_PAGE_KEYS.CALENDAR, <StayCalendar />)} />
+          <Route path="/gh/rooms/new" element={ghPage(GH_PAGE_KEYS.ROOMS, <RoomFormPage />)} />
+          <Route path="/gh/rooms/:roomId/edit" element={ghPage(GH_PAGE_KEYS.ROOMS, <RoomFormPage />)} />
+          <Route path="/gh/rooms" element={ghPage(GH_PAGE_KEYS.ROOMS, <GuestHouseRooms />)} />
+          <Route path="/gh/customers" element={ghPage(GH_PAGE_KEYS.CUSTOMERS, <GhCustomers />)} />
+          <Route path="/gh/payments/new" element={ghPage(GH_PAGE_KEYS.PAYMENTS, <PaymentFormPage />)} />
+          <Route path="/gh/payments/:paymentId/edit" element={ghPage(GH_PAGE_KEYS.PAYMENTS, <PaymentFormPage />)} />
+          <Route path="/gh/payments" element={ghPage(GH_PAGE_KEYS.PAYMENTS, <GuestHousePayments />)} />
+          <Route path="/gh/expenses/new" element={ghPage(GH_PAGE_KEYS.EXPENSES, <ManagerRoute><ExpenseFormPage /></ManagerRoute>)} />
+          <Route path="/gh/expenses/:expenseId/edit" element={ghPage(GH_PAGE_KEYS.EXPENSES, <ManagerRoute><ExpenseFormPage /></ManagerRoute>)} />
+          <Route path="/gh/expenses" element={ghPage(GH_PAGE_KEYS.EXPENSES, <ManagerRoute><GuestHouseExpenses /></ManagerRoute>)} />
+          <Route path="/gh/reports" element={ghPage(GH_PAGE_KEYS.REPORTS, <ManagerRoute><GuestHouseReports /></ManagerRoute>)} />
+          <Route path="/gh/notifications" element={ghPage(GH_PAGE_KEYS.NOTIFICATIONS, <ManagerRoute><Notifications /></ManagerRoute>)} />
+          <Route path="/gh/staff" element={ghPage(GH_PAGE_KEYS.STAFF, <AdminRoute><Staff /></AdminRoute>)} />
+          <Route path="/gh/profile" element={ghPage(GH_PAGE_KEYS.PROFILE, <Profile />)} />
+          <Route path="/gh/settings" element={ghPage(GH_PAGE_KEYS.SETTINGS, <AdminRoute><Settings /></AdminRoute>)} />
         </Route>
 
         <Route

@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from django.db.models import Sum
+from django.db.models import Sum, F
+from django.db.models.functions import Greatest
 from decimal import Decimal
 from .models import Customer
 
@@ -35,10 +36,13 @@ class CustomerSerializer(serializers.ModelSerializer):
         return self._sync_legacy_names(attrs)
 
     def get_outstanding_balance(self, obj):
-        total = obj.bookings.exclude(booking_status='CANCELLED').aggregate(
+        hall_due = obj.bookings.exclude(booking_status='CANCELLED').aggregate(
             total=Sum('remaining_balance')
         )['total'] or Decimal('0')
-        return float(max(Decimal('0'), total))
+        gh_total = obj.gh_stays.exclude(status='CANCELLED').annotate(
+            due=Greatest(F('total_amount') - F('advance_paid'), Decimal('0'))
+        ).aggregate(total=Sum('due'))['total'] or Decimal('0')
+        return float(max(Decimal('0'), hall_due) + max(Decimal('0'), gh_total))
 
     def create(self, validated_data):
         request = self.context.get('request')

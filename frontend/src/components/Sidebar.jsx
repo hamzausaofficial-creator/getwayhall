@@ -21,10 +21,13 @@ import {
   UserCircle,
   BedDouble,
   CalendarCheck,
+  Plus,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { useAppType } from '../hooks/useAppType';
+import { useGhPageVisibility } from '../context/GhPageVisibilityContext';
+import { GH_PAGE_KEYS } from '../constants/ghPages';
 
 const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobileClose }) => {
   const { logout } = useAuth();
@@ -41,6 +44,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
     canAccessSettings,
     canAccessDashboard,
   } = usePermissions();
+  const { isPageVisible } = useGhPageVisibility();
 
   const hallNavItems = [
     { name: 'Bookings', icon: Calendar, path: '/bookings' },
@@ -57,20 +61,21 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
   ];
 
   const guestHouseNavItems = [
-    { name: 'Stays', icon: CalendarCheck, path: '/gh/stays' },
-    { name: 'Calendar', icon: CalendarDays, path: '/gh/calendar' },
-    { name: 'Rooms', icon: BedDouble, path: '/gh/rooms' },
-    { name: 'Customers', icon: Users, path: '/gh/customers' },
-    { name: 'Payments', icon: CreditCard, path: '/gh/payments' },
-    ...(canAccessExpenses ? [{ name: 'Expenses', icon: Receipt, path: '/gh/expenses' }] : []),
-    ...(canAccessStaff ? [{ name: 'Staff', icon: BadgeCheck, path: '/gh/staff' }] : []),
-    ...(canAccessReports ? [{ name: 'Reports', icon: BarChart3, path: '/gh/reports' }] : []),
-    ...(canAccessNotifications ? [{ name: 'Notifications', icon: Bell, path: '/gh/notifications' }] : []),
-  ];
+    { name: 'Book Stay', icon: Plus, path: '/gh/book', pageKey: GH_PAGE_KEYS.BOOK },
+    { name: 'Stays', icon: CalendarCheck, path: '/gh/stays', pageKey: GH_PAGE_KEYS.STAYS },
+    { name: 'Calendar', icon: CalendarDays, path: '/gh/calendar', pageKey: GH_PAGE_KEYS.CALENDAR },
+    { name: 'Rooms', icon: BedDouble, path: '/gh/rooms', pageKey: GH_PAGE_KEYS.ROOMS },
+    { name: 'Customers', icon: Users, path: '/gh/customers', pageKey: GH_PAGE_KEYS.CUSTOMERS },
+    { name: 'Payments', icon: CreditCard, path: '/gh/payments', pageKey: GH_PAGE_KEYS.PAYMENTS },
+    ...(canAccessExpenses ? [{ name: 'Expenses', icon: Receipt, path: '/gh/expenses', pageKey: GH_PAGE_KEYS.EXPENSES }] : []),
+    ...(canAccessStaff ? [{ name: 'Staff', icon: BadgeCheck, path: '/gh/staff', pageKey: GH_PAGE_KEYS.STAFF }] : []),
+    ...(canAccessReports ? [{ name: 'Reports', icon: BarChart3, path: '/gh/reports', pageKey: GH_PAGE_KEYS.REPORTS }] : []),
+    ...(canAccessNotifications ? [{ name: 'Notifications', icon: Bell, path: '/gh/notifications', pageKey: GH_PAGE_KEYS.NOTIFICATIONS }] : []),
+  ].filter((item) => !item.pageKey || isPageVisible(item.pageKey));
 
   const mainNavItems = isGuestHouse ? guestHouseNavItems : hallNavItems;
   const accountantNavItem = isGuestHouse
-    ? { name: 'Dashboard', icon: Calculator, path: '/gh/dashboard' }
+    ? { name: 'Dashboard', icon: Calculator, path: '/gh/dashboard', pageKey: GH_PAGE_KEYS.DASHBOARD }
     : { name: 'Accountant', icon: Calculator, path: '/dashboard' };
 
   const profilePath = isGuestHouse ? '/gh/profile' : '/profile';
@@ -200,7 +205,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
               </NavLink>
             </li>
           ))}
-          {canAccessDashboard && (
+          {canAccessDashboard && (!isGuestHouse || isPageVisible(accountantNavItem.pageKey)) && (
           <li
             style={{
               width: isCollapsed && !isMobile ? 'auto' : '100%',
@@ -241,6 +246,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
 
       <div style={{ marginTop: 'auto', borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '24px' }}>
         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: isCollapsed && !isMobile ? '16px' : '8px', alignItems: isCollapsed && !isMobile ? 'center' : 'stretch' }}>
+          {(!isGuestHouse || isPageVisible(GH_PAGE_KEYS.PROFILE)) && (
           <li style={{ width: isCollapsed && !isMobile ? 'auto' : '100%', display: 'flex', justifyContent: 'center' }}>
             <NavLink to={profilePath} onClick={handleNavClick} style={{
               display: 'flex',
@@ -258,7 +264,8 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
               {(!isCollapsed || isMobile) && <span>Profile</span>}
             </NavLink>
           </li>
-          {canAccessSettings && (
+          )}
+          {canAccessSettings && (!isGuestHouse || isPageVisible(GH_PAGE_KEYS.SETTINGS)) && (
           <li style={{ width: isCollapsed && !isMobile ? 'auto' : '100%', display: 'flex', justifyContent: 'center' }}>
             <NavLink to={settingsPath} onClick={handleNavClick} style={{
               display: 'flex',

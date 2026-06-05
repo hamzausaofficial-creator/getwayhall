@@ -1,5 +1,7 @@
+from decimal import Decimal
+
 from rest_framework import serializers
-from django.db.models import Q
+from django.db.models import Q, Sum
 from .models import Room, StayBooking, StayPayment, GhExpense
 
 
@@ -8,7 +10,7 @@ class RoomSerializer(serializers.ModelSerializer):
         model = Room
         fields = [
             'id', 'room_number', 'room_type', 'beds', 'price_per_night',
-            'description', 'status', 'created_at', 'updated_at',
+            'description', 'image', 'status', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
@@ -40,6 +42,28 @@ class StayPaymentSerializer(serializers.ModelSerializer):
         user = obj.recorded_by
         name = f'{user.first_name or ""} {user.last_name or ""}'.strip()
         return name or user.username
+
+    def validate(self, attrs):
+        stay = attrs.get('stay') or getattr(self.instance, 'stay', None)
+        amount = attrs.get('amount', getattr(self.instance, 'amount', None))
+        status = attrs.get('status', getattr(self.instance, 'status', 'COMPLETED'))
+        if stay and amount is not None and status == 'COMPLETED':
+            amt = Decimal(str(amount))
+            paid = stay.payments.filter(status='COMPLETED').aggregate(t=Sum('amount'))['t'] or Decimal('0')
+            if self.instance:
+                paid -= Decimal(str(self.instance.amount))
+            if amt < 0:
+                if abs(amt) > max(paid, Decimal('0')):
+                    raise serializers.ValidationError({
+                        'amount': f'Refund cannot exceed amount paid (Rs {max(paid, Decimal("0"))}).',
+                    })
+            else:
+                remaining = Decimal(str(stay.total_amount)) - max(paid, Decimal('0'))
+                if amt > remaining:
+                    raise serializers.ValidationError({
+                        'amount': f'Amount exceeds remaining balance (Rs {remaining}).',
+                    })
+        return attrs
 
     def create(self, validated_data):
         request = self.context.get('request')
@@ -82,6 +106,12 @@ class StayBookingSerializer(serializers.ModelSerializer):
     price_per_night = serializers.DecimalField(source='room.price_per_night', max_digits=12, decimal_places=2, read_only=True)
     nights = serializers.IntegerField(read_only=True)
     remaining_balance = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    advance_payment_method = serializers.ChoiceField(
+        choices=StayPayment.METHOD_CHOICES,
+        default='CASH',
+        write_only=True,
+        required=False,
+    )
 
     class Meta:
         model = StayBooking
@@ -89,13 +119,14 @@ class StayBookingSerializer(serializers.ModelSerializer):
             'id', 'booking_ref', 'customer', 'customer_name', 'customer_phone',
             'room', 'room_number', 'room_type', 'price_per_night',
             'check_in', 'check_out', 'guests_count', 'nights', 'total_amount',
-            'advance_paid', 'remaining_balance', 'status', 'payment_status', 'notes',
+            'advance_paid', 'advance_payment_method', 'remaining_balance',
+            'status', 'payment_status', 'notes',
             'created_at', 'updated_at',
         ]
         read_only_fields = [
             'id', 'booking_ref', 'customer_name', 'customer_phone', 'room_number',
             'room_type', 'price_per_night', 'nights', 'remaining_balance',
-            'payment_status', 'created_at', 'updated_at',
+            'total_amount', 'advance_paid', 'payment_status', 'created_at', 'updated_at',
         ]
 
     def get_customer_name(self, obj):
@@ -119,4 +150,16 @@ class StayBookingSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     'room': f'Room {room.room_number} is already booked for overlapping dates.',
                 })
+        advance = attrs.get('advance_paid')
+        if advance is not None and not self.instance and room and check_in and check_out:
+            nights = max((check_out - check_in).days, 1)
+            total = room.price_per_night * nights
+            if Decimal(str(advance)) > total:
+                raise serializers.ValidationError({
+                    'advance_paid': f'Advance cannot exceed stay total (Rs {total}).',
+                })
         return attrs
+
+    def create(self, validated_data):
+        validated_data.pop('advance_payment_method', None)
+        return super().create(validated_data)

@@ -1,14 +1,21 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import {
   ChevronLeft, Sparkles, BedDouble, FileText, CheckCircle, X, HelpCircle,
 } from 'lucide-react';
-import { createStay, updateStay, getStay, listRooms } from '../../api/guesthouse';
+import { createStay, updateStay, getStay, listRooms, getAvailableRooms } from '../../api/guesthouse';
 import client from '../../api/client';
 import toast from 'react-hot-toast';
 import { usePermissions } from '../../hooks/usePermissions';
 import { customerDisplayName } from '../../utils/customer';
 import { formatRs } from '../../utils/currency';
+
+const METHOD_OPTIONS = [
+  { value: 'CASH', label: 'Cash' },
+  { value: 'CARD', label: 'Card' },
+  { value: 'BANK_TRANSFER', label: 'Bank transfer' },
+  { value: 'ONLINE', label: 'Online' },
+];
 
 const emptyForm = {
   customer: '',
@@ -17,6 +24,7 @@ const emptyForm = {
   check_out: '',
   guests_count: 1,
   advance_paid: 0,
+  advance_payment_method: 'CASH',
   notes: '',
   status: 'CONFIRMED',
 };
@@ -43,11 +51,18 @@ const sectionTitle = (label) => (
 export default function StayFormPage() {
   const { stayId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { canManage } = usePermissions();
   const isEdit = Boolean(stayId);
 
+  const prefillCheckIn = location.state?.check_in || searchParams.get('check_in') || '';
+  const prefillCheckOut = location.state?.check_out || searchParams.get('check_out') || '';
+  const prefillRoom = location.state?.room || searchParams.get('room') || '';
+
   const [form, setForm] = useState(emptyForm);
   const [rooms, setRooms] = useState([]);
+  const [bookedRoomIds, setBookedRoomIds] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [bookingRef, setBookingRef] = useState('');
   const [loading, setLoading] = useState(true);
@@ -83,9 +98,17 @@ export default function StayFormPage() {
             check_out: s.check_out,
             guests_count: s.guests_count,
             advance_paid: s.advance_paid,
+            advance_payment_method: 'CASH',
             notes: s.notes || '',
             status: s.status,
           });
+        } else if (prefillCheckIn || prefillRoom) {
+          setForm((f) => ({
+            ...f,
+            check_in: prefillCheckIn || f.check_in,
+            check_out: prefillCheckOut || f.check_out,
+            room: prefillRoom ? String(prefillRoom) : f.room,
+          }));
         }
       } catch {
         toast.error('Failed to load form data');
@@ -95,7 +118,32 @@ export default function StayFormPage() {
       }
     };
     load();
-  }, [isEdit, stayId, navigate]);
+  }, [isEdit, stayId, navigate, prefillCheckIn, prefillCheckOut, prefillRoom]);
+
+  useEffect(() => {
+    if (!form.check_in || !form.check_out) {
+      setBookedRoomIds([]);
+      return undefined;
+    }
+    let cancelled = false;
+    const loadAvailability = async () => {
+      try {
+        const params = { check_in: form.check_in, check_out: form.check_out };
+        if (isEdit && stayId) params.exclude_stay = stayId;
+        const data = await getAvailableRooms(params);
+        if (cancelled) return;
+        const booked = new Set((data.booked_room_ids || []).map(String));
+        setBookedRoomIds([...booked]);
+        if (form.room && booked.has(String(form.room))) {
+          setForm((f) => ({ ...f, room: '' }));
+        }
+      } catch {
+        if (!cancelled) setBookedRoomIds([]);
+      }
+    };
+    loadAvailability();
+    return () => { cancelled = true; };
+  }, [form.check_in, form.check_out, isEdit, stayId]);
 
   const selectedRoom = useMemo(
     () => rooms.find((r) => String(r.id) === String(form.room)),
@@ -131,7 +179,10 @@ export default function StayFormPage() {
       notes: form.notes,
       status: form.status,
     };
-    if (!isEdit) payload.advance_paid = Number(form.advance_paid) || 0;
+    if (!isEdit) {
+      payload.advance_paid = Number(form.advance_paid) || 0;
+      payload.advance_payment_method = form.advance_payment_method;
+    }
 
     try {
       if (isEdit) {
@@ -141,7 +192,11 @@ export default function StayFormPage() {
       } else {
         const created = await createStay(payload);
         toast.success('Stay booked');
-        navigate(`/gh/stays/${created.id}`);
+        if (Number(form.advance_paid) > 0) {
+          navigate(`/gh/print/stay/${created.id}?doc=advance`);
+        } else {
+          navigate(`/gh/stays/${created.id}`);
+        }
       }
     } catch (err) {
       const msg = err.response?.data
@@ -287,12 +342,20 @@ export default function StayFormPage() {
                     style={{ width: '100%' }}
                   >
                     <option value="">Select Room</option>
-                    {rooms.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        Room {r.room_number} — Rs {parseFloat(r.price_per_night).toLocaleString()}/night
-                      </option>
-                    ))}
+                    {rooms.map((r) => {
+                      const isBooked = bookedRoomIds.includes(String(r.id));
+                      return (
+                        <option key={r.id} value={r.id} disabled={isBooked}>
+                          Room {r.room_number} — Rs {parseFloat(r.price_per_night).toLocaleString()}/night{isBooked ? ' (Booked)' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
+                  {form.check_in && form.check_out && bookedRoomIds.length > 0 && (
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                      Rooms marked &quot;Booked&quot; are unavailable for the selected dates.
+                    </p>
+                  )}
                 </div>
               </div>
             </section>
@@ -421,16 +484,30 @@ export default function StayFormPage() {
                       <span style={{ fontWeight: '700' }}>{formatRs(stayEstimate.total)}</span>
                     </div>
                     {!isEdit && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)' }}>Advance paid</span>
-                        <input
-                          type="number"
-                          min={0}
-                          value={form.advance_paid}
-                          onChange={(e) => setForm({ ...form, advance_paid: e.target.value })}
-                          style={{ width: '110px', padding: '6px 10px', fontSize: '13px', textAlign: 'right', fontWeight: '700' }}
-                        />
-                      </div>
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)' }}>Advance paid</span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={form.advance_paid}
+                            onChange={(e) => setForm({ ...form, advance_paid: e.target.value })}
+                            style={{ width: '110px', padding: '6px 10px', fontSize: '13px', textAlign: 'right', fontWeight: '700' }}
+                          />
+                        </div>
+                        <div className="input-group" style={{ marginTop: '4px' }}>
+                          <label style={{ fontSize: '11px' }}>Advance method</label>
+                          <select
+                            value={form.advance_payment_method}
+                            onChange={(e) => setForm({ ...form, advance_payment_method: e.target.value })}
+                            style={{ width: '100%', fontSize: '13px' }}
+                          >
+                            {METHOD_OPTIONS.map((m) => (
+                              <option key={m.value} value={m.value}>{m.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
                     )}
                     <div
                       style={{

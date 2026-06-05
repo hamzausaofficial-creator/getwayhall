@@ -11,6 +11,7 @@ import { listRooms, deleteRoom } from '../../api/guesthouse';
 import toast from 'react-hot-toast';
 import { usePermissions } from '../../hooks/usePermissions';
 import SearchInput from '../../components/SearchInput';
+import { resolveMediaUrl } from '../../utils/media';
 
 const GuestHouseRooms = () => {
   const navigate = useNavigate();
@@ -98,16 +99,25 @@ const GuestHouseRooms = () => {
             <div key={room.id} className="premium-card" style={{ padding: 0, overflow: 'hidden' }}>
               <div
                 style={{
-                  height: '140px',
+                  height: '160px',
                   backgroundColor: 'var(--surface-elevated)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: 'var(--text-muted)',
                   position: 'relative',
+                  overflow: 'hidden',
                 }}
               >
-                <BedDouble size={48} />
+                {room.image ? (
+                  <img
+                    src={resolveMediaUrl(room.image)}
+                    alt={`Room ${room.room_number}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <BedDouble size={48} />
+                )}
                 {canManage && (
                   <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '8px' }}>
                     <button

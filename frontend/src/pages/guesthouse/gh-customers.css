@@ -1,0 +1,333 @@
+/* Guest House — Customers CRM */
+
+.gh-cust-page {
+  padding-bottom: 40px;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.gh-cust-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.15fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .gh-cust-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.gh-cust-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gh-cust-row {
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.gh-cust-row:hover {
+  border-color: rgba(91, 213, 30, 0.35);
+  box-shadow: var(--shadow-sm);
+}
+
+.gh-cust-row--active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  box-shadow: 0 0 0 1px rgba(91, 213, 30, 0.2);
+}
+
+.gh-cust-row__avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: var(--primary-light);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.gh-cust-row--active .gh-cust-row__avatar {
+  background: var(--primary);
+  color: #fff;
+}
+
+.gh-cust-row__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.gh-cust-row__name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--secondary);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gh-cust-row__phone {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 3px 0 0 0;
+}
+
+.gh-cust-row__due {
+  font-size: 11px;
+  font-weight: 800;
+  margin-top: 5px;
+}
+
+.gh-cust-row__due--warn { color: #b91c1c; }
+.gh-cust-row__due--ok { color: var(--text-muted); }
+
+.gh-cust-detail {
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  overflow: hidden;
+  position: sticky;
+  top: 96px;
+}
+
+@media (max-width: 960px) {
+  .gh-cust-detail {
+    position: static;
+  }
+}
+
+.gh-cust-detail__head {
+  padding: 22px 24px;
+  background: linear-gradient(135deg, var(--primary-light) 0%, var(--surface) 100%);
+  border-bottom: 1px solid var(--border);
+}
+
+.gh-cust-detail__name {
+  font-size: clamp(20px, 3vw, 24px);
+  font-weight: 900;
+  margin: 0 0 4px 0;
+  color: var(--secondary);
+  word-break: break-word;
+}
+
+.gh-cust-detail__sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.gh-cust-detail__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.gh-cust-detail__body {
+  padding: 22px 24px;
+}
+
+.gh-cust-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.gh-cust-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 100%;
+  word-break: break-word;
+}
+
+.gh-cust-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.gh-cust-stat {
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--background);
+  border: 1px solid var(--border);
+}
+
+.gh-cust-stat__label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin: 0 0 6px 0;
+}
+
+.gh-cust-stat__val {
+  font-size: 22px;
+  font-weight: 900;
+  margin: 0;
+  color: var(--secondary);
+}
+
+.gh-cust-stat__val--warn { color: #b91c1c; }
+
+.gh-cust-stays-title {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--primary);
+  margin: 0 0 14px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gh-cust-stays {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.gh-cust-stay {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gh-cust-stay:hover {
+  border-color: rgba(91, 213, 30, 0.4);
+  box-shadow: var(--shadow-sm);
+}
+
+.gh-cust-stay__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.gh-cust-stay__ref {
+  font-size: 10px;
+  font-weight: 800;
+  font-family: ui-monospace, monospace;
+  color: var(--primary);
+  margin: 0 0 4px 0;
+}
+
+.gh-cust-stay__room {
+  font-size: 15px;
+  font-weight: 800;
+  margin: 0;
+  color: var(--secondary);
+}
+
+.gh-cust-stay__dates {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 4px 0 0 0;
+}
+
+.gh-cust-stay__amounts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  font-size: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.gh-cust-stay__amt-l {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 2px 0;
+}
+
+.gh-cust-stay__amt-v {
+  font-weight: 800;
+  margin: 0;
+}
+
+.gh-cust-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+  padding: 16px;
+}
+
+.gh-cust-modal {
+  width: 100%;
+  max-width: 500px;
+  padding: 28px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.gh-cust-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  border-radius: 14px;
+  border: 2px dashed var(--border);
+  background: var(--background);
+}
+
+.gh-cust-list-panel {
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 16px;
+}
+
+.gh-cust-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}

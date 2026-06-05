@@ -104,17 +104,17 @@ USE_I18N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
-STATIC_URL = '/'
+# Must be /static/ — STATIC_URL='/' breaks Django admin (/admin/css/...) and SPA routing.
+STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Serve React static assets in production
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, '..', 'frontend', 'dist'),
-]
+# React build is served via /assets/ in urls.py (not collected to STATIC_ROOT).
+STATICFILES_DIRS = []
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+WHITENOISE_USE_FINDERS = True
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

@@ -8,8 +8,10 @@ from .views import (
     GuestHouseDashboardStatsView,
     GuestHouseReportsView,
     GuestHouseCalendarView,
+    GuestHouseRoomAvailabilityView,
     GuestHouseAlertsView,
     GuestHouseSearchView,
+    GuestHousePageVisibilityView,
 )
 
 router = DefaultRouter()
@@ -22,7 +24,9 @@ urlpatterns = [
     path('stats/', GuestHouseDashboardStatsView.as_view(), name='gh-dashboard-stats'),
     path('reports/', GuestHouseReportsView.as_view(), name='gh-reports'),
     path('calendar/', GuestHouseCalendarView.as_view(), name='gh-calendar'),
+    path('rooms/available/', GuestHouseRoomAvailabilityView.as_view(), name='gh-room-availability'),
     path('alerts/', GuestHouseAlertsView.as_view(), name='gh-alerts'),
     path('search/', GuestHouseSearchView.as_view(), name='gh-search'),
+    path('page-visibility/', GuestHousePageVisibilityView.as_view(), name='gh-page-visibility'),
     path('', include(router.urls)),
 ]

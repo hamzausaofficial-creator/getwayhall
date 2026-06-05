@@ -10,6 +10,7 @@ import { useIsMobile } from '../hooks/useMediaQuery';
 import { globalSearch } from '../api/core';
 import { guestHouseSearch } from '../api/guesthouse';
 import { useAppType } from '../hooks/useAppType';
+import { GhPageVisibilityProvider } from '../context/GhPageVisibilityContext';
 
 const DashboardLayout = () => {
   const { user } = useAuth();
@@ -109,6 +110,7 @@ const DashboardLayout = () => {
   ].filter(Boolean).join(' ');
 
   return (
+    <GhPageVisibilityProvider enabled={isGuestHouse}>
     <div className={shellClass}>
       <div
         className={`sidebar-backdrop ${mobileMenuOpen ? 'sidebar-backdrop--visible' : ''}`}
@@ -406,6 +408,7 @@ const DashboardLayout = () => {
         </div>
       </main>
     </div>
+    </GhPageVisibilityProvider>
   );
 };
 

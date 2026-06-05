@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ChevronLeft, Sparkles, BedDouble, FileText, CheckCircle, X, HelpCircle, Users,
+  ChevronLeft, Sparkles, BedDouble, FileText, CheckCircle, X, HelpCircle, Users, ImagePlus,
 } from 'lucide-react';
 import { createRoom, updateRoom, getRoom } from '../../api/guesthouse';
 import toast from 'react-hot-toast';
 import { usePermissions } from '../../hooks/usePermissions';
 import { formatRs } from '../../utils/currency';
+import { resolveMediaUrl } from '../../utils/media';
 
 const ROOM_TYPES = [
   { value: 'SINGLE', label: 'Single' },
@@ -56,6 +57,11 @@ export default function RoomFormPage() {
   const isEdit = Boolean(roomId);
 
   const [form, setForm] = useState(emptyForm);
+  const [imageFile, setImageFile] = useState(null);
+  const [existingImage, setExistingImage] = useState('');
+  const [removeImage, setRemoveImage] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const fileInputRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
@@ -81,6 +87,7 @@ export default function RoomFormPage() {
             status: room.status || 'ACTIVE',
             description: room.description || '',
           });
+          setExistingImage(room.image || '');
         }
       } catch {
         toast.error('Room not found');
@@ -91,6 +98,40 @@ export default function RoomFormPage() {
     };
     load();
   }, [isEdit, roomId, navigate]);
+
+  useEffect(() => {
+    if (imageFile) {
+      const url = URL.createObjectURL(imageFile);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    setPreviewUrl('');
+    return undefined;
+  }, [imageFile]);
+
+  const displayImage = previewUrl || (existingImage ? resolveMediaUrl(existingImage) : '');
+
+  const handleImagePick = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB');
+      return;
+    }
+    setImageFile(file);
+    setRemoveImage(false);
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    setExistingImage('');
+    setRemoveImage(true);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const typeLabel = ROOM_TYPES.find((t) => t.value === form.room_type)?.label || form.room_type;
   const statusLabel = STATUS_OPTIONS.find((s) => s.value === form.status)?.label || form.status;
@@ -110,10 +151,16 @@ export default function RoomFormPage() {
     };
     try {
       if (isEdit) {
-        await updateRoom(roomId, payload);
+        if (imageFile) {
+          await updateRoom(roomId, payload, imageFile);
+        } else if (removeImage) {
+          await updateRoom(roomId, { ...payload, image: null });
+        } else {
+          await updateRoom(roomId, payload);
+        }
         toast.success('Room updated');
       } else {
-        await createRoom(payload);
+        await createRoom(payload, imageFile);
         toast.success('Room added');
       }
       navigate('/gh/rooms');
@@ -284,6 +331,85 @@ export default function RoomFormPage() {
             </section>
 
             <section style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {sectionTitle('Room photo')}
+              <div className="premium-card" style={{ padding: '28px' }}>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImagePick}
+                  style={{ display: 'none' }}
+                />
+                <div
+                  style={{
+                    borderRadius: '14px',
+                    border: '2px dashed var(--border)',
+                    overflow: 'hidden',
+                    background: 'var(--background)',
+                  }}
+                >
+                  {displayImage ? (
+                    <div style={{ position: 'relative' }}>
+                      <img
+                        src={displayImage}
+                        alt="Room preview"
+                        style={{ width: '100%', height: '220px', objectFit: 'cover', display: 'block' }}
+                      />
+                      <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 8 }}>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => fileInputRef.current?.click()}
+                          style={{ padding: '8px 12px', fontSize: 12, fontWeight: 700 }}
+                        >
+                          Change
+                        </button>
+                        {(imageFile || existingImage) && (
+                          <button
+                            type="button"
+                            onClick={() => { clearImage(); setExistingImage(''); }}
+                            style={{
+                              padding: '8px 12px',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              background: '#fff',
+                              border: '1px solid var(--border)',
+                              borderRadius: 8,
+                              color: '#b91c1c',
+                            }}
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{
+                        width: '100%',
+                        padding: '48px 24px',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 12,
+                        color: 'var(--text-muted)',
+                      }}
+                    >
+                      <ImagePlus size={36} style={{ color: 'var(--primary)', opacity: 0.7 }} />
+                      <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--secondary)' }}>Upload room photo</span>
+                      <span style={{ fontSize: 12 }}>JPG, PNG or WebP · max 5MB</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {sectionTitle('Description')}
               <div className="premium-card" style={{ padding: '28px' }}>
                 <div className="input-group">
@@ -321,16 +447,21 @@ export default function RoomFormPage() {
               <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div
                   style={{
-                    height: '100px',
+                    height: '120px',
                     backgroundColor: 'var(--surface-elevated)',
                     borderRadius: '12px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: 'var(--text-muted)',
+                    overflow: 'hidden',
                   }}
                 >
-                  <BedDouble size={40} />
+                  {displayImage ? (
+                    <img src={displayImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <BedDouble size={40} />
+                  )}
                 </div>
 
                 <div>

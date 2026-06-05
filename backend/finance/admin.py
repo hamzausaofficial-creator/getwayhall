@@ -1,3 +1,23 @@
 from django.contrib import admin
+from .models import Payment, Expense
 
-# Register your models here.
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = (
+        'id', 'booking', 'amount', 'payment_method', 'status',
+        'payment_date', 'tenant', 'recorded_by',
+    )
+    list_filter = ('status', 'payment_method', 'tenant')
+    search_fields = ('transaction_id', 'notes', 'booking__booking_id', 'booking__event_name')
+    raw_id_fields = ('booking', 'recorded_by')
+    date_hierarchy = 'payment_date'
+
+
+@admin.register(Expense)
+class ExpenseAdmin(admin.ModelAdmin):
+    list_display = ('title', 'category', 'amount', 'expense_date', 'tenant', 'created_by', 'created_at')
+    list_filter = ('category', 'tenant')
+    search_fields = ('title', 'description')
+    raw_id_fields = ('created_by',)
+    date_hierarchy = 'expense_date'
