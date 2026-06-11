@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Printer, ChevronLeft } from 'lucide-react';
+import AppLogo from '../AppLogo';
+import { BRAND_GUEST_HOUSE } from '../../constants/brand';
 
 const PRINT_STYLES = `
 @media print {
@@ -11,12 +13,14 @@ const PRINT_STYLES = `
     left: 0;
     top: 0;
     width: 100%;
-    padding: 0;
-    margin: 0;
+    max-width: 100%;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
   }
   .print-hide { display: none !important; }
 }
-@page { margin: 12mm; }
 `;
 
 export default function GhPrintShell({ title, subtitle, children, autoPrint = true, backTo }) {
@@ -64,11 +68,10 @@ export default function GhPrintShell({ title, subtitle, children, autoPrint = tr
       </div>
 
       <div
-        className="gh-print-doc"
+        className="gh-print-doc print-page-a5"
         style={{
-          maxWidth: '800px',
           margin: '0 auto',
-          padding: '40px',
+          padding: '28px 24px',
           background: '#fff',
           color: '#0f172a',
           fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -85,10 +88,15 @@ export default function GhPrintShell({ title, subtitle, children, autoPrint = tr
 export function GhPrintHeader({ docType }) {
   return (
     <header style={{ borderBottom: '3px solid #5BD51E', paddingBottom: '20px', marginBottom: '28px' }}>
-      <h1 style={{ fontSize: '26px', fontWeight: '900', color: '#5BD51E', margin: '0 0 4px 0', letterSpacing: '-0.02em' }}>
-        Gateway Guest House
-      </h1>
-      <p style={{ margin: 0, fontSize: '14px', color: '#64748b', fontWeight: '600' }}>{docType}</p>
+      <AppLogo
+        size="md"
+        tone="dark"
+        showName
+        name={BRAND_GUEST_HOUSE}
+        className="app-logo--print"
+        nameClassName="app-logo__print-title"
+      />
+      <p style={{ margin: '8px 0 0', fontSize: '14px', color: '#64748b', fontWeight: '600' }}>{docType}</p>
     </header>
   );
 }

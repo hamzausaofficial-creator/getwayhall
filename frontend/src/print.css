@@ -1,0 +1,37 @@
+/* Global print — A5 portrait for every printable document */
+@media print {
+  @page {
+    size: A5 portrait;
+    margin: 10mm;
+  }
+
+  .app-sidebar,
+  .sidebar-backdrop,
+  .dashboard-header {
+    display: none !important;
+  }
+
+  .dashboard-shell,
+  .dashboard-main,
+  .dashboard-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* On-screen preview width ≈ A5 content area (128mm) */
+.print-page-a5 {
+  box-sizing: border-box;
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media screen {
+  #printable-report-sheet,
+  #printable-gh-report-sheet {
+    display: none !important;
+  }
+}

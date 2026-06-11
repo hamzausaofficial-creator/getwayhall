@@ -8,6 +8,8 @@ export const getGuestHouseCalendar = (params) => client.get('/guesthouse/calenda
 export const getAvailableRooms = (params) => client.get('/guesthouse/rooms/available/', { params }).then((r) => r.data);
 export const getGuestHouseAlerts = () => client.get('/guesthouse/alerts/').then((r) => r.data);
 export const guestHouseSearch = (q) => client.get('/guesthouse/search/', { params: { q } }).then((r) => r.data);
+export const getGuestHouseRecords = (params) => client.get('/guesthouse/records/', { params }).then((r) => r.data);
+export const getGuestHouseDaily = (params) => client.get('/guesthouse/daily/', { params }).then((r) => r.data);
 export const getGhPageVisibility = () => client.get('/guesthouse/page-visibility/').then((r) => r.data);
 
 const roomRequestConfig = (payload, imageFile) => {
@@ -26,6 +28,17 @@ const roomRequestConfig = (payload, imageFile) => {
   }
   return { data: payload, config: {} };
 };
+
+export const listGhServices = (params) => client.get('/guesthouse/services/', { params }).then((r) => unwrap(r.data));
+export const listGhServicesAll = () => listGhServices({ include_inactive: '1' });
+export const createGhService = (payload) => client.post('/guesthouse/services/', payload).then((r) => r.data);
+export const updateGhService = (id, payload) => client.patch(`/guesthouse/services/${id}/`, payload).then((r) => r.data);
+export const deleteGhService = (id) => client.delete(`/guesthouse/services/${id}/`);
+
+export const addStayCharge = (stayId, payload) =>
+  client.post(`/guesthouse/stays/${stayId}/add_charge/`, payload).then((r) => r.data);
+export const removeStayCharge = (stayId, chargeId) =>
+  client.post(`/guesthouse/stays/${stayId}/remove_charge/`, { charge_id: chargeId }).then((r) => r.data);
 
 export const listRooms = (params) => client.get('/guesthouse/rooms/', { params }).then((r) => unwrap(r.data));
 export const getRoom = (id) => client.get(`/guesthouse/rooms/${id}/`).then((r) => r.data);

@@ -13,6 +13,7 @@ import {
 import { getInventoryItem } from '../api/inventory';
 import client from '../api/client';
 import toast from 'react-hot-toast';
+import AppLoader from '../components/AppLoader';
 import { useAuth } from '../context/AuthContext';
 import {
   STATUS_COLORS,
@@ -65,11 +66,7 @@ const InventoryDetail = () => {
   };
 
   if (isLoading) {
-    return (
-      <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
-        Loading item…
-      </div>
-    );
+    return <AppLoader message="Loading item…" />;
   }
 
   if (!item) return null;
@@ -104,7 +101,7 @@ const InventoryDetail = () => {
           </p>
           <h2 style={{ fontSize: '28px', fontWeight: '800' }}>{item.name}</h2>
           <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>
-            Inventory item — stock aur event allocations ki detail
+            Inventory item - stock aur event allocations ki detail
           </p>
           <div style={{ display: 'flex', gap: '10px', marginTop: '14px', flexWrap: 'wrap' }}>
             <span
@@ -125,8 +122,8 @@ const InventoryDetail = () => {
                 borderRadius: '20px',
                 fontSize: '12px',
                 fontWeight: '700',
-                backgroundColor: '#e2e8f0',
-                color: '#475569',
+                backgroundColor: 'var(--surface-elevated)',
+                color: 'var(--text-muted)',
               }}
             >
               {CATEGORY_LABELS[item.category] || item.category}
@@ -229,7 +226,7 @@ const InventoryDetail = () => {
                   alignItems: 'center',
                   padding: '14px 16px',
                   borderRadius: '10px',
-                  border: '1px solid var(--border)',
+                  border: 'none',
                   background: 'var(--background)',
                   textAlign: 'left',
                   cursor: 'pointer',

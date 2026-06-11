@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'inventory',
     'decorations',
     'guesthouse',
+    'landing.apps.LandingConfig',
 ]
 
 MIDDLEWARE = [
@@ -104,7 +105,7 @@ USE_I18N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
-# Must be /static/ — STATIC_URL='/' breaks Django admin (/admin/css/...) and SPA routing.
+# Must be /static/ - STATIC_URL='/' breaks Django admin (/admin/css/...) and SPA routing.
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'

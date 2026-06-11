@@ -1,9 +1,12 @@
 from django.contrib import admin
+
+from core.admin_mixins import AdminOnlyAdminMixin, ManagerOnlyAdminMixin, TenantScopedAdminMixin
+
 from .models import Tenant, UserSettings, NotificationLog
 
 
 @admin.register(Tenant)
-class TenantAdmin(admin.ModelAdmin):
+class TenantAdmin(AdminOnlyAdminMixin, admin.ModelAdmin):
     list_display = ('name', 'subdomain', 'plan_type', 'is_active', 'sms_enabled', 'phone', 'created_at')
     list_filter = ('plan_type', 'is_active', 'sms_enabled')
     search_fields = ('name', 'subdomain', 'phone', 'address')
@@ -22,7 +25,7 @@ class TenantAdmin(admin.ModelAdmin):
 
 
 @admin.register(UserSettings)
-class UserSettingsAdmin(admin.ModelAdmin):
+class UserSettingsAdmin(AdminOnlyAdminMixin, admin.ModelAdmin):
     list_display = (
         'user', 'theme', 'language', 'timezone',
         'notify_new_bookings', 'notify_payments', 'sms_to_customers',
@@ -33,7 +36,7 @@ class UserSettingsAdmin(admin.ModelAdmin):
 
 
 @admin.register(NotificationLog)
-class NotificationLogAdmin(admin.ModelAdmin):
+class NotificationLogAdmin(ManagerOnlyAdminMixin, TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = (
         'notification_type', 'status', 'recipient', 'tenant',
         'customer', 'booking', 'created_at', 'sent_at',

@@ -14,18 +14,21 @@ from decimal import Decimal
 from core.mixins import TenantQuerysetMixin, TenantAssignMixin
 from core.permissions import (
     IsAdminOrManagerOrReadOnly,
-    IsAdminOrManagerOrStaffWrite,
+    IsAdminOrManager,
     IsAdminOrManagerNoStaff,
+    IsGhStaffOrAbove,
     IsTenantOwner,
     IsGuestHouseApp,
 )
-from .models import Room, StayBooking, StayPayment, GhExpense, GuestHousePageVisibility
+from .models import Room, StayBooking, StayPayment, StayCharge, GhExpense, GuestHousePageVisibility, GuestHouseService
 from .page_visibility import ensure_tenant_gh_pages
+from .services_catalog import ensure_tenant_gh_services
 from .serializers import (
     RoomSerializer,
     StayBookingSerializer,
     StayPaymentSerializer,
     GhExpenseSerializer,
+    GuestHouseServiceSerializer,
 )
 
 
@@ -252,7 +255,7 @@ class GuestHouseReportsView(APIView):
             'monthly_trends': list(month_map.values()),
             'bookings_by_room': [
                 {
-                    'room': r['room__room_number'] or '—',
+                    'room': r['room__room_number'] or '-',
                     'count': r['count'],
                     'revenue': float(r['revenue'] or 0),
                 }
@@ -352,7 +355,7 @@ class GuestHouseAlertsView(APIView):
             'upcoming_checkins': [
                 {
                     'id': s.id,
-                    'title': f'{s.customer.display_name} — Room {s.room.room_number}',
+                    'title': f'{s.customer.display_name} - Room {s.room.room_number}',
                     'desc': f'Check-in {s.check_in}',
                     'date': str(s.check_in),
                 }
@@ -362,7 +365,7 @@ class GuestHouseAlertsView(APIView):
                 {
                     'id': s.id,
                     'title': f'Balance due: {s.booking_ref}',
-                    'desc': f'Rs {s.remaining_balance} remaining — {s.customer.display_name}',
+                    'desc': f'Rs {s.remaining_balance} remaining - {s.customer.display_name}',
                     'date': str(s.check_in),
                 }
                 for s in due
@@ -419,8 +422,32 @@ class RoomViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewSet)
     ordering_fields = ['price_per_night', 'room_number', 'created_at']
 
 
+class GuestHouseServiceViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewSet):
+    queryset = GuestHouseService.objects.all().order_by('sort_order', 'label')
+    serializer_class = GuestHouseServiceSerializer
+    permission_classes = [IsGuestHouseApp, IsAdminOrManagerOrReadOnly, IsTenantOwner]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['is_active', 'pricing_unit']
+    search_fields = ['label', 'code']
+
+    def get_queryset(self):
+        tenant = self.request.user.tenant
+        if tenant:
+            ensure_tenant_gh_services(tenant)
+        qs = super().get_queryset()
+        if self.request.query_params.get('include_inactive') != '1':
+            qs = qs.filter(is_active=True)
+        return qs
+
+    def perform_destroy(self, instance):
+        instance.is_active = False
+        instance.save(update_fields=['is_active'])
+
+
 class StayBookingViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewSet):
-    queryset = StayBooking.objects.select_related('customer', 'room').all()
+    queryset = StayBooking.objects.select_related('customer', 'room').prefetch_related(
+        'charges', 'charges__service',
+    ).all()
     serializer_class = StayBookingSerializer
     permission_classes = [IsGuestHouseApp, IsAdminOrManagerOrReadOnly, IsTenantOwner]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -479,7 +506,7 @@ class StayBookingViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelV
         balance_due = stay.remaining_balance
         if balance_due > 0 and not request.data.get('acknowledge_balance'):
             return Response({
-                'detail': f'Cannot check out — Rs {balance_due} still due.',
+                'detail': f'Cannot check out - Rs {balance_due} still due.',
                 'balance_due': float(balance_due),
                 'requires_acknowledgement': True,
             }, status=400)
@@ -487,15 +514,27 @@ class StayBookingViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelV
         stay.save(update_fields=['status', 'updated_at'])
         return Response(StayBookingSerializer(stay).data)
 
-    @action(detail=True, methods=['post'])
+    @action(
+        detail=True,
+        methods=['post'],
+        permission_classes=[IsGuestHouseApp, IsGhStaffOrAbove, IsTenantOwner],
+    )
     def cancel(self, request, pk=None):
         stay = self.get_object()
+        if stay.status == 'CANCELLED':
+            return Response({'detail': 'Stay is already cancelled.'}, status=400)
         if stay.status == 'CHECKED_IN':
             return Response({'detail': 'Checked-in stay must be checked out first.'}, status=400)
-        refund_advance = request.data.get('refund_advance', False)
+        if stay.status == 'CHECKED_OUT':
+            return Response({'detail': 'Checked-out stay cannot be cancelled.'}, status=400)
+
+        reason = (request.data.get('reason') or '').strip()
+        refund_advance = bool(request.data.get('refund_advance', False))
         paid = stay.advance_paid or Decimal('0')
         stay.status = 'CANCELLED'
-        stay.save(update_fields=['status', 'updated_at'])
+        stay.cancellation_reason = reason
+        stay.cancelled_at = timezone.now()
+        stay.save(update_fields=['status', 'cancellation_reason', 'cancelled_at', 'updated_at'])
         if refund_advance and paid > 0:
             StayPayment.objects.create(
                 tenant=stay.tenant,
@@ -506,7 +545,8 @@ class StayBookingViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelV
                 notes='Refund on cancellation',
                 recorded_by=request.user,
             )
-        return Response(StayBookingSerializer(stay).data)
+        stay.refresh_from_db()
+        return Response(StayBookingSerializer(stay, context={'request': request}).data)
 
     @action(detail=True, methods=['post'])
     def confirm(self, request, pk=None):
@@ -516,11 +556,53 @@ class StayBookingViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelV
             stay.save(update_fields=['status', 'updated_at'])
         return Response(StayBookingSerializer(stay).data)
 
+    @action(detail=True, methods=['post'])
+    def add_charge(self, request, pk=None):
+        stay = self.get_object()
+        if stay.status in ('CANCELLED', 'CHECKED_OUT'):
+            return Response({'detail': 'Cannot add charges to this stay.'}, status=400)
+        description = (request.data.get('description') or '').strip()
+        if not description:
+            return Response({'detail': 'Description is required.'}, status=400)
+        try:
+            amount = Decimal(str(request.data.get('amount', 0)))
+        except Exception:
+            return Response({'detail': 'Invalid amount.'}, status=400)
+        if amount <= 0:
+            return Response({'detail': 'Amount must be greater than zero.'}, status=400)
+        StayCharge.objects.create(
+            stay=stay,
+            charge_type='CUSTOM',
+            description=description[:255],
+            quantity=1,
+            unit_price=amount,
+            amount=amount,
+        )
+        stay.recalculate_total()
+        stay.save()
+        return Response(StayBookingSerializer(stay, context={'request': request}).data)
+
+    @action(detail=True, methods=['post'])
+    def remove_charge(self, request, pk=None):
+        stay = self.get_object()
+        if stay.status in ('CANCELLED', 'CHECKED_OUT'):
+            return Response({'detail': 'Cannot modify charges on this stay.'}, status=400)
+        charge_id = request.data.get('charge_id')
+        if not charge_id:
+            return Response({'detail': 'charge_id is required.'}, status=400)
+        charge = stay.charges.filter(pk=charge_id, charge_type='CUSTOM').first()
+        if not charge:
+            return Response({'detail': 'Custom charge not found.'}, status=404)
+        charge.delete()
+        stay.recalculate_total()
+        stay.save()
+        return Response(StayBookingSerializer(stay, context={'request': request}).data)
+
 
 class StayPaymentViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewSet):
     queryset = StayPayment.objects.select_related('stay', 'stay__customer', 'stay__room').all()
     serializer_class = StayPaymentSerializer
-    permission_classes = [IsGuestHouseApp, IsAdminOrManagerOrStaffWrite, IsTenantOwner]
+    permission_classes = [IsGuestHouseApp, IsAdminOrManager, IsTenantOwner]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['status', 'payment_method', 'stay']
     ordering_fields = ['payment_date', 'amount']
@@ -548,6 +630,169 @@ class GhExpenseViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelVie
         if user.tenant_id:
             extra['tenant'] = user.tenant
         serializer.save(**extra)
+
+
+def _gh_target_date(request):
+    date_str = request.GET.get('date')
+    if date_str:
+        parsed = parse_date(date_str)
+        if parsed:
+            return parsed
+    return timezone.localdate()
+
+
+def _stay_daily_dict(stay):
+    return {
+        'id': stay.id,
+        'booking_ref': stay.booking_ref or f'STAY-{stay.id}',
+        'customer_name': stay.customer.display_name,
+        'customer_phone': stay.customer.phone or '',
+        'room_number': stay.room.room_number,
+        'check_in': stay.check_in.isoformat(),
+        'check_out': stay.check_out.isoformat(),
+        'guests_count': stay.guests_count,
+        'status': stay.status,
+        'payment_status': stay.payment_status,
+        'total_amount': str(stay.total_amount),
+        'advance_paid': str(stay.advance_paid),
+    }
+
+
+class GuestHouseDailyView(APIView):
+    """Daily guest directory - in-house, arrivals, departures, and active reservations."""
+
+    permission_classes = [IsAuthenticated, IsGuestHouseApp]
+
+    def get(self, request):
+        tenant = request.user.tenant
+        if not tenant:
+            return Response({'detail': 'No tenant.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        target = _gh_target_date(request)
+        stays = (
+            StayBooking.objects.filter(tenant=tenant)
+            .select_related('customer', 'room')
+            .exclude(status='CANCELLED')
+        )
+
+        reservations = stays.filter(check_in__lte=target, check_out__gt=target)
+        arrivals = stays.filter(check_in=target)
+        departures = stays.filter(check_out=target)
+        in_house = stays.filter(check_in__lte=target, check_out__gt=target, status='CHECKED_IN')
+
+        return Response({
+            'date': target.isoformat(),
+            'counts': {
+                'reservations': reservations.count(),
+                'arrivals': arrivals.count(),
+                'departures': departures.count(),
+                'in_house': in_house.count(),
+            },
+            'reservations': [_stay_daily_dict(s) for s in reservations.order_by('room__room_number')],
+            'arrivals': [_stay_daily_dict(s) for s in arrivals.order_by('room__room_number')],
+            'departures': [_stay_daily_dict(s) for s in departures.order_by('room__room_number')],
+            'in_house': [_stay_daily_dict(s) for s in in_house.order_by('room__room_number')],
+        })
+
+
+class GuestHouseRecordsView(APIView):
+    """Unified ledger of stays, payments, and expense vouchers."""
+
+    permission_classes = [IsAuthenticated, IsGuestHouseApp]
+
+    def get(self, request):
+        tenant = request.user.tenant
+        if not tenant:
+            return Response({'detail': 'No tenant.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        date_str = request.GET.get('date')
+        record_type = request.GET.get('type', 'all')
+        target = parse_date(date_str) if date_str else None
+        records = []
+
+        if record_type in ('all', 'stay'):
+            stays = (
+                StayBooking.objects.filter(tenant=tenant)
+                .select_related('customer', 'room')
+                .exclude(status='CANCELLED')
+            )
+            if target:
+                stays = stays.filter(
+                    Q(created_at__date=target)
+                    | Q(check_in=target)
+                    | Q(check_in__lte=target, check_out__gt=target)
+                )
+            for stay in stays.order_by('-created_at')[:300]:
+                records.append({
+                    'id': stay.id,
+                    'record_type': 'stay',
+                    'record_type_label': 'Reservation / Stay',
+                    'ref': stay.booking_ref or f'STAY-{stay.id}',
+                    'title': stay.customer.display_name,
+                    'subtitle': f'Room {stay.room.room_number} · {stay.check_in} → {stay.check_out}',
+                    'amount': float(stay.total_amount or 0),
+                    'status': stay.status,
+                    'date': stay.created_at.isoformat(),
+                    'sort_ts': stay.created_at.timestamp(),
+                    'link_path': f'/gh/stays/{stay.id}',
+                })
+
+        if record_type in ('all', 'payment'):
+            payments = StayPayment.objects.filter(tenant=tenant).select_related(
+                'stay', 'stay__customer', 'stay__room',
+            )
+            if target:
+                payments = payments.filter(payment_date__date=target)
+            for payment in payments.order_by('-payment_date')[:300]:
+                records.append({
+                    'id': payment.id,
+                    'record_type': 'payment',
+                    'record_type_label': 'Payment / Collection',
+                    'ref': payment.stay.booking_ref or f'PAY-{payment.id}',
+                    'title': payment.stay.customer.display_name,
+                    'subtitle': f'Room {payment.stay.room.room_number} · {payment.get_payment_method_display()}',
+                    'amount': float(payment.amount or 0),
+                    'status': payment.status,
+                    'date': payment.payment_date.isoformat(),
+                    'sort_ts': payment.payment_date.timestamp(),
+                    'link_path': f'/gh/payments/{payment.id}/edit',
+                })
+
+        if record_type in ('all', 'expense'):
+            expenses = GhExpense.objects.filter(tenant=tenant)
+            if target:
+                expenses = expenses.filter(expense_date=target)
+            for expense in expenses.order_by('-expense_date', '-id')[:300]:
+                records.append({
+                    'id': expense.id,
+                    'record_type': 'expense',
+                    'record_type_label': 'Expense / Voucher',
+                    'ref': f'VCH-{expense.id}',
+                    'title': expense.title,
+                    'subtitle': expense.get_category_display(),
+                    'amount': float(expense.amount or 0),
+                    'status': expense.category,
+                    'date': expense.expense_date.isoformat(),
+                    'sort_ts': datetime.combine(expense.expense_date, time.max).timestamp(),
+                    'link_path': f'/gh/expenses/{expense.id}',
+                })
+
+        records.sort(key=lambda r: r['sort_ts'], reverse=True)
+        for row in records:
+            row.pop('sort_ts', None)
+
+        counts = {
+            'stay': sum(1 for r in records if r['record_type'] == 'stay'),
+            'payment': sum(1 for r in records if r['record_type'] == 'payment'),
+            'expense': sum(1 for r in records if r['record_type'] == 'expense'),
+            'total': len(records),
+        }
+
+        return Response({
+            'date': target.isoformat() if target else None,
+            'records': records,
+            'counts': counts,
+        })
 
 
 class GuestHousePageVisibilityView(APIView):

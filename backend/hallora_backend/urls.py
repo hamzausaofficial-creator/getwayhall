@@ -37,6 +37,7 @@ urlpatterns = [
     path('api/inventory/', include('inventory.urls')),
     path('api/decorations/', include('decorations.urls')),
     path('api/guesthouse/', include('guesthouse.urls')),
+    path('api/landing/', include('landing.urls')),
 ]
 
 # Static frontend build + uploads must be registered BEFORE the SPA catch-all.

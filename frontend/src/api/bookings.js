@@ -24,3 +24,8 @@ export const deleteBooking = async (id) => {
   const response = await client.delete(`/bookings/${id}/`);
   return response.data;
 };
+
+export const cancelBooking = async (id, data = {}) => {
+  const response = await client.post(`/bookings/${id}/cancel/`, data);
+  return response.data;
+};

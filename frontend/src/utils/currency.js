@@ -3,7 +3,7 @@ export const parseAmount = (n) => Math.max(0, parseFloat(n || 0) || 0);
 
 export const formatRs = (n) => `Rs ${parseAmount(n).toLocaleString()}`;
 
-/** Amount hall must collect (lena): show "00" when nothing is due */
+/** Amount due to collect: show "00" when nothing is due */
 export const formatCollectDue = (n) => {
   const amount = parseAmount(n);
   if (amount <= 0) return '00';

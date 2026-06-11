@@ -4,6 +4,7 @@ import { PackagePlus, Trash2, Edit, X, Filter, ChevronRight } from 'lucide-react
 import SearchInput from '../components/SearchInput';
 import client from '../api/client';
 import toast from 'react-hot-toast';
+import AppLoader from '../components/AppLoader';
 import {
   STATUS_COLORS,
   CATEGORY_LABELS,
@@ -169,7 +170,7 @@ const Inventory = () => {
         </div>
 
         {isLoading ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading inventory...</div>
+          <AppLoader inline message="Loading inventory…" />
         ) : items.length === 0 ? (
           <div className="card" style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
             <PackagePlus size={48} style={{ margin: '0 auto 16px', opacity: 0.3 }} />

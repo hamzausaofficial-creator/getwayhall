@@ -57,7 +57,7 @@ def dispatch_customer_notification(
                 customer=customer,
                 notification_type=ch,
                 status='SKIPPED',
-                recipient=phone_raw or '—',
+                recipient=phone_raw or '-',
                 message=message,
                 error_message='SMS disabled for venue',
             )
@@ -72,7 +72,7 @@ def dispatch_customer_notification(
                 customer=customer,
                 notification_type=ch,
                 status='SKIPPED',
-                recipient='—',
+                recipient='-',
                 message=message,
                 error_message='No customer phone on file',
             )

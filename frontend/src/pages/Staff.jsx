@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import client from '../api/client';
 import toast from 'react-hot-toast';
+import { resolveMediaUrl } from '../utils/media';
+import { useAppType } from '../hooks/useAppType';
 
 const ROLE_COLORS = {
   ADMIN: { bg: '#fef3c7', color: '#92400e', label: 'Admin' },
@@ -25,8 +27,14 @@ const ROLE_COLORS = {
   STAFF: { bg: '#dcfce7', color: '#166534', label: 'Staff' },
 };
 
+const ROLE_LOGIN_ACCESS = {
+  ADMIN: 'Full access - dashboard, reports, expenses, staff, settings, and all bookings.',
+  MANAGER: 'Manage bookings, payments, customers, rooms - no staff or settings access.',
+  STAFF: 'Bookings and stays only - no payments, dashboard, reports, or settings.',
+};
+
 const formatDateTime = (value) => {
-  if (!value) return '—';
+  if (!value) return '-';
   return new Date(value).toLocaleString(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -34,7 +42,7 @@ const formatDateTime = (value) => {
 };
 
 const formatDate = (value) => {
-  if (!value) return '—';
+  if (!value) return '-';
   return new Date(value).toLocaleDateString(undefined, { dateStyle: 'medium' });
 };
 
@@ -47,7 +55,43 @@ const staffInitials = (member) => {
   return (member.email?.[0] || '?').toUpperCase();
 };
 
-const Staff = () => {
+const StaffAvatar = ({ member, size = 52, active = false, fontSize }) => {
+  const avatarUrl = resolveMediaUrl(member?.avatar);
+  const radius = size >= 60 ? '16px' : '14px';
+
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: radius,
+        flexShrink: 0,
+        backgroundColor: active ? 'var(--primary)' : 'var(--primary-light)',
+        color: active ? 'white' : 'var(--primary)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontWeight: 700,
+        fontSize: fontSize || (size >= 60 ? 22 : 18),
+        overflow: 'hidden',
+      }}
+    >
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt={staffDisplayName(member)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      ) : (
+        staffInitials(member)
+      )}
+    </div>
+  );
+};
+
+const Staff = ({ embedded = false }) => {
+  const { isGuestHouse } = useAppType();
+  const portalLabel = isGuestHouse ? 'Guest House' : 'Marriage Hall';
   const [staff, setStaff] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
@@ -66,6 +110,7 @@ const Staff = () => {
     joining_date: '',
     password: '',
     confirm_password: '',
+    profile_status: true,
   });
   const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [resetPassword, setResetPassword] = useState('');
@@ -118,6 +163,7 @@ const Staff = () => {
     setFormData({
       username: '', first_name: '', last_name: '', email: '', role: 'STAFF',
       phone: '', salary: '', joining_date: '', password: '', confirm_password: '',
+      profile_status: true,
     });
     setShowCreatePassword(false);
     setShowModal(true);
@@ -134,6 +180,7 @@ const Staff = () => {
       phone: member.phone || '',
       salary: member.salary ?? '',
       joining_date: member.joining_date || '',
+      profile_status: member.profile_status !== false,
     });
     setShowModal(true);
   };
@@ -174,6 +221,7 @@ const Staff = () => {
         phone: formData.phone,
         salary: formData.salary === '' ? 0 : formData.salary,
         joining_date: formData.joining_date || null,
+        profile_status: formData.profile_status !== false,
       };
       if (editingMember) {
         await client.patch(`/auth/staff/${editingMember.id}/`, profilePayload);
@@ -186,13 +234,17 @@ const Staff = () => {
           password: formData.password,
           ...profilePayload,
         });
-        toast.success(`Staff account created. They can log in with username "${formData.username.trim()}".`);
+        toast.success(
+          `${ROLE_COLORS[formData.role]?.label || 'Staff'} account created. Login: ${formData.username.trim()} (${portalLabel})`,
+          { duration: 5000 },
+        );
       }
       setShowModal(false);
       setEditingMember(null);
       setFormData({
         username: '', first_name: '', last_name: '', email: '', role: 'STAFF',
         phone: '', salary: '', joining_date: '', password: '', confirm_password: '',
+        profile_status: true,
       });
       fetchStaff();
     } catch (err) {
@@ -232,22 +284,35 @@ const Staff = () => {
   return (
     <>
       <div className="animate-fade-in">
-        <div className="page-header">
-          <div>
-            <h2 style={{ fontSize: '24px', fontWeight: '700' }}>Staff Management</h2>
-            <p style={{ color: 'var(--text-muted)' }}>
-              Manage your team — click a staff member to view full details.
-            </p>
+        {!embedded ? (
+          <div className="page-header">
+            <div>
+              <h2 style={{ fontSize: '24px', fontWeight: '700' }}>Staff Management</h2>
+              <p style={{ color: 'var(--text-muted)' }}>
+                Manage your team - click a staff member to view full details.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={openAddModal}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <UserPlus size={18} /> Add Staff Member
+            </button>
           </div>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={openAddModal}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <UserPlus size={18} /> Add Staff Member
-          </button>
-        </div>
+        ) : (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={openAddModal}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <UserPlus size={18} /> Add Staff Member
+            </button>
+          </div>
+        )}
 
         {isLoading ? (
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -298,23 +363,7 @@ const Staff = () => {
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-                        <div
-                          style={{
-                            width: '52px',
-                            height: '52px',
-                            borderRadius: '14px',
-                            flexShrink: 0,
-                            backgroundColor: active ? 'var(--primary)' : 'var(--primary-light)',
-                            color: active ? 'white' : 'var(--primary)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: '700',
-                            fontSize: '18px',
-                          }}
-                        >
-                          {staffInitials(member)}
-                        </div>
+                        <StaffAvatar member={member} active={active} />
                         <div style={{ paddingRight: '28px' }}>
                           <h3 style={{ fontSize: '15px', fontWeight: '700' }}>
                             {staffDisplayName(member)}
@@ -340,9 +389,11 @@ const Staff = () => {
                         style={{
                           display: 'flex',
                           alignItems: 'center',
+                          justifyContent: 'center',
                           gap: '8px',
                           fontSize: '13px',
                           color: 'var(--text-muted)',
+                          textAlign: 'center',
                         }}
                       >
                         <Mail size={14} /> {member.email}
@@ -371,23 +422,7 @@ const Staff = () => {
                       }}
                     >
                       <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                        <div
-                          style={{
-                            width: '64px',
-                            height: '64px',
-                            borderRadius: '16px',
-                            backgroundColor: 'var(--primary-light)',
-                            color: 'var(--primary)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: '800',
-                            fontSize: '22px',
-                            flexShrink: 0,
-                          }}
-                        >
-                          {staffInitials(selectedMember)}
-                        </div>
+                        <StaffAvatar member={selectedMember} size={64} />
                         <div>
                           <h3 style={{ fontSize: '20px', fontWeight: '800' }}>
                             {staffDisplayName(selectedMember)}
@@ -447,8 +482,9 @@ const Staff = () => {
                         lineHeight: 1.5,
                       }}
                     >
-                      New staff log in with the username below and the password set when
-                      their account was created. Use &quot;Reset password&quot; below to change it.
+                      Sign in at the {portalLabel} login page with username + password.
+                      Role <strong>{roleStyle.label}</strong> controls which pages they see.
+                      Use &quot;Reset password&quot; below to change their password.
                     </div>
 
                     <h4
@@ -469,12 +505,12 @@ const Staff = () => {
                     >
                       <DetailRow icon={User} label="Username" value={selectedMember.username} mono />
                       <DetailRow icon={Mail} label="Email" value={selectedMember.email} />
-                      <DetailRow icon={User} label="Phone" value={selectedMember.phone || '—'} />
+                      <DetailRow icon={User} label="Phone" value={selectedMember.phone || '-'} />
                       <DetailRow icon={Shield} label="Access role" value={roleStyle.label} />
                       <DetailRow
                         icon={Hash}
                         label="Salary (PKR)"
-                        value={selectedMember.salary != null ? Number(selectedMember.salary).toLocaleString() : '—'}
+                        value={selectedMember.salary != null ? Number(selectedMember.salary).toLocaleString() : '-'}
                       />
                       <DetailRow
                         icon={Calendar}
@@ -484,9 +520,15 @@ const Staff = () => {
                       <DetailRow icon={Hash} label="Staff ID" value={`#${selectedMember.id}`} mono />
                       <DetailRow
                         icon={User}
-                        label="Account status"
-                        value={selectedMember.is_active ? 'Active' : 'Inactive'}
-                        valueColor={selectedMember.is_active ? '#166534' : '#991b1b'}
+                        label="Login access"
+                        value={selectedMember.profile_status !== false && selectedMember.is_active !== false ? 'Can sign in' : 'Blocked'}
+                        valueColor={selectedMember.profile_status !== false && selectedMember.is_active !== false ? '#166534' : '#991b1b'}
+                      />
+                      <DetailRow
+                        icon={Shield}
+                        label="After login"
+                        value={ROLE_LOGIN_ACCESS[selectedMember.role] || '-'}
+                        span2
                       />
                       {selectedMember.tenant_name && (
                         <DetailRow
@@ -536,7 +578,7 @@ const Staff = () => {
                       }}
                     >
                       This account can sign in with the username above. Admins can remove access
-                      using the delete button — the user will no longer be able to log in.
+                      using the delete button - the user will no longer be able to log in.
                     </div>
                   </>
                 ) : null}
@@ -563,8 +605,8 @@ const Staff = () => {
                 </h3>
                 <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
                   {editingMember
-                    ? 'Update name and access role for this account.'
-                    : 'Set a login password so this person can sign in to the system.'}
+                    ? 'Update role and login access for this account.'
+                    : `Creates a ${portalLabel} login - user signs in with username, password, and assigned role.`}
                 </p>
               </div>
               <button
@@ -619,15 +661,31 @@ const Staff = () => {
                 />
               </div>
               <div className="input-group">
-                <label>Role</label>
+                <label>Role (controls login access)</label>
                 <select
                   value={formData.role}
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 >
-                  <option value="STAFF">Staff</option>
-                  <option value="MANAGER">Manager</option>
-                  <option value="ADMIN">Admin</option>
+                  <option value="STAFF">Staff - bookings & stays</option>
+                  <option value="MANAGER">Manager - full except staff/settings</option>
+                  <option value="ADMIN">Admin - full access</option>
                 </select>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px', lineHeight: 1.4 }}>
+                  {ROLE_LOGIN_ACCESS[formData.role]}
+                </p>
+              </div>
+              <div className="input-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.profile_status !== false}
+                    onChange={(e) => setFormData({ ...formData, profile_status: e.target.checked })}
+                  />
+                  Allow login (account active)
+                </label>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Uncheck to block sign-in without deleting the account.
+                </p>
               </div>
               {!editingMember && (
                 <>

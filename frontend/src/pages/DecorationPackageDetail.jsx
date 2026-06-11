@@ -13,6 +13,7 @@ import { getDecorationPackage } from '../api/decorations';
 import client from '../api/client';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import AppLoader from '../components/AppLoader';
 import { TIER_LABELS, TIER_STYLES } from '../utils/decorationHelpers';
 
 const DecorationPackageDetail = () => {
@@ -60,11 +61,7 @@ const DecorationPackageDetail = () => {
   };
 
   if (isLoading) {
-    return (
-      <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
-        Loading package…
-      </div>
-    );
+    return <AppLoader message="Loading package…" />;
   }
 
   if (!pkg) return null;
@@ -100,7 +97,7 @@ const DecorationPackageDetail = () => {
             {pkg.name}
           </h2>
           <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>
-            Decoration package — stage, lighting aur florals ki bundle detail
+            Decoration package - stage, lighting aur florals ki bundle detail
           </p>
           <div style={{ display: 'flex', gap: '10px', marginTop: '14px', flexWrap: 'wrap' }}>
             <span
@@ -235,7 +232,7 @@ const DecorationPackageDetail = () => {
                 <div>
                   <p style={{ fontWeight: '700', fontSize: '14px' }}>{b.event_name}</p>
                   <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    {b.booking_id || `BK-${b.id}`} · {b.event_date || '—'} · {b.customer_name || ''}
+                    {b.booking_id || `BK-${b.id}`} · {b.event_date || '-'} · {b.customer_name || ''}
                   </p>
                 </div>
                 <ChevronRight size={18} color="var(--text-muted)" />

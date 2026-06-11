@@ -4,9 +4,10 @@ import { uploadAvatar } from '../api/auth';
 import { User, Mail, Shield, Building, Edit3, Camera, Save, X, Loader } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getTenant } from '../api/core';
+import { resolveMediaUrl } from '../utils/media';
 
 const Profile = () => {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, refreshUser } = useAuth();
   const [tenantName, setTenantName] = useState('');
   const fileInputRef = useRef(null);
 
@@ -22,8 +23,7 @@ const Profile = () => {
       setFirstName(user.first_name || '');
       setLastName(user.last_name || '');
       setEmail(user.email || '');
-      const savedImage = localStorage.getItem(`profile_pic_${user.email}`);
-      setProfileImage(savedImage || '');
+      setProfileImage(resolveMediaUrl(user.avatar));
     }
   }, [user]);
 
@@ -44,12 +44,19 @@ const Profile = () => {
       toast.error('Image size must be less than 2MB');
       return;
     }
+    const previewUrl = URL.createObjectURL(file);
+    setProfileImage(previewUrl);
     try {
-      const updated = await uploadAvatar(file);
-      setProfileImage(updated.avatar || '');
+      await uploadAvatar(file);
+      const refreshed = await refreshUser();
+      setProfileImage(resolveMediaUrl(refreshed.avatar));
       toast.success('Profile photo updated.');
     } catch {
+      setProfileImage(resolveMediaUrl(user?.avatar));
       toast.error('Failed to upload photo');
+    } finally {
+      URL.revokeObjectURL(previewUrl);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -84,9 +91,9 @@ const Profile = () => {
   };
 
   const fields = [
-    { label: 'First Name', value: firstName || '—', icon: User },
-    { label: 'Last Name', value: lastName || '—', icon: User },
-    { label: 'Email Address', value: email || '—', icon: Mail },
+    { label: 'First Name', value: firstName || '-', icon: User },
+    { label: 'Last Name', value: lastName || '-', icon: User },
+    { label: 'Email Address', value: email || '-', icon: Mail },
     { label: 'Organization', value: tenantName || user?.tenant?.name || 'Your venue', icon: Building },
   ];
 
@@ -107,23 +114,18 @@ const Profile = () => {
             onClick={handlePhotoClick}
             aria-label="Change profile photo"
           >
-            {profileImage ? (
-              <div className="profile-img-container" style={{ width: '100%', height: '100%', position: 'relative' }}>
-                <img src={profileImage} alt="" />
-                <div className="profile-img-hover" aria-hidden>
-                  <Camera size={20} />
-                </div>
-              </div>
-            ) : (
-              <div className="profile-img-container" style={{ width: '100%', height: '100%', position: 'relative' }}>
+            <div className="profile-img-container">
+              {profileImage ? (
+                <img src={profileImage} alt="Profile" className="profile-img-container__photo" />
+              ) : (
                 <div className="profile-card__avatar-placeholder">
                   {firstName ? firstName[0].toUpperCase() : 'A'}
                 </div>
-                <div className="profile-img-hover" aria-hidden>
-                  <Camera size={20} />
-                </div>
+              )}
+              <div className="profile-img-hover" aria-hidden>
+                <Camera size={20} />
               </div>
-            )}
+            </div>
           </button>
           <input
             type="file"

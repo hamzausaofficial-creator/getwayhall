@@ -16,6 +16,7 @@ import {
 import '../../styles/dashboard.css';
 import { getGuestHouseStats, getGuestHouseAlerts } from '../../api/guesthouse';
 import { useAuth } from '../../context/AuthContext';
+import { usePermissions } from '../../hooks/usePermissions';
 import StatCard from '../../components/ui/StatCard';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { DashboardSkeleton } from '../../components/ui/LoadingSkeleton';
@@ -27,6 +28,7 @@ import {
   GhFinancialSnapshot,
 } from '../../components/guesthouse/GuestHouseDashboardCharts';
 import GhNotificationsPanel from '../../components/guesthouse/GhNotificationsPanel';
+import PeriodSelect from '../../components/dashboard/PeriodSelect';
 import { getGreeting, revenueTrendPercent } from '../../utils/dashboard';
 import { formatRs } from '../../utils/currency';
 import EmptyState from '../../components/ui/EmptyState';
@@ -65,7 +67,7 @@ const formatStayDates = (checkIn, checkOut) => {
     const outD = format(parseISO(checkOut), 'dd MMM yyyy');
     return `${inD} → ${outD}`;
   } catch {
-    return `${checkIn || '—'} → ${checkOut || '—'}`;
+    return `${checkIn || '-'} → ${checkOut || '-'}`;
   }
 };
 
@@ -86,6 +88,7 @@ const normalizeStats = (data) => ({
 export default function GuestHouseOverview() {
   const navigate = useNavigate();
   const { user, loading: authLoading, isAuthenticated } = useAuth();
+  const { canAccessPayments } = usePermissions();
   const [stats, setStats] = useState(EMPTY_STATS);
   const [alerts, setAlerts] = useState({ upcoming_checkins: [], payment_due: [] });
   const [isLoading, setIsLoading] = useState(true);
@@ -216,7 +219,7 @@ export default function GuestHouseOverview() {
           <p className="dash-header__greeting">{getGreeting()}, {displayName}</p>
           <h1 className="dash-header__title">Guest House Dashboard</h1>
           <p className="dash-header__subtitle">
-            Occupancy, collections, stays, and room performance — live overview.
+            Occupancy, collections, stays, and room performance - live overview.
           </p>
         </div>
         <div className="dash-header__meta">
@@ -233,14 +236,7 @@ export default function GuestHouseOverview() {
               <input type="date" value={customDates.end} onChange={(e) => setCustomDates((p) => ({ ...p, end: e.target.value }))} aria-label="End date" />
             </div>
           )}
-          <select className="dash-period-select" value={period} onChange={(e) => setPeriod(e.target.value)} aria-label="Report period">
-            <option value="all">All time</option>
-            <option value="today">Today</option>
-            <option value="last7days">Last 7 days</option>
-            <option value="thismonth">This month</option>
-            <option value="thisyear">This year</option>
-            <option value="custom">Custom range</option>
-          </select>
+          <PeriodSelect value={period} onChange={setPeriod} aria-label="Report period" />
         </div>
       </header>
 
@@ -258,7 +254,7 @@ export default function GuestHouseOverview() {
               : ''}
             {stats.pending_stays > 0
               ? `${stats.pending_stays} stay${stats.pending_stays !== 1 ? 's' : ''} awaiting confirmation`
-              : 'Operations look clear — great day to welcome guests.'}
+              : 'Operations look clear - great day to welcome guests.'}
           </p>
         </div>
         <div className="gh-dash-hero__chips">
@@ -284,9 +280,11 @@ export default function GuestHouseOverview() {
         <button type="button" className="dash-btn dash-btn--secondary" onClick={() => navigate('/gh/customers')}>
           <UserPlus size={16} /> Add customer
         </button>
-        <button type="button" className="dash-btn dash-btn--secondary" onClick={() => navigate('/gh/payments/new')}>
-          <CreditCard size={16} /> Record payment
-        </button>
+        {canAccessPayments && (
+          <button type="button" className="dash-btn dash-btn--secondary" onClick={() => navigate('/gh/payments/new')}>
+            <CreditCard size={16} /> Record payment
+          </button>
+        )}
         <button type="button" className="dash-btn dash-btn--secondary" onClick={() => navigate('/gh/calendar')}>
           <CalendarCheck size={16} /> Calendar
         </button>
@@ -300,7 +298,7 @@ export default function GuestHouseOverview() {
           isCurrency
           trend={revenueTrend}
           variant="primary"
-          to="/gh/payments"
+          to={canAccessPayments ? '/gh/payments' : undefined}
           hint={stats.net_profit != null ? `Net Rs ${Number(stats.net_profit).toLocaleString()}` : undefined}
         />
         <StatCard
@@ -335,7 +333,7 @@ export default function GuestHouseOverview() {
         <StatCard label="Pending stays" value={stats.pending_stays} icon={CalendarCheck} variant="warning" to="/gh/stays" />
         <StatCard label="Check-ins today" value={stats.check_ins_today} icon={LogIn} variant="success" to="/gh/calendar" />
         <StatCard label="Upcoming check-ins" value={stats.upcoming_checkins} icon={BedDouble} variant="info" to="/gh/calendar" />
-        <StatCard label="Active rooms" value={stats.active_rooms} icon={BedDouble} variant="primary" to="/gh/rooms" hint={`${stats.total_rooms} total rooms`} />
+        <StatCard label="Active rooms" value={stats.active_rooms} icon={BedDouble} variant="primary" to="/gh/settings?tab=rooms" hint={`${stats.total_rooms} total rooms`} />
       </section>
 
       <section className="dash-charts-row" aria-label="Analytics">
@@ -392,38 +390,40 @@ export default function GuestHouseOverview() {
           )}
         </article>
 
-        <article className="dash-panel">
-          <header className="dash-panel__head">
-            <h3 className="dash-panel__title">Latest payments</h3>
-            <button type="button" className="dash-btn dash-btn--ghost dash-btn--sm" onClick={() => navigate('/gh/payments')}>
-              View all <ChevronRight size={14} />
-            </button>
-          </header>
-          {stats.recent_payments.length === 0 ? (
-            <EmptyState icon={CreditCard} title="No payments yet" description="Recorded payments appear here." />
-          ) : (
-            <div className="dash-payment-list">
-              {stats.recent_payments.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className="dash-payment-row"
-                  onClick={() => navigate('/gh/payments')}
-                >
-                  <div>
-                    <p className="dash-table__cell-primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {p.booking_ref || `Payment #${p.id}`}
-                    </p>
-                    <p className="dash-table__cell-muted">
-                      {p.customer_name} · Room {p.room_number} · {p.payment_method}
-                    </p>
-                  </div>
-                  <span className="dash-payment-row__amount">{formatRs(p.amount)}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </article>
+        {canAccessPayments ? (
+          <article className="dash-panel">
+            <header className="dash-panel__head">
+              <h3 className="dash-panel__title">Latest payments</h3>
+              <button type="button" className="dash-btn dash-btn--ghost dash-btn--sm" onClick={() => navigate('/gh/payments')}>
+                View all <ChevronRight size={14} />
+              </button>
+            </header>
+            {stats.recent_payments.length === 0 ? (
+              <EmptyState icon={CreditCard} title="No payments yet" description="Recorded payments appear here." />
+            ) : (
+              <div className="dash-payment-list">
+                {stats.recent_payments.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="dash-payment-row"
+                    onClick={() => navigate('/gh/payments')}
+                  >
+                    <div>
+                      <p className="dash-table__cell-primary">
+                        {p.booking_ref || `Payment #${p.id}`}
+                      </p>
+                      <p className="dash-table__cell-muted">
+                        {p.customer_name} · Room {p.room_number} · {p.payment_method}
+                      </p>
+                    </div>
+                    <span className="dash-payment-row__amount">{formatRs(p.amount)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </article>
+        ) : null}
 
         <GhNotificationsPanel alerts={alerts} />
       </section>

@@ -1,10 +1,33 @@
 import re
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from core.models import Tenant, UserSettings
 from .models import StaffProfile
 
 User = get_user_model()
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """Login with role/app checks - staff accounts created via Staff management."""
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        user = self.user
+        if not user.is_active:
+            raise serializers.ValidationError({
+                'detail': 'This account is inactive. Contact your administrator.',
+            })
+        profile = getattr(user, 'profile', None)
+        if profile is not None and not profile.status:
+            raise serializers.ValidationError({
+                'detail': 'This account has been deactivated. Contact your administrator.',
+            })
+        data['role'] = user.role
+        data['app_type'] = getattr(user, 'app_type', 'MARRIAGE_HALL')
+        data['first_name'] = user.first_name
+        data['last_name'] = user.last_name
+        return data
 
 
 class TenantSerializer(serializers.ModelSerializer):
@@ -75,6 +98,7 @@ class StaffResetPasswordSerializer(serializers.Serializer):
 
 class StaffSerializer(serializers.ModelSerializer):
     tenant_name = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField()
     date_joined = serializers.DateTimeField(read_only=True)
     last_login = serializers.DateTimeField(read_only=True)
     is_active = serializers.BooleanField(read_only=True)
@@ -87,15 +111,23 @@ class StaffSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'username', 'email', 'password', 'first_name', 'last_name', 'role', 'app_type',
-            'tenant_name', 'date_joined', 'last_login', 'is_active',
+            'tenant_name', 'avatar', 'date_joined', 'last_login', 'is_active',
             'phone', 'salary', 'joining_date', 'profile_status',
         ]
-        read_only_fields = ['id', 'app_type', 'tenant_name', 'date_joined', 'last_login', 'is_active']
+        read_only_fields = ['id', 'app_type', 'tenant_name', 'avatar', 'date_joined', 'last_login', 'is_active']
 
     password = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     def get_tenant_name(self, obj):
         return obj.tenant.name if obj.tenant else None
+
+    def get_avatar(self, obj):
+        if obj.profile_picture:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.profile_picture.url)
+            return obj.profile_picture.url
+        return None
 
     def _profile_data(self, validated_data):
         return {
@@ -144,6 +176,13 @@ class StaffSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('This username is already taken.')
         return value
 
+    def _sync_login_access(self, user, profile_active):
+        """Keep Django login flag aligned with staff profile access toggle."""
+        active = bool(profile_active)
+        if user.is_active != active:
+            user.is_active = active
+            user.save(update_fields=['is_active'])
+
     def update(self, instance, validated_data):
         profile_fields = self._profile_data(validated_data)
         for field in ('first_name', 'last_name', 'role'):
@@ -161,6 +200,8 @@ class StaffSerializer(serializers.ModelSerializer):
                 if val is not None or key == 'phone':
                     setattr(profile, key, val if val is not None else profile_fields.get(key))
             profile.save()
+            if 'status' in profile_fields:
+                self._sync_login_access(instance, profile_fields['status'])
         return instance
 
     def create(self, validated_data):
@@ -170,7 +211,9 @@ class StaffSerializer(serializers.ModelSerializer):
         role = validated_data.get('role', 'STAFF')
         if role not in ('ADMIN', 'MANAGER', 'STAFF'):
             validated_data['role'] = 'STAFF'
+        profile_active = profile_fields.get('status', True)
         user = User(**validated_data)
+        user.is_active = bool(profile_active)
         if request and getattr(request.user, 'tenant_id', None):
             user.tenant = request.user.tenant
             user.app_type = getattr(request.user, 'app_type', 'MARRIAGE_HALL')
@@ -183,7 +226,7 @@ class StaffSerializer(serializers.ModelSerializer):
                 phone=profile_fields.get('phone') or '',
                 salary=profile_fields.get('salary') or 0,
                 joining_date=profile_fields.get('joining_date'),
-                status=profile_fields.get('status', True),
+                status=bool(profile_active),
             )
         return user
 

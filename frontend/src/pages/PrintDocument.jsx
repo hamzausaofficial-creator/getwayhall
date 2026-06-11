@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import AppLoader from '../components/AppLoader';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Printer, 
   ChevronLeft, 
@@ -8,16 +9,18 @@ import {
   FileText, 
   Clock, 
   CheckCircle,
-  Building,
   User,
   FileCheck,
   Edit,
   Save,
-  Check
+  Check,
+  XCircle,
 } from 'lucide-react';
 import client from '../api/client';
 import toast from 'react-hot-toast';
 import { formatCollectDuePKR, hasCollectDue } from '../utils/currency';
+import AppLogo from '../components/AppLogo';
+import { BRAND_NAME } from '../constants/brand';
 
 // HTML5 Canvas Digital Signature Pad Component
 const SignaturePad = ({ label, subtitle, onSave }) => {
@@ -161,6 +164,7 @@ const SignaturePad = ({ label, subtitle, onSave }) => {
 const PrintDocument = () => {
   const { bookingId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
   const [booking, setBooking] = useState(null);
   const [customer, setCustomer] = useState(null);
@@ -250,36 +254,16 @@ const PrintDocument = () => {
     }
   }, [bookingId]);
 
+  useEffect(() => {
+    if (!booking) return;
+    const doc = searchParams.get('doc');
+    if (doc === 'cancellation' || booking.booking_status === 'CANCELLED') {
+      setActiveDocType('cancellation_notice');
+    }
+  }, [booking, searchParams]);
+
   if (isLoading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#0f172a',
-        color: 'white',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
-      }}>
-        <div style={{
-          width: '50px',
-          height: '50px',
-          border: '3px solid rgba(91, 213, 30, 0.2)',
-          borderTop: '3px solid #5BD51E',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          marginBottom: '20px'
-        }}></div>
-        <p style={{ fontSize: '16px', fontWeight: '600', color: '#94a3b8' }}>Preparing Document Assets...</p>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
+    return <AppLoader fullScreen message="Preparing document…" />;
   }
 
   if (!booking) {
@@ -446,6 +430,7 @@ const PrintDocument = () => {
       {/* Print styles override */}
       <style>{`
         @media print {
+          @page { size: A5 portrait; margin: 10mm; }
           body {
             background-color: white !important;
             color: black !important;
@@ -536,9 +521,13 @@ const PrintDocument = () => {
           gap: '2px'
         }}>
           {[
-            { id: 'advance_receipt', label: 'Advance Receipt', icon: <DollarSign size={14} />, desc: 'ایڈوانس وصولی کی رسیڈ' },
-            { id: 'final_bill', label: 'Final Bill Summary', icon: <FileText size={14} />, desc: 'ایونٹ کا فائنل بل' },
-            { id: 'operations_report', label: 'Setup & Logistics', icon: <Clock size={14} />, desc: 'تفصیلی رپورٹ' }
+            ...(booking?.booking_status === 'CANCELLED' ? [
+              { id: 'cancellation_notice', label: 'Cancellation Notice', icon: <XCircle size={14} />, desc: 'منسوخی کا نوٹس' },
+            ] : [
+              { id: 'advance_receipt', label: 'Advance Receipt', icon: <DollarSign size={14} />, desc: 'ایڈوانس وصولی کی رسیڈ' },
+              { id: 'final_bill', label: 'Final Bill Summary', icon: <FileText size={14} />, desc: 'ایونٹ کا فائنل بل' },
+              { id: 'operations_report', label: 'Setup & Logistics', icon: <Clock size={14} />, desc: 'تفصیلی رپورٹ' },
+            ]),
           ].map(tab => {
             const isActive = activeDocType === tab.id;
             return (
@@ -642,22 +631,21 @@ const PrintDocument = () => {
         boxSizing: 'border-box'
       }}>
         
-        {/* Left Side: Real A4 Centered Sheet Layout */}
-        <div id="printable-document-container" style={{
+        {/* Left Side: A5 centered sheet layout */}
+        <div id="printable-document-container" className="print-page-a5" style={{
           flex: '1',
-          maxWidth: '820px',
           boxSizing: 'border-box'
         }}>
           
-          {/* A4 White Sheet card */}
+          {/* A5 white sheet card */}
           <div className="printable-card" style={{
             backgroundColor: 'white',
             color: '#1e293b',
             borderRadius: '16px',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
             border: '1px solid rgba(255,255,255,0.05)',
-            padding: '60px 50px',
-            minHeight: '1000px', // exact paper weight impression
+            padding: '36px 28px',
+            minHeight: '740px',
             boxSizing: 'border-box',
             position: 'relative'
           }}>
@@ -683,18 +671,22 @@ const PrintDocument = () => {
             {/* NEW DOCUMENT HEADER */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
               <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                <div style={{ width: '64px', height: '64px', backgroundColor: '#0f172a', borderRadius: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 10px 15px -3px rgba(15, 23, 42, 0.3)' }}>
-                  <Building size={32} color="#5BD51E" />
-                </div>
+                <AppLogo size="md" tone="dark" />
                 <div>
-                  <h1 style={{ fontSize: '32px', color: '#0f172a', fontWeight: '900', letterSpacing: '-0.03em', margin: 0, lineHeight: '1' }}>GATEWAY</h1>
+                  <h1 style={{ fontSize: '32px', color: '#0f172a', fontWeight: '900', letterSpacing: '-0.03em', margin: 0, lineHeight: '1' }}>{BRAND_NAME.toUpperCase()}</h1>
                   <h2 style={{ fontSize: '14px', color: '#64748b', fontWeight: '800', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '6px 0 0 0' }}>Marriage Hall</h2>
                 </div>
               </div>
               
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: '42px', fontWeight: '900', color: '#f1f5f9', textTransform: 'uppercase', letterSpacing: '0.02em', lineHeight: '1' }}>
-                  {activeDocType === 'advance_receipt' ? (isUrdu ? 'رسیڈ' : 'RECEIPT') : activeDocType === 'final_bill' ? (isUrdu ? 'بل' : 'INVOICE') : (isUrdu ? 'ورک شیٹ' : 'WORKSHEET')}
+                  {activeDocType === 'cancellation_notice'
+                    ? (isUrdu ? 'منسوخی' : 'CANCELLED')
+                    : activeDocType === 'advance_receipt'
+                      ? (isUrdu ? 'رسیڈ' : 'RECEIPT')
+                      : activeDocType === 'final_bill'
+                        ? (isUrdu ? 'بل' : 'INVOICE')
+                        : (isUrdu ? 'ورک شیٹ' : 'WORKSHEET')}
                 </div>
                 <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '24px' }}>
@@ -891,6 +883,99 @@ const PrintDocument = () => {
                       </span>
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeDocType === 'cancellation_notice' && (
+              <div style={{ marginTop: '20px' }}>
+                <div style={{
+                  textAlign: 'center',
+                  padding: '28px 24px',
+                  marginBottom: '32px',
+                  borderRadius: '12px',
+                  border: '2px solid #fecaca',
+                  backgroundColor: '#fef2f2',
+                }}>
+                  <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#991b1b', margin: '0 0 8px 0', letterSpacing: '0.08em' }}>
+                    {isUrdu ? 'بکنگ منسوخ' : 'BOOKING CANCELLED'}
+                  </h2>
+                  <p style={{ fontSize: '14px', color: '#7f1d1d', margin: 0, fontWeight: '600' }}>
+                    {isUrdu ? 'یہ بکنگ مکمل طور پر منسوخ کر دی گئی ہے' : 'This reservation has been officially cancelled and is no longer valid.'}
+                  </p>
+                </div>
+
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '24px', marginBottom: '24px', fontSize: '14px', lineHeight: 1.7 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 32px' }}>
+                    <div>
+                      <p style={{ margin: '0 0 4px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>{isUrdu ? 'بکنگ نمبر' : 'Booking reference'}</p>
+                      <p style={{ margin: 0, fontWeight: '800', color: '#0f172a' }}>{booking.booking_id || `BK-${booking.id}`}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 4px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>{isUrdu ? 'منسوخی کی تاریخ' : 'Cancelled on'}</p>
+                      <p style={{ margin: 0, fontWeight: '800', color: '#0f172a' }}>
+                        {booking.cancelled_at
+                          ? new Date(booking.cancelled_at).toLocaleString()
+                          : new Date().toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 4px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>{isUrdu ? 'تقریب' : 'Event'}</p>
+                      <p style={{ margin: 0, fontWeight: '700' }}>{eventName}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 4px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>{isUrdu ? 'تاریخ / وقت' : 'Event date / slot'}</p>
+                      <p style={{ margin: 0, fontWeight: '700' }}>{eventDate || '-'} · {slot === 'morning' ? (isUrdu ? 'صبح' : 'Morning') : (isUrdu ? 'شام' : 'Evening')}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 4px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>{isUrdu ? 'ہال' : 'Venue'}</p>
+                      <p style={{ margin: 0, fontWeight: '700' }}>{venueName}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 4px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>{isUrdu ? 'کسٹمر' : 'Customer'}</p>
+                      <p style={{ margin: 0, fontWeight: '700' }}>{customerName}</p>
+                    </div>
+                  </div>
+
+                  {booking.cancellation_reason && (
+                    <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #e2e8f0' }}>
+                      <p style={{ margin: '0 0 6px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>{isUrdu ? 'منسوخی کی وجہ' : 'Reason for cancellation'}</p>
+                      <p style={{ margin: 0, color: '#475569', fontWeight: '600' }}>{booking.cancellation_reason}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  padding: '20px 24px',
+                  marginBottom: '24px',
+                }}>
+                  <p style={{ margin: '0 0 12px', fontWeight: '800', fontSize: '14px', color: '#0f172a' }}>
+                    {isUrdu ? 'ادائیگی کی تفصیل' : 'Payment summary'}
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                    <span style={{ color: '#64748b' }}>{isUrdu ? 'کل رقم (منسوخ شدہ)' : 'Original contract total'}</span>
+                    <span style={{ fontWeight: '700' }}>PKR {grandTotal.toLocaleString()}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                    <span style={{ color: '#64748b' }}>{isUrdu ? 'ادا شدہ ایڈوانس' : 'Advance received'}</span>
+                    <span style={{ fontWeight: '700', color: '#166534' }}>PKR {Number(advancePaid).toLocaleString()}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', paddingTop: '12px', borderTop: '1px dashed #cbd5e1' }}>
+                    <span style={{ color: '#64748b', fontWeight: '700' }}>{isUrdu ? 'باقی واجب الادا (اب)' : 'Balance due (now)'}</span>
+                    <span style={{ fontWeight: '900', color: '#15803d' }}>PKR 0</span>
+                  </div>
+                </div>
+
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px 24px', fontSize: '13px', color: '#475569', lineHeight: 1.6 }}>
+                  <p style={{ margin: '0 0 8px', fontWeight: '800', color: '#0f172a' }}>{isUrdu ? 'اہم نوٹ' : 'Important notice'}</p>
+                  <ul style={{ margin: 0, paddingLeft: '18px' }}>
+                    <li style={{ marginBottom: '6px' }}>{isUrdu ? 'ہال کی بکنگ ختم - یہ تاریخ اب دوسرے کسٹمر کے لیے دستیاب ہے۔' : 'The hall slot has been released and is available for other bookings.'}</li>
+                    <li style={{ marginBottom: '6px' }}>{isUrdu ? 'کوئی باقی واجب الادا رقم نہیں - بکنگ مکمل طور پر منسوخ۔' : 'No further payment is due on this cancelled reservation.'}</li>
+                    <li>{isUrdu ? 'ایڈوانس رقم کی واپسی کی صورت میں الگ رسید جاری کی جائے گی۔' : 'If advance was refunded, a separate refund receipt will be issued by management.'}</li>
+                  </ul>
                 </div>
               </div>
             )}

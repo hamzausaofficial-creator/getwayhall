@@ -73,6 +73,8 @@ class Booking(models.Model):
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='UNPAID')
     
     notes = models.TextField(blank=True, null=True)
+    cancellation_reason = models.TextField(blank=True, default='')
+    cancelled_at = models.DateTimeField(null=True, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -81,6 +83,14 @@ class Booking(models.Model):
             models.Index(fields=['start_date']),
             models.Index(fields=['booking_status']),
         ]
+
+    @staticmethod
+    def _aware_datetime(value):
+        if value is None:
+            return None
+        if settings.USE_TZ and timezone.is_naive(value):
+            return timezone.make_aware(value, timezone.get_current_timezone())
+        return value
 
     def save(self, *args, **kwargs):
         # Auto generate booking_id if not present
@@ -110,8 +120,11 @@ class Booking(models.Model):
         
         self.total_price = total_before_tax + tax
         
-        # Auto calculate balance
-        self.remaining_balance = self.total_price - self.advance_paid
+        # Cancelled bookings have no balance due
+        if self.booking_status == 'CANCELLED':
+            self.remaining_balance = Decimal('0')
+        else:
+            self.remaining_balance = self.total_price - self.advance_paid
         
         # Update payment status
         if self.advance_paid <= 0:
@@ -146,6 +159,9 @@ class Booking(models.Model):
                 self.start_date = timezone.now()
             if not self.end_date:
                 self.end_date = self.start_date + datetime.timedelta(days=1)
+
+        self.start_date = self._aware_datetime(self.start_date)
+        self.end_date = self._aware_datetime(self.end_date)
 
         super().save(*args, **kwargs)
 

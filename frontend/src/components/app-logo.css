@@ -1,0 +1,128 @@
+.app-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-logo__img {
+  display: block;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+/* White logo on dark backgrounds (sidebar, hero nav) */
+.app-logo__img--light {
+  filter: none;
+}
+
+/* Dark logo on light backgrounds */
+.app-logo__img--dark {
+  filter: brightness(0);
+}
+
+.app-logo__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.app-logo__name {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: inherit;
+}
+
+.app-logo__name-accent {
+  color: #5bd51e;
+}
+
+.app-logo__subtitle {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  line-height: 1.3;
+  margin-top: 2px;
+}
+
+.app-logo--landing-nav .app-logo__name {
+  font-size: 1rem;
+}
+
+@media (min-width: 640px) {
+  .app-logo--landing-nav .app-logo__name {
+    font-size: 1.0625rem;
+  }
+}
+
+.app-logo--landing-nav .app-logo__name-accent {
+  color: #5bd51e;
+}
+
+.landing-nav__logo--light .app-logo__name {
+  color: #ffffff;
+}
+
+.landing-nav__logo--dark .app-logo__name {
+  color: #191c1e;
+}
+
+.app-logo--footer .app-logo__name {
+  font-size: 1rem;
+  color: #191c1e;
+}
+
+.app-logo--footer .app-logo__name-accent {
+  color: #5bd51e;
+}
+
+.app-logo--sidebar {
+  width: 100%;
+  align-items: flex-start;
+}
+
+.app-logo--sidebar-collapsed {
+  justify-content: center;
+  align-items: center;
+  width: 44px;
+}
+
+.app-logo--sidebar-collapsed .app-logo__name {
+  font-size: 1.125rem;
+  text-align: center;
+  width: 100%;
+}
+
+.app-logo--sidebar .app-logo__name {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--primary);
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.app-logo--sidebar .app-logo__subtitle {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #94a3b8;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.app-logo--print .app-logo__name,
+.app-logo__print-title {
+  font-size: 1.0625rem;
+  color: #5bd51e;
+}
+
+.login-card__logo-mark .app-logo__img {
+  width: 40px !important;
+  height: 40px !important;
+  max-width: 40px !important;
+  max-height: 40px !important;
+}

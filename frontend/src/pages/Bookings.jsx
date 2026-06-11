@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import SearchInput from '../components/SearchInput';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Plus,
   Calendar as CalendarIcon,
@@ -8,6 +8,7 @@ import {
   Trash2,
   Edit2,
   X,
+  XCircle,
   FileText,
   Printer,
   CheckCircle,
@@ -23,6 +24,7 @@ import { formatCollectDue, formatCollectDuePKR, bookingCollectDue, hasCollectDue
 import toast from 'react-hot-toast';
 import { customerDisplayName, buildCustomerPayload } from '../utils/customer';
 import { usePermissions } from '../hooks/usePermissions';
+import CancelBookingModal from '../components/bookings/CancelBookingModal';
 
 const BOOKING_STATUS_STYLE = {
   PENDING: { bg: '#fef3c7', color: '#92400e', label: 'Pending' },
@@ -50,7 +52,7 @@ const numFromApi = (v) => (v === 0 || v === '0' || v == null ? '' : v);
 const Bookings = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { canManage } = usePermissions();
+  const { canManage, canAccessPayments } = usePermissions();
   const [bookings, setBookings] = useState([]);
   const [halls, setHalls] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -64,6 +66,7 @@ const Bookings = () => {
   const isEdit = viewMode === 'edit';
   
   const [searchQuery, setSearchQuery] = useState('');
+  const [cancelTarget, setCancelTarget] = useState(null);
   
   // Primary Form Data
   const [formData, setFormData] = useState({
@@ -262,6 +265,17 @@ const Bookings = () => {
     }
   }, [bookings, location.state?.editBookingId]);
 
+  useEffect(() => {
+    if (!location.state?.openCreate || !canManage) return;
+    const prefillCustomer = location.state?.prefillCustomer;
+    handleCreateNewClick();
+    if (prefillCustomer) {
+      setFormData((prev) => ({ ...prev, customer: String(prefillCustomer) }));
+      setNewCustomerMode(false);
+    }
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.state?.openCreate, location.state?.prefillCustomer, canManage, navigate, location.pathname]);
+
   const handleDecorationPackageSelect = (packageId) => {
     setSelectedDecorationId(packageId);
     if (!packageId) return;
@@ -272,10 +286,6 @@ const Bookings = () => {
         decoration_charge: Number(pkg.base_price) || 0,
       }));
     }
-  };
-
-  const handlePrintRowClick = (booking) => {
-    navigate(`/print/${booking.id}`);
   };
 
   const handleSaveNewCustomerInline = async () => {
@@ -425,24 +435,15 @@ const Bookings = () => {
         || (typeof Object.values(errData || {})?.[0] === 'object' ? Object.values(errData)?.[0]?.[0] : Object.values(errData)?.[0])
         || 'Failed to save booking details.';
       setBookingError(msg);
-      toast.error('Reservation failed — check details');
+      toast.error('Reservation failed - check details');
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!canManage) {
-      toast.error('You do not have permission to delete bookings.');
-      return;
-    }
-    if (window.confirm('Are you absolutely sure you want to cancel and delete this reservation?')) {
-      try {
-        await client.delete(`/bookings/${id}/`);
-        toast.success('Booking successfully deleted');
-        fetchData();
-      } catch (err) {
-        toast.error('Failed to delete booking from database');
-      }
-    }
+  const handlePrintRowClick = (booking) => {
+    const path = booking.booking_status === 'CANCELLED'
+      ? `/print/${booking.id}?doc=cancellation`
+      : `/print/${booking.id}`;
+    navigate(path);
   };
 
 
@@ -489,14 +490,14 @@ const Bookings = () => {
             <div className="card table-scroll" style={{ padding: 0, borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
-                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid var(--border)' }}>
+                  <tr className="table-header-row">
                     {[
-                      { label: 'Event', title: 'Booking ID & event name' },
+                      { label: 'Customer / Event', title: 'Customer name & event' },
                       { label: 'Hall', title: 'Venue / marriage hall' },
                       { label: 'Date', title: 'Event date & time slot' },
                       { label: 'Status', title: 'Booking status' },
                       { label: 'Payment', title: 'Payment status' },
-                      { label: 'Due', title: 'Balance due (lena)' },
+                      { label: 'Due', title: 'Balance due' },
                       { label: 'Total', title: 'Grand total amount' },
                       { label: '', title: 'Actions' },
                     ].map((col) => (
@@ -527,9 +528,19 @@ const Bookings = () => {
                         title="Click to view or edit this reservation details"
                       >
                         <div style={{ transition: 'opacity 0.2s' }} className="hover:opacity-85">
-                          <p style={{ fontSize: '11px', fontWeight: '700', fontFamily: 'monospace', color: 'var(--primary)', marginBottom: '2px' }}>{booking.booking_id || `BK-2026-${booking.id}`}</p>
-                          <p style={{ fontWeight: '700', fontSize: '14px', color: 'var(--secondary)', display: 'inline-block', borderBottom: '1px dashed transparent', transition: 'border-color 0.2s' }} className="hover:border-slate-400">{booking.event_name}</p>
-                          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{booking.customer_name}</p>
+                          <p style={{ fontSize: '11px', fontWeight: '600', fontFamily: 'monospace', color: 'var(--text-muted)', marginBottom: '4px', letterSpacing: '0.02em' }}>{booking.booking_id || `BK-2026-${booking.id}`}</p>
+                          {booking.customer ? (
+                            <Link
+                              to={`/customers/${booking.customer}`}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ fontWeight: '700', fontSize: '16px', color: 'var(--primary)', display: 'inline-block', lineHeight: 1.3 }}
+                            >
+                              {booking.customer_name}
+                            </Link>
+                          ) : (
+                            <p style={{ fontWeight: '700', fontSize: '16px', color: 'var(--secondary)', lineHeight: 1.3 }}>{booking.customer_name}</p>
+                          )}
+                          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', fontWeight: '500', lineHeight: 1.35 }}>{booking.event_name}</p>
                         </div>
                       </td>
                       <td style={{ padding: '20px 24px', fontSize: '14px', fontWeight: '500', color: 'var(--secondary)' }}>{booking.venue_name}</td>
@@ -568,13 +579,13 @@ const Bookings = () => {
                       </td>
                       <td style={{ padding: '20px 24px' }}>
                         <span 
-                          onClick={() => navigate('/payments', { 
+                          onClick={canAccessPayments ? () => navigate('/payments', { 
                             state: { 
                               preselectedBookingId: booking.id,
                               bookingEventName: booking.event_name,
                               autoOpenRecord: booking.payment_status !== 'PAID' 
                             } 
-                          })}
+                          }) : undefined}
                           style={{
                             padding: '4px 12px',
                             borderRadius: '20px',
@@ -582,17 +593,17 @@ const Bookings = () => {
                             fontWeight: '700',
                             backgroundColor: booking.payment_status === 'PAID' ? '#dcfce7' : booking.payment_status === 'PARTIAL' ? '#ffedd5' : '#fee2e2',
                             color: booking.payment_status === 'PAID' ? '#166534' : booking.payment_status === 'PARTIAL' ? '#c2410c' : '#991b1b',
-                            cursor: 'pointer',
+                            cursor: canAccessPayments ? 'pointer' : 'default',
                             display: 'inline-block',
-                            transition: 'transform 0.15s, box-shadow 0.15s'
+                            transition: canAccessPayments ? 'transform 0.15s, box-shadow 0.15s' : undefined
                           }}
-                          className="hover:scale-105 hover:shadow-sm"
-                          title="Click to view payment history or record new payment"
+                          className={canAccessPayments ? 'hover:scale-105 hover:shadow-sm' : undefined}
+                          title={canAccessPayments ? 'Click to view payment history or record new payment' : undefined}
                         >
                           {booking.payment_status}
                         </span>
                       </td>
-                      <td style={{ padding: '20px 24px', fontWeight: '800', fontSize: '14px', color: hasCollectDue(bookingCollectDue(booking)) ? '#b91c1c' : '#64748b' }}>
+                      <td style={{ padding: '20px 24px', fontWeight: '800', fontSize: '14px', color: hasCollectDue(bookingCollectDue(booking)) ? '#b91c1c' : 'var(--text-dim)' }}>
                         {formatCollectDue(bookingCollectDue(booking))}
                       </td>
                       <td style={{ padding: '20px 24px', fontWeight: '700', fontSize: '14px', color: 'var(--secondary)' }}>
@@ -605,8 +616,8 @@ const Bookings = () => {
                           <button onClick={() => handleEditClick(booking)} style={{ color: 'var(--secondary)', backgroundColor: 'transparent', padding: '4px', borderRadius: '4px' }} className="hover:bg-slate-200" title="Edit booking"><Edit2 size={16} /></button>
                           )}
                           <button onClick={() => handlePrintRowClick(booking)} style={{ color: 'var(--primary)', backgroundColor: 'transparent', padding: '4px', borderRadius: '4px' }} className="hover:bg-orange-50" title="Print receipts & reports"><Printer size={16} /></button>
-                          {canManage && (
-                          <button onClick={() => handleDelete(booking.id)} style={{ color: 'var(--error)', backgroundColor: 'transparent', padding: '4px', borderRadius: '4px' }} className="hover:bg-red-50" title="Delete booking"><Trash2 size={16} /></button>
+                          {canManage && booking.booking_status !== 'CANCELLED' && booking.booking_status !== 'COMPLETED' && (
+                          <button onClick={() => setCancelTarget(booking)} style={{ color: '#b91c1c', backgroundColor: 'transparent', padding: '4px', borderRadius: '4px' }} className="hover:bg-red-50" title="Cancel booking"><XCircle size={16} /></button>
                           )}
                         </div>
                       </td>
@@ -632,7 +643,7 @@ const Bookings = () => {
             {/* Header section with back nav */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '24px', marginBottom: '40px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <button type="button" onClick={() => setViewMode('list')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', border: '1px solid var(--border)', backgroundColor: 'white' }} className="hover:bg-slate-100">
+                <button type="button" onClick={() => setViewMode('list')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', border: '1px solid var(--border)', backgroundColor: 'var(--surface)' }} className="hover:bg-slate-100">
                   <ChevronLeft size={20} />
                 </button>
                 <div>
@@ -704,15 +715,15 @@ const Bookings = () => {
                   <div className="premium-card form-grid-2 form-grid-2--gap-24" style={{ padding: '28px' }}>
                     <div className="input-group">
                       <label>Booking ID</label>
-                      <input type="text" readOnly value={formData.booking_id || 'BK-2026-AUTO'} style={{ backgroundColor: '#f8fafc', color: '#64748b', fontWeight: 'bold', fontFamily: 'monospace' }} />
+                      <input type="text" readOnly value={formData.booking_id || 'BK-2026-AUTO'} style={{ backgroundColor: 'var(--surface-muted)', color: 'var(--text-dim)', fontWeight: 'bold', fontFamily: 'monospace' }} />
                     </div>
                     <div className="input-group">
                       <label>Booking Date</label>
-                      <input type="date" required disabled={isEdit} value={formData.booking_date} onChange={(e) => setFormData({ ...formData, booking_date: e.target.value })} style={isEdit ? { backgroundColor: '#f1f5f9', color: '#64748b', cursor: 'not-allowed' } : {}} />
+                      <input type="date" required disabled={isEdit} value={formData.booking_date} onChange={(e) => setFormData({ ...formData, booking_date: e.target.value })} style={isEdit ? { backgroundColor: 'var(--surface-elevated)', color: 'var(--text-dim)', cursor: 'not-allowed' } : {}} />
                     </div>
                     <div className="input-group">
                       <label>Event Date</label>
-                      <input type="date" required disabled={isEdit} value={formData.event_date} onChange={(e) => setFormData({ ...formData, event_date: e.target.value })} style={isEdit ? { backgroundColor: '#f1f5f9', color: '#64748b', cursor: 'not-allowed' } : {}} />
+                      <input type="date" required disabled={isEdit} value={formData.event_date} onChange={(e) => setFormData({ ...formData, event_date: e.target.value })} style={isEdit ? { backgroundColor: 'var(--surface-elevated)', color: 'var(--text-dim)', cursor: 'not-allowed' } : {}} />
                     </div>
                     <div className="input-group">
                       <label>Event Title</label>
@@ -724,7 +735,7 @@ const Bookings = () => {
                         placeholder="e.g. Barat Ceremony, Walima Reception..." 
                         value={formData.event_name} 
                         onChange={(e) => setFormData({ ...formData, event_name: e.target.value })} 
-                        style={isEdit ? { backgroundColor: '#f1f5f9', color: '#64748b', cursor: 'not-allowed' } : {}}
+                        style={isEdit ? { backgroundColor: 'var(--surface-elevated)', color: 'var(--text-dim)', cursor: 'not-allowed' } : {}}
                       />
                       <datalist id="event-suggestions">
                         {Array.from(new Set(bookings.map(b => b.event_name).filter(Boolean))).map(name => (
@@ -754,11 +765,11 @@ const Bookings = () => {
                     
                     {/* Selector toggle */}
                     {!isEdit && (
-                      <div style={{ display: 'flex', backgroundColor: '#e2e8f0', borderRadius: '8px', padding: '2px' }}>
-                        <button type="button" onClick={() => setNewCustomerMode(false)} style={{ fontSize: '11px', fontWeight: '700', padding: '6px 12px', borderRadius: '6px', backgroundColor: !newCustomerMode ? 'white' : 'transparent', color: !newCustomerMode ? 'var(--secondary)' : '#64748b', boxShadow: !newCustomerMode ? 'var(--shadow-sm)' : 'none' }}>
+                      <div style={{ display: 'flex', backgroundColor: 'var(--toggle-track)', borderRadius: '8px', padding: '2px' }}>
+                        <button type="button" onClick={() => setNewCustomerMode(false)} style={{ fontSize: '11px', fontWeight: '700', padding: '6px 12px', borderRadius: '6px', backgroundColor: !newCustomerMode ? 'var(--surface)' : 'transparent', color: !newCustomerMode ? 'var(--secondary)' : 'var(--text-dim)', boxShadow: !newCustomerMode ? 'var(--shadow-sm)' : 'none' }}>
                           Select Client
                         </button>
-                        <button type="button" onClick={() => setNewCustomerMode(true)} style={{ fontSize: '11px', fontWeight: '700', padding: '6px 12px', borderRadius: '6px', backgroundColor: newCustomerMode ? 'white' : 'transparent', color: newCustomerMode ? 'var(--secondary)' : '#64748b', boxShadow: newCustomerMode ? 'var(--shadow-sm)' : 'none' }}>
+                        <button type="button" onClick={() => setNewCustomerMode(true)} style={{ fontSize: '11px', fontWeight: '700', padding: '6px 12px', borderRadius: '6px', backgroundColor: newCustomerMode ? 'var(--surface)' : 'transparent', color: newCustomerMode ? 'var(--secondary)' : 'var(--text-dim)', boxShadow: newCustomerMode ? 'var(--shadow-sm)' : 'none' }}>
                           + Add Client
                         </button>
                       </div>
@@ -774,7 +785,7 @@ const Bookings = () => {
                           disabled={isEdit}
                           value={formData.customer}
                           onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
-                          style={isEdit ? { backgroundColor: '#f1f5f9', color: '#64748b', cursor: 'not-allowed' } : {}}
+                          style={isEdit ? { backgroundColor: 'var(--surface-elevated)', color: 'var(--text-dim)', cursor: 'not-allowed' } : {}}
                         >
                           <option value="">Select Customer</option>
                           {customers.map((c) => (
@@ -783,6 +794,14 @@ const Bookings = () => {
                             </option>
                           ))}
                         </select>
+                        {formData.customer && (
+                          <Link
+                            to={`/customers/${formData.customer}`}
+                            style={{ marginTop: '8px', fontSize: '12px', fontWeight: '600', color: 'var(--primary)', display: 'inline-block' }}
+                          >
+                            View customer profile →
+                          </Link>
+                        )}
                       </div>
                     ) : (
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
@@ -848,11 +867,11 @@ const Bookings = () => {
                       <div className="input-group">
                         <label>Select Venue Hall</label>
                         {!formData.venue && !isEdit && (
-                          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>No hall selected — tap a hall below</p>
+                          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>No hall selected - tap a hall below</p>
                         )}
-                        <div style={{ display: 'flex', gap: '6px', backgroundColor: '#e2e8f0', borderRadius: '8px', padding: '3px', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: '6px', backgroundColor: 'var(--toggle-track)', borderRadius: '8px', padding: '3px', flexWrap: 'wrap' }}>
                           {halls.length === 0 && (
-                            <span style={{ fontSize: '12px', color: '#64748b', padding: '8px 12px' }}>No halls available. Add a hall first.</span>
+                            <span style={{ fontSize: '12px', color: 'var(--text-dim)', padding: '8px 12px' }}>No halls available. Add a hall first.</span>
                           )}
                           {hallsForSelect.map(h => {
                             const isSel = formData.venue !== '' && String(formData.venue) === String(h.id);
@@ -875,7 +894,7 @@ const Bookings = () => {
                                   padding: '8px 12px',
                                   borderRadius: '6px',
                                   backgroundColor: isSel ? 'white' : 'transparent',
-                                  color: isSel ? 'var(--primary)' : '#64748b',
+                                  color: isSel ? 'var(--primary)' : 'var(--text-dim)',
                                   boxShadow: isSel ? 'var(--shadow-sm)' : 'none',
                                   cursor: isEdit ? 'not-allowed' : 'pointer'
                                 }}
@@ -890,9 +909,9 @@ const Bookings = () => {
                       <div className="input-group">
                         <label>Select Slot</label>
                         {!formData.slot && !isEdit && (
-                          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>No timing selected — choose Morning or Evening</p>
+                          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>No timing selected - choose Morning or Evening</p>
                         )}
-                        <div style={{ display: 'flex', gap: '6px', backgroundColor: '#e2e8f0', borderRadius: '8px', padding: '3px' }}>
+                        <div style={{ display: 'flex', gap: '6px', backgroundColor: 'var(--toggle-track)', borderRadius: '8px', padding: '3px' }}>
                           {['morning', 'evening'].map(s => {
                             const isSel = formData.slot === s;
                             return (
@@ -908,7 +927,7 @@ const Bookings = () => {
                                   padding: '8px 12px',
                                   borderRadius: '6px',
                                   backgroundColor: isSel ? 'white' : 'transparent',
-                                  color: isSel ? 'var(--primary)' : '#64748b',
+                                  color: isSel ? 'var(--primary)' : 'var(--text-dim)',
                                   boxShadow: isSel ? 'var(--shadow-sm)' : 'none',
                                   textTransform: 'capitalize',
                                   cursor: isEdit ? 'not-allowed' : 'pointer'
@@ -927,11 +946,11 @@ const Bookings = () => {
                       <div className="form-grid-2">
                         <div className="input-group">
                           <label>Gents Guest</label>
-                          <input type="number" min="0" placeholder="—" value={displayNumField(formData.gents_count)} onChange={(e) => setFormData({ ...formData, gents_count: toIntField(e.target.value) })} />
+                          <input type="number" min="0" placeholder="-" value={displayNumField(formData.gents_count)} onChange={(e) => setFormData({ ...formData, gents_count: toIntField(e.target.value) })} />
                         </div>
                         <div className="input-group">
                           <label>Ladies Guest</label>
-                          <input type="number" min="0" placeholder="—" value={displayNumField(formData.ladies_count)} onChange={(e) => setFormData({ ...formData, ladies_count: toIntField(e.target.value) })} />
+                          <input type="number" min="0" placeholder="-" value={displayNumField(formData.ladies_count)} onChange={(e) => setFormData({ ...formData, ladies_count: toIntField(e.target.value) })} />
                         </div>
                       </div>
 
@@ -941,7 +960,7 @@ const Bookings = () => {
                           <span style={{ fontSize: '24px', fontWeight: '900', color: 'var(--primary)' }}>{totalAttendance}</span>
                           {(() => {
                             const sel = halls.find(h => String(h.id) === String(formData.venue));
-                            return sel ? <p style={{ fontSize: '10px', color: '#64748b', fontWeight: '500' }}>(Max Limit: {sel.capacity})</p> : null;
+                            return sel ? <p style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: '500' }}>(Max Limit: {sel.capacity})</p> : null;
                           })()}
                         </div>
                       </div>
@@ -960,14 +979,14 @@ const Bookings = () => {
                     <div className="input-group">
                       <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Overtime Hours</label>
                       <div style={{ position: 'relative' }}>
-                        <input type="number" step="0.5" min="0" placeholder="—" value={displayNumField(formData.overtime_hours)} onChange={(e) => setFormData({ ...formData, overtime_hours: toFloatField(e.target.value) })} style={{ width: '100%', paddingRight: '40px' }} />
-                        <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', fontWeight: '700', color: '#64748b' }}>HRS</span>
+                        <input type="number" step="0.5" min="0" placeholder="-" value={displayNumField(formData.overtime_hours)} onChange={(e) => setFormData({ ...formData, overtime_hours: toFloatField(e.target.value) })} style={{ width: '100%', paddingRight: '40px' }} />
+                        <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', fontWeight: '700', color: 'var(--text-dim)' }}>HRS</span>
                       </div>
                     </div>
 
                     <div className="input-group">
                       <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Kitchen Services (PKR)</label>
-                      <input type="number" min="0" placeholder="—" value={displayNumField(formData.kitchen_charge)} onChange={(e) => setFormData({ ...formData, kitchen_charge: toFloatField(e.target.value) })} />
+                      <input type="number" min="0" placeholder="-" value={displayNumField(formData.kitchen_charge)} onChange={(e) => setFormData({ ...formData, kitchen_charge: toFloatField(e.target.value) })} />
                     </div>
 
                     <div className="input-group" style={{ gridColumn: '1 / -1' }}>
@@ -979,25 +998,25 @@ const Bookings = () => {
                         onChange={(e) => handleDecorationPackageSelect(e.target.value)}
                         style={{ width: '100%', marginBottom: '8px' }}
                       >
-                        <option value="">— Custom amount only —</option>
+                        <option value="">- Custom amount only -</option>
                         {decorationPackages.map((pkg) => (
                           <option key={pkg.id} value={pkg.id}>
-                            {pkg.name} ({pkg.tier}) — Rs {Number(pkg.base_price || 0).toLocaleString()}
+                            {pkg.name} ({pkg.tier}) - Rs {Number(pkg.base_price || 0).toLocaleString()}
                           </option>
                         ))}
                       </select>
                       <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Decorations charge (PKR)</label>
-                      <input type="number" min="0" placeholder="—" value={displayNumField(formData.decoration_charge)} onChange={(e) => setFormData({ ...formData, decoration_charge: toFloatField(e.target.value) })} />
+                      <input type="number" min="0" placeholder="-" value={displayNumField(formData.decoration_charge)} onChange={(e) => setFormData({ ...formData, decoration_charge: toFloatField(e.target.value) })} />
                     </div>
 
                     <div className="input-group">
                       <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Deg Cooking Count</label>
-                      <input type="number" min="0" placeholder="—" value={displayNumField(formData.deg_count)} onChange={(e) => setFormData({ ...formData, deg_count: toIntField(e.target.value) })} />
+                      <input type="number" min="0" placeholder="-" value={displayNumField(formData.deg_count)} onChange={(e) => setFormData({ ...formData, deg_count: toIntField(e.target.value) })} />
                     </div>
 
                     <div className="input-group">
                       <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Generator Usage (PKR)</label>
-                      <input type="number" min="0" placeholder="—" value={displayNumField(formData.generator_charge)} onChange={(e) => setFormData({ ...formData, generator_charge: toFloatField(e.target.value) })} />
+                      <input type="number" min="0" placeholder="-" value={displayNumField(formData.generator_charge)} onChange={(e) => setFormData({ ...formData, generator_charge: toFloatField(e.target.value) })} />
                     </div>
                   </div>
                 </section>
@@ -1079,7 +1098,7 @@ const Bookings = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>Rate per Head</span>
                       <div style={{ position: 'relative', width: '110px' }}>
-                        <input type="number" min="0" disabled={isEdit} value={displayNumField(formData.rate_per_head)} onChange={(e) => setFormData({ ...formData, rate_per_head: toFloatField(e.target.value) })} style={isEdit ? { width: '100%', textAlign: 'right', fontSize: '13px', padding: '4px 8px', fontWeight: '700', backgroundColor: '#f1f5f9', color: '#64748b', cursor: 'not-allowed' } : { width: '100%', textAlign: 'right', fontSize: '13px', padding: '4px 8px', fontWeight: '700' }} />
+                        <input type="number" min="0" disabled={isEdit} value={displayNumField(formData.rate_per_head)} onChange={(e) => setFormData({ ...formData, rate_per_head: toFloatField(e.target.value) })} style={isEdit ? { width: '100%', textAlign: 'right', fontSize: '13px', padding: '4px 8px', fontWeight: '700', backgroundColor: 'var(--surface-elevated)', color: 'var(--text-dim)', cursor: 'not-allowed' } : { width: '100%', textAlign: 'right', fontSize: '13px', padding: '4px 8px', fontWeight: '700' }} />
                       </div>
                     </div>
 
@@ -1127,13 +1146,13 @@ const Bookings = () => {
 
                       <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)' }}>Advance Paid</span>
-                        <input type="number" min="0" placeholder="—" disabled={isEdit} value={displayNumField(formData.advance_paid)} onChange={(e) => setFormData({ ...formData, advance_paid: toFloatField(e.target.value) })} style={isEdit ? { width: '100px', padding: '4px 8px', fontSize: '12px', textAlign: 'right', fontWeight: '700', backgroundColor: '#f1f5f9', color: '#64748b', cursor: 'not-allowed' } : { width: '100px', padding: '4px 8px', fontSize: '12px', textAlign: 'right', fontWeight: '700' }} />
+                        <input type="number" min="0" placeholder="-" disabled={isEdit} value={displayNumField(formData.advance_paid)} onChange={(e) => setFormData({ ...formData, advance_paid: toFloatField(e.target.value) })} style={isEdit ? { width: '100px', padding: '4px 8px', fontSize: '12px', textAlign: 'right', fontWeight: '700', backgroundColor: 'var(--surface-elevated)', color: 'var(--text-dim)', cursor: 'not-allowed' } : { width: '100px', padding: '4px 8px', fontSize: '12px', textAlign: 'right', fontWeight: '700' }} />
                       </div>
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderTop: '1px dashed var(--border)', paddingTop: '12px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', tracking: '0.05em', color: hasCollectDue(remainingBalance) ? 'var(--error)' : '#64748b' }}>Lena (due)</span>
+                        <span style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', tracking: '0.05em', color: hasCollectDue(remainingBalance) ? 'var(--error)' : 'var(--text-dim)' }}>Due</span>
                         <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: '18px', fontWeight: '900', color: hasCollectDue(remainingBalance) ? 'var(--error)' : '#64748b', tracking: '-0.02em' }}>{formatCollectDuePKR(remainingBalance)}</span>
+                          <span style={{ fontSize: '18px', fontWeight: '900', color: hasCollectDue(remainingBalance) ? 'var(--error)' : 'var(--text-dim)', tracking: '-0.02em' }}>{formatCollectDuePKR(remainingBalance)}</span>
                         </div>
                       </div>
                     </div>
@@ -1194,6 +1213,13 @@ const Bookings = () => {
             </div>
           </form>
         )}
+
+      <CancelBookingModal
+        booking={cancelTarget}
+        open={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onCancelled={fetchData}
+      />
     </div>
   );
 };

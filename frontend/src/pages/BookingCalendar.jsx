@@ -18,11 +18,15 @@ import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, en
 import client from '../api/client';
 import { formatRs, formatCollectDue, bookingCollectDue, hasCollectDue } from '../utils/currency';
 import toast from 'react-hot-toast';
+import { usePermissions } from '../hooks/usePermissions';
+import CancelBookingModal from '../components/bookings/CancelBookingModal';
 
 const slotLabel = (slot) => (slot === 'morning' ? 'Morning (12pm – 4pm)' : 'Evening (7pm – 11pm)');
 
 const BookingCalendar = () => {
   const navigate = useNavigate();
+  const { canAccessPayments, canManage } = usePermissions();
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [bookings, setBookings] = useState([]);
@@ -149,7 +153,7 @@ const BookingCalendar = () => {
         || (typeof Object.values(errData || {})?.[0] === 'object' ? Object.values(errData)?.[0]?.[0] : Object.values(errData)?.[0])
         || 'Booking conflict!';
       setBookingError(msg);
-      toast.error('Booking failed — see details below');
+      toast.error('Booking failed - see details below');
     }
   };
 
@@ -186,17 +190,10 @@ const BookingCalendar = () => {
     });
   };
 
-  const handleCancelBooking = async () => {
-    if (!selectedBooking) return;
-    if (!window.confirm('Cancel this booking? Amount due will show as 00.')) return;
-    try {
-      await client.patch(`/bookings/${selectedBooking.id}/`, { booking_status: 'CANCELLED' });
-      toast.success('Booking cancelled');
-      setSelectedBooking(null);
-      fetchData();
-    } catch {
-      toast.error('Failed to cancel booking');
-    }
+  const handleCancelComplete = () => {
+    setShowCancelModal(false);
+    setSelectedBooking(null);
+    fetchData();
   };
 
   const handleDecorationSelect = (packageId) => {
@@ -255,7 +252,7 @@ const BookingCalendar = () => {
                         key={b.id}
                         type="button"
                         onClick={(e) => handleBookingClick(e, b)}
-                        title={`${b.event_name} — click for details`}
+                        title={`${b.event_name} - click for details`}
                         style={{
                           fontSize: '10px',
                           padding: '4px 6px',
@@ -325,8 +322,8 @@ const BookingCalendar = () => {
                     <div>
                       <h4 style={{ fontSize: '16px', fontWeight: '700' }}>{booking.event_name}</h4>
                       <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{booking.customer_name} • {booking.venue_name}</p>
-                      <p style={{ fontSize: '12px', fontWeight: '600', color: hasCollectDue(bookingCollectDue(booking)) ? '#b91c1c' : '#64748b', marginTop: '4px' }}>
-                        Lena: {formatCollectDue(bookingCollectDue(booking))}
+                      <p style={{ fontSize: '12px', fontWeight: '600', color: hasCollectDue(bookingCollectDue(booking)) ? '#b91c1c' : 'var(--text-dim)', marginTop: '4px' }}>
+                        Due: {formatCollectDue(bookingCollectDue(booking))}
                       </p>
                     </div>
                     <ChevronRightIcon size={18} color="var(--text-muted)" />
@@ -378,11 +375,11 @@ const BookingCalendar = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px', fontSize: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <UserIcon size={16} color="var(--text-muted)" />
-                <span><strong>Customer:</strong> {selectedBooking.customer_name || '—'}</span>
+                <span><strong>Customer:</strong> {selectedBooking.customer_name || '-'}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <MapPin size={16} color="var(--text-muted)" />
-                <span><strong>Hall:</strong> {selectedBooking.venue_name || '—'}</span>
+                <span><strong>Hall:</strong> {selectedBooking.venue_name || '-'}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <CalendarIcon size={16} color="var(--text-muted)" />
@@ -404,11 +401,11 @@ const BookingCalendar = () => {
                 </p>
                 <p style={{ fontSize: '13px', marginBottom: '6px' }}><strong>Grand total:</strong> {formatRs(selectedBooking.total_price)}</p>
                 <p style={{ fontSize: '13px', marginBottom: '6px' }}><strong>Advance paid:</strong> {formatRs(selectedBooking.advance_paid)}</p>
-                <p style={{ fontSize: '13px', color: hasCollectDue(bookingCollectDue(selectedBooking)) ? '#b91c1c' : '#64748b', fontWeight: '700' }}>
-                  <strong>Lena (due):</strong> {formatCollectDue(bookingCollectDue(selectedBooking))}
+                <p style={{ fontSize: '13px', color: hasCollectDue(bookingCollectDue(selectedBooking)) ? '#b91c1c' : 'var(--text-dim)', fontWeight: '700' }}>
+                  <strong>Due:</strong> {formatCollectDue(bookingCollectDue(selectedBooking))}
                 </p>
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
-                  Payment: <strong>{selectedBooking.payment_status || '—'}</strong>
+                  Payment: <strong>{selectedBooking.payment_status || '-'}</strong>
                 </p>
               </div>
             </div>
@@ -417,16 +414,27 @@ const BookingCalendar = () => {
               <button type="button" className="btn-primary" onClick={handleViewBooking} style={{ width: '100%', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                 <Edit2 size={18} /> View booking details
               </button>
-              <button type="button" className="btn-secondary" onClick={() => navigate(`/print/${selectedBooking.id}`)} style={{ width: '100%', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                <Printer size={18} /> Print Invoice
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => navigate(
+                  selectedBooking.booking_status === 'CANCELLED'
+                    ? `/print/${selectedBooking.id}?doc=cancellation`
+                    : `/print/${selectedBooking.id}`,
+                )}
+                style={{ width: '100%', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              >
+                <Printer size={18} /> {selectedBooking.booking_status === 'CANCELLED' ? 'Print cancellation' : 'Print Invoice'}
               </button>
-              <button type="button" className="btn-secondary" onClick={handleRecordPayment} style={{ width: '100%', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                <CreditCard size={18} /> Record Payment
-              </button>
-              {selectedBooking.booking_status !== 'CANCELLED' && (
+              {canAccessPayments && (
+                <button type="button" className="btn-secondary" onClick={handleRecordPayment} style={{ width: '100%', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <CreditCard size={18} /> Record Payment
+                </button>
+              )}
+              {canManage && selectedBooking.booking_status !== 'CANCELLED' && selectedBooking.booking_status !== 'COMPLETED' && (
                 <button
                   type="button"
-                  onClick={handleCancelBooking}
+                  onClick={() => setShowCancelModal(true)}
                   style={{ width: '100%', padding: '12px', marginTop: '4px', background: 'transparent', color: '#b91c1c', fontWeight: '600', border: '1px solid #fecaca', borderRadius: '8px' }}
                 >
                   Cancel Booking
@@ -516,10 +524,10 @@ const BookingCalendar = () => {
               <div className="input-group">
                 <label>Decoration package (optional)</label>
                 <select value={selectedDecorationId} onChange={(e) => handleDecorationSelect(e.target.value)} style={{ width: '100%', marginBottom: '8px' }}>
-                  <option value="">— None —</option>
+                  <option value="">- None -</option>
                   {decorationPackages.map((pkg) => (
                     <option key={pkg.id} value={pkg.id}>
-                      {pkg.name} — Rs {Number(pkg.base_price || 0).toLocaleString()}
+                      {pkg.name} - Rs {Number(pkg.base_price || 0).toLocaleString()}
                     </option>
                   ))}
                 </select>
@@ -541,6 +549,13 @@ const BookingCalendar = () => {
           </div>
         </div>
       )}
+
+      <CancelBookingModal
+        booking={selectedBooking}
+        open={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onCancelled={handleCancelComplete}
+      />
     </>
   );
 };

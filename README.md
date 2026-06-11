@@ -51,7 +51,7 @@ Default API base: `http://127.0.0.1:8000/api` (see `frontend/src/api/client.js`)
 
 ## Features
 
-- **Bookings** — overlap checks, decoration package link, inventory allocation per event, lena (amount due) / `00` when nothing due
+- **Bookings** — overlap checks, decoration package link, inventory allocation per event, amount due / `00` when nothing due
 - **Calendar** — view, create, edit (navigate to bookings), cancel, record payment
 - **Halls** — ACTIVE/INACTIVE; inactive halls hidden from new booking dropdowns
 - **Payments** — `advance_paid` synced from completed payments

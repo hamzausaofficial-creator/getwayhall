@@ -51,5 +51,5 @@ UserSettings.objects.get_or_create(user=user)
 
 action = 'Created' if u_created else 'Updated'
 print(f'{action} Guest House tenant: {tenant.name} ({tenant.subdomain})')
-print(f'Login — username: {USERNAME} / password: {PASSWORD}')
+print(f'Login - username: {USERNAME} / password: {PASSWORD}')
 print('Opens Guest House app only (not Marriage Hall).')

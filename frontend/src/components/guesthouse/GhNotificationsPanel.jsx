@@ -1,9 +1,11 @@
 import { Calendar, Wallet, Bell, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import EmptyState from '../ui/EmptyState';
+import { usePermissions } from '../../hooks/usePermissions';
 
 export default function GhNotificationsPanel({ alerts }) {
   const navigate = useNavigate();
+  const { canAccessPayments } = usePermissions();
   const items = [
     ...(alerts?.upcoming_checkins || []).map((e) => ({
       id: `in-${e.id}`,
@@ -18,7 +20,9 @@ export default function GhNotificationsPanel({ alerts }) {
       title: p.title,
       desc: p.desc,
       onClick: () =>
-        navigate(`/gh/payments/new?stay=${p.id}`),
+        canAccessPayments
+          ? navigate(`/gh/payments/new?stay=${p.id}`)
+          : navigate(`/gh/stays/${p.id}`),
     })),
   ].slice(0, 8);
 

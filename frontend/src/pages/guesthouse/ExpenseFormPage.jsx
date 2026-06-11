@@ -1,10 +1,17 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Receipt, CheckCircle, X, HelpCircle } from 'lucide-react';
-import { createGhExpense, updateGhExpense, getGhExpense } from '../../api/guesthouse';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ChevronLeft, Receipt, CheckCircle, X, HelpCircle, Copy } from 'lucide-react';
+import { createGhExpense, updateGhExpense, getGhExpense, listGhExpenses } from '../../api/guesthouse';
 import toast from 'react-hot-toast';
+import AppLoader from '../../components/AppLoader';
 import { usePermissions } from '../../hooks/usePermissions';
 import { formatRs } from '../../utils/currency';
+import {
+  GH_VOUCHER_TEMPLATES,
+  getGhTemplateById,
+  templateToForm,
+  expenseToReuseForm,
+} from '../../utils/ghExpenseHelpers';
 
 const CATEGORIES = [
   { value: 'SALARY', label: 'Salary' },
@@ -46,6 +53,7 @@ const sectionTitle = (label) => (
 export default function ExpenseFormPage() {
   const { expenseId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { canManage } = usePermissions();
   const isEdit = Boolean(expenseId);
 
@@ -53,6 +61,8 @@ export default function ExpenseFormPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const [recentVouchers, setRecentVouchers] = useState([]);
+  const [reuseSource, setReuseSource] = useState(null);
 
   useEffect(() => {
     if (!canManage) {
@@ -60,6 +70,21 @@ export default function ExpenseFormPage() {
       navigate('/gh/expenses');
     }
   }, [canManage, navigate]);
+
+  const applyTemplate = (template, sourceLabel = null) => {
+    const next = templateToForm(template);
+    if (next) {
+      setForm(next);
+      setReuseSource(sourceLabel);
+      toast.success(sourceLabel ? `Loaded: ${sourceLabel}` : 'Template applied');
+    }
+  };
+
+  const applyReuseExpense = (expense) => {
+    setForm(expenseToReuseForm(expense));
+    setReuseSource(expense.title);
+    toast.success(`Reusing voucher: ${expense.title}`);
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -74,6 +99,26 @@ export default function ExpenseFormPage() {
             expense_date: exp.expense_date,
             description: exp.description || '',
           });
+        } else {
+          try {
+            const list = await listGhExpenses();
+            setRecentVouchers((list || []).slice(0, 8));
+          } catch {
+            setRecentVouchers([]);
+          }
+          const fromId = searchParams.get('from');
+          const templateId = searchParams.get('template');
+          if (fromId) {
+            try {
+              const exp = await getGhExpense(fromId);
+              applyReuseExpense(exp);
+            } catch {
+              toast.error('Could not load voucher to reuse');
+            }
+          } else if (templateId) {
+            const tpl = getGhTemplateById(templateId);
+            if (tpl) applyTemplate(tpl, tpl.label);
+          }
         }
       } catch {
         toast.error('Expense not found');
@@ -83,7 +128,7 @@ export default function ExpenseFormPage() {
       }
     };
     load();
-  }, [isEdit, expenseId, navigate]);
+  }, [isEdit, expenseId, navigate, searchParams]);
 
   const categoryLabel = CATEGORIES.find((c) => c.value === form.category)?.label || form.category;
 
@@ -109,7 +154,7 @@ export default function ExpenseFormPage() {
         navigate('/gh/expenses');
       } else {
         const created = await createGhExpense(payload);
-        toast.success('Voucher saved — opening print');
+        toast.success('Voucher saved - opening print');
         navigate(`/gh/print/expense/${created.id}`);
       }
     } catch (err) {
@@ -124,7 +169,7 @@ export default function ExpenseFormPage() {
   };
 
   if (loading) {
-    return <div style={{ padding: '48px', textAlign: 'center' }}>Loading…</div>;
+    return <AppLoader message="Loading…" />;
   }
 
   return (
@@ -161,7 +206,7 @@ export default function ExpenseFormPage() {
               {isEdit ? 'Edit expense voucher' : 'Record expense voucher'}
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>
-              Guest house operating cost — saved to reports automatically.
+              Guest house operating cost - saved to reports automatically.
             </p>
           </div>
         </div>
@@ -174,6 +219,71 @@ export default function ExpenseFormPage() {
 
         <div className="booking-layout">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            {!isEdit && (
+              <section style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {sectionTitle('Use a voucher template')}
+                <div className="premium-card" style={{ padding: '20px' }}>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 14px 0' }}>
+                    Pick a common expense type or reuse a voucher you created before.
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: recentVouchers.length ? '16px' : 0 }}>
+                    {GH_VOUCHER_TEMPLATES.map((tpl) => (
+                      <button
+                        key={tpl.id}
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => applyTemplate(tpl, tpl.label)}
+                        style={{ fontSize: '12px', padding: '8px 14px', fontWeight: '600' }}
+                      >
+                        {tpl.label}
+                      </button>
+                    ))}
+                  </div>
+                  {recentVouchers.length > 0 && (
+                    <>
+                      <p style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Recent vouchers - use again
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {recentVouchers.map((exp) => (
+                          <button
+                            key={exp.id}
+                            type="button"
+                            onClick={() => applyReuseExpense(exp)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '12px',
+                              padding: '12px 14px',
+                              borderRadius: '10px',
+                              border: '1px solid var(--border)',
+                              background: 'var(--surface)',
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <span style={{ minWidth: 0 }}>
+                              <span style={{ fontWeight: '700', fontSize: '14px', display: 'block' }}>{exp.title}</span>
+                              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                                {exp.expense_date} · {formatRs(exp.amount)}
+                              </span>
+                            </span>
+                            <Copy size={16} color="var(--primary)" style={{ flexShrink: 0 }} />
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {reuseSource && (
+                    <p style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: '700', margin: '14px 0 0 0' }}>
+                      Loaded from: {reuseSource} - enter amount and save
+                    </p>
+                  )}
+                </div>
+              </section>
+            )}
+
             <section style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {sectionTitle('Voucher details')}
               <div className="premium-card" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -238,9 +348,9 @@ export default function ExpenseFormPage() {
                 <h3 style={{ fontSize: '16px', fontWeight: '800', margin: 0 }}>Voucher preview</h3>
               </div>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 8px 0' }}>{categoryLabel}</p>
-              <p style={{ fontSize: '18px', fontWeight: '700', margin: '0 0 16px 0' }}>{form.title || '—'}</p>
+              <p style={{ fontSize: '18px', fontWeight: '700', margin: '0 0 16px 0' }}>{form.title || '-'}</p>
               <p style={{ fontSize: '32px', fontWeight: '900', color: '#ef4444', margin: '0 0 8px 0' }}>
-                {form.amount ? formatRs(form.amount) : '—'}
+                {form.amount ? formatRs(form.amount) : '-'}
               </p>
               <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '24px' }}>Date: {form.expense_date}</p>
 

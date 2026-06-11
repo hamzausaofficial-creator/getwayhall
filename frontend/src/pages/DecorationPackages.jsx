@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Sparkles, Trash2, Edit, X, Filter, Plus, ChevronRight } from 'lucide-react';
+import { Sparkles, Trash2, Edit, X, Plus, ChevronRight } from 'lucide-react';
 import SearchInput from '../components/SearchInput';
+import GhFilterSelect from '../components/guesthouse/GhFilterSelect';
 import client from '../api/client';
 import toast from 'react-hot-toast';
+import AppLoader from '../components/AppLoader';
 import {
   TIER_LABELS,
   TIER_STYLES,
@@ -12,6 +14,17 @@ import {
   parsePackageToForm,
 } from '../utils/decorationHelpers';
 import { usePermissions } from '../hooks/usePermissions';
+
+const TIER_FILTER_OPTIONS = [
+  { value: '', label: 'All tiers' },
+  ...Object.entries(TIER_LABELS).map(([value, label]) => ({ value, label })),
+];
+
+const STATUS_FILTER_OPTIONS = [
+  { value: '', label: 'All statuses' },
+  { value: 'true', label: 'Active only' },
+  { value: 'false', label: 'Inactive' },
+];
 
 const DecorationPackages = () => {
   const { canManage } = usePermissions();
@@ -158,30 +171,24 @@ const DecorationPackages = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <div style={{ width: '200px' }}>
-            <div style={{ position: 'relative' }}>
-              <Filter size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none', zIndex: 1 }} />
-              <select className="search-filter-bar__select" value={filterTier} onChange={(e) => setFilterTier(e.target.value)} style={{ paddingLeft: '40px', width: '100%' }}>
-                <option value="">All tiers</option>
-                {Object.entries(TIER_LABELS).map(([k, label]) => (
-                  <option key={k} value={k}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div style={{ width: '180px' }}>
-            <select className="search-filter-bar__select" value={filterActive} onChange={(e) => setFilterActive(e.target.value)} style={{ width: '100%' }}>
-              <option value="">All statuses</option>
-              <option value="true">Active only</option>
-              <option value="false">Inactive</option>
-            </select>
-          </div>
+          <GhFilterSelect
+            value={filterTier}
+            onChange={setFilterTier}
+            options={TIER_FILTER_OPTIONS}
+            aria-label="Filter by tier"
+            className="decoration-filter-select"
+          />
+          <GhFilterSelect
+            value={filterActive}
+            onChange={setFilterActive}
+            options={STATUS_FILTER_OPTIONS}
+            aria-label="Filter by status"
+            className="decoration-filter-select"
+          />
         </div>
 
         {isLoading ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading packages…</div>
+          <AppLoader inline message="Loading packages…" />
         ) : packages.length === 0 ? (
           <div className="card" style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
             <Sparkles size={48} style={{ margin: '0 auto 16px', opacity: 0.35 }} />
@@ -225,7 +232,7 @@ const DecorationPackages = () => {
                           {TIER_LABELS[pkg.tier] || pkg.tier}
                         </span>
                         {!pkg.is_active && (
-                          <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b' }}>Inactive</span>
+                          <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-dim)' }}>Inactive</span>
                         )}
                       </div>
                       {pkg.description && (

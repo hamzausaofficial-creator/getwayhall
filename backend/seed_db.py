@@ -1,10 +1,12 @@
 import os
 import django
-from datetime import datetime, timedelta
+from datetime import timedelta
 import random
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hallora_backend.settings')
 django.setup()
+
+from django.utils import timezone
 
 from core.models import Tenant
 from authentication.models import User, StaffProfile
@@ -81,25 +83,26 @@ def seed_db():
         customers.append(c)
 
     # 5. Create Bookings & Payments
-    today = datetime.now()
+    today = timezone.now()
     for i in range(5):
         v = random.choice(venues)
         c = random.choice(customers)
-        start = today + timedelta(days=random.randint(-10, 30))
-        
+        event_day = (today + timedelta(days=random.randint(-10, 30))).date()
+        slot = random.choice(['morning', 'evening'])
+
         booking, created = Booking.objects.get_or_create(
             tenant=tenant,
             venue=v,
-            start_date=start,
+            event_name=f"Event {i+1}",
             defaults={
-                "end_date": start + timedelta(hours=6),
                 "customer": c,
-                "event_name": f"Event {i+1}",
+                "event_date": event_day,
+                "slot": slot,
                 "guest_count": random.randint(50, 300),
                 "total_price": v.price_per_day,
                 "advance_paid": 500 if i % 2 == 0 else v.price_per_day,
                 "booking_status": "CONFIRMED",
-                "created_by": admin
+                "created_by": admin,
             }
         )
         

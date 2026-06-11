@@ -1,5 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+
+from core.admin_mixins import AdminOnlyAdminMixin, TenantScopedAdminMixin
+
 from .models import User, StaffProfile
 
 
@@ -11,7 +14,7 @@ class StaffProfileInline(admin.StackedInline):
 
 
 @admin.register(User)
-class UserAdmin(BaseUserAdmin):
+class UserAdmin(AdminOnlyAdminMixin, BaseUserAdmin):
     list_display = (
         'username', 'email', 'first_name', 'last_name',
         'role', 'app_type', 'tenant', 'is_staff', 'is_active',
@@ -24,6 +27,10 @@ class UserAdmin(BaseUserAdmin):
     fieldsets = BaseUserAdmin.fieldsets + (
         ('Gateway access', {
             'fields': ('role', 'app_type', 'tenant', 'profile_picture'),
+            'description': (
+                '<strong>Staff</strong> - bookings/stays only (no payments in app). '
+                '<strong>Manager</strong> - full operations. <strong>Admin</strong> - all settings.'
+            ),
         }),
     )
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
@@ -34,7 +41,7 @@ class UserAdmin(BaseUserAdmin):
 
 
 @admin.register(StaffProfile)
-class StaffProfileAdmin(admin.ModelAdmin):
+class StaffProfileAdmin(AdminOnlyAdminMixin, TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = ('user', 'tenant', 'phone', 'salary', 'joining_date', 'status')
     list_filter = ('tenant', 'status')
     search_fields = ('user__username', 'user__email', 'phone')

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getGhPayment, getStay } from '../../api/guesthouse';
 import { formatRs, formatCollectDuePKR } from '../../utils/currency';
 import GhPrintShell, { GhPrintHeader, GhPrintFooter } from '../../components/guesthouse/GhPrintShell';
+import AppLoader from '../../components/AppLoader';
 
 const METHOD_LABELS = {
   CASH: 'Cash',
@@ -33,7 +34,7 @@ export default function GhPrintPayment() {
   }, [paymentId, navigate]);
 
   if (!payment) {
-    return <div style={{ padding: '48px', textAlign: 'center' }}>Loading receipt…</div>;
+    return <AppLoader fullScreen message="Loading receipt…" />;
   }
 
   const slipId = `PAY-${String(payment.id).padStart(5, '0')}`;
@@ -62,15 +63,15 @@ export default function GhPrintPayment() {
         <tbody>
           {[
             ['Receipt no.', slipId],
-            ['Date', payment.payment_date ? new Date(payment.payment_date).toLocaleString() : '—'],
+            ['Date', payment.payment_date ? new Date(payment.payment_date).toLocaleString() : '-'],
             ['Stay reference', payment.stay_ref || stay?.booking_ref],
             ['Guest', payment.customer_name || stay?.customer_name],
             ['Room', payment.room_number ? `Room ${payment.room_number}` : stay?.room_number],
-            ['Recorded by', payment.recorded_by_name || '—'],
+            ['Recorded by', payment.recorded_by_name || '-'],
           ].map(([label, value]) => (
             <tr key={label}>
               <td style={{ padding: '8px 0', color: '#64748b', width: '40%', fontSize: '13px' }}>{label}</td>
-              <td style={{ padding: '8px 0', fontWeight: '600', fontSize: '14px' }}>{value ?? '—'}</td>
+              <td style={{ padding: '8px 0', fontWeight: '600', fontSize: '14px' }}>{value ?? '-'}</td>
             </tr>
           ))}
         </tbody>

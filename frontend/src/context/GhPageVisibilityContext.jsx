@@ -32,7 +32,7 @@ export function GhPageVisibilityProvider({ enabled = true, children }) {
         if (!active) return;
         const map = {};
         (data?.pages || []).forEach((page) => {
-          // explicit boolean — never leave key missing
+          // explicit boolean - never leave key missing
           map[page.key] = page.is_visible === true;
         });
         setVisibility(map);
@@ -58,7 +58,7 @@ export function GhPageVisibilityProvider({ enabled = true, children }) {
 
     const firstVisiblePath = GH_PAGE_ORDER
       .map((key) => (isPageVisible(key) ? GH_PAGE_PATHS[key] : null))
-      .find(Boolean) || '/gh/profile';
+      .find(Boolean) || '/gh/stays';
 
     return {
       loading,

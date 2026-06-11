@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import SearchInput from '../components/SearchInput';
-import { useLocation, useNavigate } from 'react-router-dom';
+import AppLoader from '../components/AppLoader';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   UserPlus,
   Mail,
@@ -28,19 +29,19 @@ import { usePermissions } from '../hooks/usePermissions';
 
 const PAYMENT_STATUS_STYLE = {
   PAID: { bg: '#dcfce7', color: '#166534', label: 'Paid' },
-  PARTIAL: { bg: '#fef3c7', color: '#92400e', label: 'Partial — balance due' },
-  UNPAID: { bg: '#fee2e2', color: '#991b1b', label: 'Unpaid — amount due' },
+  PARTIAL: { bg: '#fef3c7', color: '#92400e', label: 'Partial - balance due' },
+  UNPAID: { bg: '#fee2e2', color: '#991b1b', label: 'Unpaid - amount due' },
 };
 
 const CustomerManagement = () => {
-  const { canManage } = usePermissions();
+  const { canManage, canAccessPayments } = usePermissions();
   const location = useLocation();
   const navigate = useNavigate();
+  const { customerId: customerIdParam } = useParams();
+  const selectedId = customerIdParam ? Number(customerIdParam) : null;
   const [customers, setCustomers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-
-  const [selectedId, setSelectedId] = useState(null);
   const [summary, setSummary] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
 
@@ -96,10 +97,9 @@ const CustomerManagement = () => {
   useEffect(() => {
     const id = location.state?.selectedCustomerId;
     if (id) {
-      setSelectedId(id);
-      navigate(location.pathname, { replace: true, state: {} });
+      navigate(`/customers/${id}`, { replace: true, state: {} });
     }
-  }, [location.state?.selectedCustomerId]);
+  }, [location.state?.selectedCustomerId, navigate]);
 
   useEffect(() => {
     if (location.state?.openCreate && canManage) {
@@ -128,7 +128,7 @@ const CustomerManagement = () => {
   }, [customers, searchQuery]);
 
   const handleSelectCustomer = (customer) => {
-    setSelectedId(customer.id);
+    navigate(`/customers/${customer.id}`);
   };
 
   const handleOpenFormModal = (customer = null, e) => {
@@ -167,7 +167,7 @@ const CustomerManagement = () => {
       } else {
         const res = await client.post('/customers/', payload);
         toast.success('Customer added');
-        setSelectedId(res.data.id);
+        navigate(`/customers/${res.data.id}`);
       }
       setShowFormModal(false);
       fetchCustomers();
@@ -183,7 +183,7 @@ const CustomerManagement = () => {
     try {
       await client.delete(`/customers/${id}/`);
       toast.success('Customer deleted');
-      if (selectedId === id) setSelectedId(null);
+      if (selectedId === id) navigate('/customers');
       fetchCustomers();
     } catch {
       toast.error('Failed to delete');
@@ -227,7 +227,7 @@ const CustomerManagement = () => {
         amount,
         payment_method: payForm.payment_method,
         status: 'COMPLETED',
-        notes: payForm.notes || `Payment from customer profile — ${customerDisplayName(summary?.customer)}`,
+        notes: payForm.notes || `Payment from customer profile - ${customerDisplayName(summary?.customer)}`,
       });
       toast.success('Payment recorded');
       setShowPayModal(false);
@@ -271,7 +271,7 @@ const CustomerManagement = () => {
 
             <div className="card table-scroll" style={{ padding: 0 }}>
               {isLoading ? (
-                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading customers…</div>
+                <AppLoader inline message="Loading customers…" />
               ) : filteredCustomers.length === 0 ? (
                 <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No customers found.</div>
               ) : (
@@ -315,11 +315,11 @@ const CustomerManagement = () => {
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ fontWeight: '700', fontSize: '14px' }}>{customerDisplayName(customer)}</p>
                             <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{customer.phone}</p>
-                            <p style={{ fontSize: '11px', marginTop: '4px', fontWeight: '700', color: hasCollectDue(customer.outstanding_balance) ? '#b91c1c' : '#64748b' }}>
-                              Lena: {formatCollectDue(customer.outstanding_balance)}
+                            <p style={{ fontSize: '11px', marginTop: '4px', fontWeight: '700', color: hasCollectDue(customer.outstanding_balance) ? '#b91c1c' : 'var(--text-dim)' }}>
+                              Due: {formatCollectDue(customer.outstanding_balance)}
                             </p>
                           </div>
-                          <ChevronRight size={18} color={active ? 'var(--primary)' : '#94a3b8'} />
+                          <ChevronRight size={18} color={active ? 'var(--primary)' : 'var(--icon-muted)'} />
                         </button>
                       </li>
                     );
@@ -332,7 +332,7 @@ const CustomerManagement = () => {
           {selectedId && (
             <div className="card" style={{ padding: '24px', position: 'sticky', top: '24px' }}>
               {summaryLoading ? (
-                <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading profile…</div>
+                <AppLoader inline message="Loading profile…" />
               ) : selectedCustomer ? (
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', gap: '12px' }}>
@@ -351,7 +351,7 @@ const CustomerManagement = () => {
                       </button>
                       </>
                       )}
-                      <button type="button" onClick={() => setSelectedId(null)} style={{ padding: '8px', color: 'var(--text-muted)', background: 'transparent' }} title="Close">
+                      <button type="button" onClick={() => navigate('/customers')} style={{ padding: '8px', color: 'var(--text-muted)', background: 'transparent' }} title="Close">
                         <X size={18} />
                       </button>
                     </div>
@@ -362,7 +362,7 @@ const CustomerManagement = () => {
                       <Phone size={16} /> {selectedCustomer.phone}
                     </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center', color: 'var(--text-muted)' }}>
-                      <Mail size={16} /> {selectedCustomer.email || '—'}
+                      <Mail size={16} /> {selectedCustomer.email || '-'}
                     </div>
                     {selectedCustomer.cnic && (
                       <div style={{ gridColumn: 'span 2', fontFamily: 'monospace', fontSize: '13px' }}>CNIC: {selectedCustomer.cnic}</div>
@@ -390,25 +390,57 @@ const CustomerManagement = () => {
                       <p style={{ fontSize: '22px', fontWeight: '800', marginTop: '4px' }}>{summary?.bookings_count ?? 0}</p>
                     </div>
                     <div className="premium-card" style={{ padding: '16px', borderColor: hasCollectDue(summary?.total_outstanding) ? '#fecaca' : undefined }}>
-                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '600' }}>Total balance due (lena)</p>
-                      <p style={{ fontSize: '22px', fontWeight: '800', marginTop: '4px', color: hasCollectDue(summary?.total_outstanding) ? '#b91c1c' : '#64748b' }}>
+                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '600' }}>Total balance due</p>
+                      <p style={{ fontSize: '22px', fontWeight: '800', marginTop: '4px', color: hasCollectDue(summary?.total_outstanding) ? '#b91c1c' : 'var(--text-dim)' }}>
                         {formatCollectDue(summary?.total_outstanding)}
                       </p>
                     </div>
                   </div>
+
+                  {canManage && (
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={() => navigate('/bookings', { state: { openCreate: true, prefillCustomer: selectedId } })}
+                      style={{
+                        width: '100%',
+                        marginBottom: '20px',
+                        padding: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        fontWeight: '700',
+                      }}
+                    >
+                      <Calendar size={16} /> New booking
+                    </button>
+                  )}
 
                   <h4 style={{ fontSize: '14px', fontWeight: '800', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <FileText size={16} /> Bookings
                   </h4>
 
                   {!summary?.bookings?.length ? (
-                    <p style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>No bookings for this customer yet.</p>
+                    <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
+                      <p style={{ margin: 0 }}>No bookings for this customer yet.</p>
+                      {canManage && (
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          onClick={() => navigate('/bookings', { state: { openCreate: true, prefillCustomer: selectedId } })}
+                          style={{ marginTop: '14px', padding: '10px 18px', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                        >
+                          <Calendar size={16} /> Create first booking
+                        </button>
+                      )}
+                    </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '420px', overflowY: 'auto' }}>
                       {summary.bookings.map((b) => {
                         const ps = PAYMENT_STATUS_STYLE[b.payment_status] || PAYMENT_STATUS_STYLE.UNPAID;
                         const remaining = bookingCollectDue(b);
-                        const canPay = remaining > 0;
+                        const canPay = canAccessPayments && remaining > 0;
                         return (
                           <div
                             key={b.id}
@@ -444,10 +476,10 @@ const CustomerManagement = () => {
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <p style={{ fontWeight: '700', fontSize: '15px' }}>{b.event_name}</p>
                                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                                  {b.venue_name} · {b.event_date || '—'} · {b.slot || '—'}
+                                  {b.venue_name} · {b.event_date || '-'} · {b.slot || '-'}
                                 </p>
                                 {b.booking_id && (
-                                  <p style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{b.booking_id}</p>
+                                  <p style={{ fontSize: '11px', color: 'var(--icon-muted)', marginTop: '2px' }}>{b.booking_id}</p>
                                 )}
                               </div>
                               <span
@@ -483,8 +515,8 @@ const CustomerManagement = () => {
                                 <p style={{ fontWeight: '700', color: '#166534' }}>{formatRs(b.advance_paid)}</p>
                               </div>
                               <div>
-                                <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Lena (due)</span>
-                                <p style={{ fontWeight: '700', color: hasCollectDue(remaining) ? '#b91c1c' : '#64748b' }}>{formatCollectDue(remaining)}</p>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Due</span>
+                                <p style={{ fontWeight: '700', color: hasCollectDue(remaining) ? '#b91c1c' : 'var(--text-dim)' }}>{formatCollectDue(remaining)}</p>
                               </div>
                             </div>
                             {canPay && (
@@ -602,7 +634,7 @@ const CustomerManagement = () => {
             <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '16px' }}>
               <strong>{payBooking.event_name}</strong>
               <br />
-              Lena (due): <strong style={{ color: hasCollectDue(bookingCollectDue(payBooking)) ? '#b91c1c' : '#64748b' }}>{formatCollectDue(bookingCollectDue(payBooking))}</strong>
+              Due: <strong style={{ color: hasCollectDue(bookingCollectDue(payBooking)) ? '#b91c1c' : 'var(--text-dim)' }}>{formatCollectDue(bookingCollectDue(payBooking))}</strong>
             </p>
             <form onSubmit={handleRecordPayment} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="input-group">

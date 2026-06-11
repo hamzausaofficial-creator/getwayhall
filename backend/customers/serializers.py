@@ -32,8 +32,30 @@ class CustomerSerializer(serializers.ModelSerializer):
             attrs['email'] = None
         return attrs
 
+    def _is_guest_house_request(self):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        return getattr(user, 'app_type', '') == 'GUEST_HOUSE'
+
     def validate(self, attrs):
-        return self._sync_legacy_names(attrs)
+        attrs = self._sync_legacy_names(attrs)
+
+        phone = (attrs.get('phone') if 'phone' in attrs else (self.instance.phone if self.instance else '')) or ''
+        phone = str(phone).strip()
+        if not phone:
+            raise serializers.ValidationError({'phone': 'Phone number is required.'})
+        attrs['phone'] = phone
+
+        cnic = (attrs.get('cnic') if 'cnic' in attrs else (self.instance.cnic if self.instance else '')) or ''
+        cnic = str(cnic).strip()
+        if self._is_guest_house_request() and not cnic:
+            raise serializers.ValidationError({'cnic': 'CNIC is required.'})
+        attrs['cnic'] = cnic
+
+        if 'address' in attrs and attrs['address'] is not None:
+            attrs['address'] = str(attrs['address']).strip() or None
+
+        return attrs
 
     def get_outstanding_balance(self, obj):
         hall_due = obj.bookings.exclude(booking_status='CANCELLED').aggregate(

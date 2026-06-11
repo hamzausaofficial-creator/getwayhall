@@ -4,7 +4,6 @@ import {
   Download,
   Wallet,
   TrendingUp,
-  Filter,
   RefreshCw,
   Printer,
   BedDouble,
@@ -29,10 +28,13 @@ import {
 } from 'recharts';
 import { getGuestHouseReports } from '../../api/guesthouse';
 import toast from 'react-hot-toast';
+import AppLoader from '../../components/AppLoader';
 import { formatRs } from '../../utils/currency';
 import StatCard from '../../components/ui/StatCard';
 import ChartCard from '../../components/ui/ChartCard';
 import EmptyState from '../../components/ui/EmptyState';
+import AppLogo from '../../components/AppLogo';
+import { BRAND_GUEST_HOUSE } from '../../constants/brand';
 import '../../styles/dashboard.css';
 
 const CHART_COLORS = ['#5BD51E', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#64748b'];
@@ -174,6 +176,20 @@ export default function GuestHouseReports() {
     toast.success('Report exported');
   };
 
+  const handlePrintReport = () => {
+    if (!data) {
+      toast.error('Load report data before printing');
+      return;
+    }
+    window.print();
+  };
+
+  const tabLabel = {
+    financial: 'Financial',
+    rooms: 'Rooms & Stays',
+    expenses: 'Expenses',
+  }[activeTab] || 'Report';
+
   const tabBtn = (id, label, Icon) => (
     <button
       type="button"
@@ -200,6 +216,7 @@ export default function GuestHouseReports() {
   );
 
   return (
+    <>
     <div className="animate-fade-in print-hide">
       <div className="page-header">
         <div>
@@ -231,7 +248,7 @@ export default function GuestHouseReports() {
           <button
             type="button"
             className="btn-primary"
-            onClick={() => window.print()}
+            onClick={handlePrintReport}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px' }}
           >
             <Printer size={16} /> Print
@@ -242,20 +259,19 @@ export default function GuestHouseReports() {
       <div className="card" style={{ padding: '20px 24px', marginBottom: '24px' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <Filter size={18} color="var(--primary)" />
             <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--secondary)' }}>Date range</span>
             <input
               type="date"
+              className="search-filter-bar__select"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '13px', fontWeight: '600' }}
             />
             <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>to</span>
             <input
               type="date"
+              className="search-filter-bar__select"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '13px', fontWeight: '600' }}
             />
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -293,10 +309,7 @@ export default function GuestHouseReports() {
       </div>
 
       {loading ? (
-        <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
-          <RefreshCw size={36} className="animate-spin" style={{ margin: '0 auto 16px', display: 'block', opacity: 0.5 }} />
-          Compiling reports…
-        </div>
+        <AppLoader message="Compiling reports…" />
       ) : !data ? (
         <EmptyState icon={BarChart3} title="No report data" description="Adjust the date range and refresh." />
       ) : (
@@ -537,5 +550,300 @@ export default function GuestHouseReports() {
         </>
       )}
     </div>
+
+    {data && (
+      <div id="printable-gh-report-sheet" className="gh-report-print">
+        <div className="gh-report-print__page">
+          <header className="gh-report-print__head">
+            <AppLogo size="sm" tone="dark" showName showImage={false} name={BRAND_GUEST_HOUSE} className="app-logo--print" />
+            <p className="gh-report-print__meta">Guest House — {tabLabel} Report</p>
+            <p className="gh-report-print__meta">
+              Period: {new Date(data.start_date).toLocaleDateString()} — {new Date(data.end_date).toLocaleDateString()}
+            </p>
+            <p className="gh-report-print__meta">Printed: {new Date().toLocaleDateString()}</p>
+          </header>
+
+          <h2 className="gh-report-print__title">{tabLabel.toUpperCase()} SUMMARY</h2>
+
+          {activeTab === 'financial' && (
+            <>
+              <div className="gh-report-print__kpis">
+                <div><span>Billed</span><strong>{formatRs(data.total_revenue)}</strong></div>
+                <div><span>Collected</span><strong>{formatRs(data.total_collected)}</strong></div>
+                <div><span>Expenses</span><strong>{formatRs(data.total_expenses)}</strong></div>
+                <div><span>Net profit</span><strong>{formatRs(data.net_profit)}</strong></div>
+                <div><span>Collection rate</span><strong>{collectionRate}%</strong></div>
+                <div><span>Outstanding</span><strong>{formatRs(data.collection_gap || 0)}</strong></div>
+              </div>
+              {monthlyTrends.length > 0 && (
+                <table className="gh-report-print__table">
+                  <thead>
+                    <tr>
+                      <th>Month</th>
+                      <th>Collected</th>
+                      <th>Expenses</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {monthlyTrends.map((row) => (
+                      <tr key={row.month}>
+                        <td>{row.month}</td>
+                        <td>{formatRs(row.income)}</td>
+                        <td>{formatRs(row.expense)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </>
+          )}
+
+          {activeTab === 'rooms' && (
+            <>
+              <div className="gh-report-print__kpis gh-report-print__kpis--3">
+                <div><span>Total stays</span><strong>{data.stay_count}</strong></div>
+                <div><span>Active rooms</span><strong>{roomChart.length}</strong></div>
+                <div><span>Avg stay value</span><strong>{formatRs(data.avg_stay_value || 0)}</strong></div>
+              </div>
+              <table className="gh-report-print__table">
+                <thead>
+                  <tr>
+                    <th>Room</th>
+                    <th>Stays</th>
+                    <th>Revenue</th>
+                    <th>Avg / stay</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {roomChart.length === 0 ? (
+                    <tr><td colSpan={4}>No room data in this period</td></tr>
+                  ) : roomChart.map((row) => (
+                    <tr key={row.name}>
+                      <td>{row.name}</td>
+                      <td>{row.stays}</td>
+                      <td>{formatRs(row.revenue)}</td>
+                      <td>{formatRs(row.stays ? row.revenue / row.stays : 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {statusChart.length > 0 && (
+                <table className="gh-report-print__table gh-report-print__table--spaced">
+                  <thead>
+                    <tr>
+                      <th>Status</th>
+                      <th>Count</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {statusChart.map((row) => (
+                      <tr key={row.status}>
+                        <td>{row.name}</td>
+                        <td>{row.value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </>
+          )}
+
+          {activeTab === 'expenses' && (
+            <>
+              <div className="gh-report-print__kpis gh-report-print__kpis--3">
+                <div><span>Total expenses</span><strong>{formatRs(data.total_expenses)}</strong></div>
+                <div><span>Categories</span><strong>{expenseChart.length}</strong></div>
+                <div><span>Net profit</span><strong>{formatRs(data.net_profit)}</strong></div>
+              </div>
+              <table className="gh-report-print__table">
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Amount</th>
+                    <th>Share</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {expenseChart.length === 0 ? (
+                    <tr><td colSpan={3}>No expenses in this period</td></tr>
+                  ) : expenseChart.map((row) => {
+                    const pct = data.total_expenses > 0
+                      ? Math.round((row.value / data.total_expenses) * 100)
+                      : 0;
+                    return (
+                      <tr key={row.name}>
+                        <td>{row.name}</td>
+                        <td>{formatRs(row.value)}</td>
+                        <td>{pct}%</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </>
+          )}
+
+          <footer className="gh-report-print__footer">
+            <div>
+              <div className="gh-report-print__sig-line" />
+              <p>Prepared by</p>
+            </div>
+            <div>
+              <div className="gh-report-print__sig-line" />
+              <p>Authorized signature</p>
+            </div>
+          </footer>
+        </div>
+      </div>
+    )}
+
+    <style>{`
+      #printable-gh-report-sheet { display: none !important; }
+
+      .gh-report-print__page {
+        font-family: Arial, Helvetica, sans-serif;
+        color: #000;
+        background: #fff;
+        font-size: 10px;
+        line-height: 1.35;
+      }
+
+      .gh-report-print__head {
+        border-bottom: 2px solid #000;
+        padding-bottom: 8px;
+        margin-bottom: 10px;
+      }
+
+      .gh-report-print__meta {
+        margin: 2px 0 0;
+        font-size: 9px;
+        font-weight: 600;
+      }
+
+      .gh-report-print__title {
+        text-align: center;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        border: 1px solid #000;
+        padding: 5px 8px;
+        margin: 0 0 12px;
+        background: #f5f5f5;
+      }
+
+      .gh-report-print__kpis {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 12px;
+        border: 1px solid #000;
+        padding: 8px;
+      }
+
+      .gh-report-print__kpis--3 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .gh-report-print__kpis div span {
+        display: block;
+        font-size: 8px;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: #444;
+        margin-bottom: 2px;
+      }
+
+      .gh-report-print__kpis div strong {
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .gh-report-print__table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9px;
+        margin-bottom: 8px;
+      }
+
+      .gh-report-print__table--spaced {
+        margin-top: 10px;
+      }
+
+      .gh-report-print__table th,
+      .gh-report-print__table td {
+        border: 1px solid #000;
+        padding: 5px 6px;
+        text-align: left;
+      }
+
+      .gh-report-print__table th {
+        background: #f0f0f0;
+        font-weight: 800;
+        text-transform: uppercase;
+        font-size: 8px;
+      }
+
+      .gh-report-print__footer {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-top: 28px;
+        text-align: center;
+        font-size: 8px;
+        font-weight: 700;
+      }
+
+      .gh-report-print__sig-line {
+        border-bottom: 1px solid #000;
+        height: 18px;
+        margin: 0 auto 4px;
+        width: 75%;
+      }
+
+      .gh-report-print__footer p { margin: 0; }
+
+      @media print {
+        @page {
+          size: A5 portrait;
+          margin: 10mm;
+        }
+
+        .print-hide,
+        .app-sidebar,
+        .dashboard-header,
+        .sidebar-backdrop {
+          display: none !important;
+        }
+
+        body * { visibility: hidden; }
+
+        #printable-gh-report-sheet,
+        #printable-gh-report-sheet * {
+          visibility: visible;
+        }
+
+        #printable-gh-report-sheet {
+          display: block !important;
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #fff !important;
+        }
+
+        .dashboard-shell,
+        .dashboard-main,
+        .dashboard-content {
+          margin: 0 !important;
+          padding: 0 !important;
+          width: 100% !important;
+          max-width: 100% !important;
+        }
+      }
+    `}</style>
+    </>
   );
 }

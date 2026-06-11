@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Bell, RefreshCw, Calendar, Wallet, Package, MessageSquare } from 'lucide-react';
 import client from '../api/client';
 import toast from 'react-hot-toast';
+import AppLoader from '../components/AppLoader';
 import { normalizeList } from '../utils/listData';
 import { useNotifications } from '../hooks/useNotifications';
 import { useAppType } from '../hooks/useAppType';
@@ -11,7 +12,7 @@ import EmptyState from '../components/ui/EmptyState';
 const statusColor = {
   SENT: '#166534',
   FAILED: '#b91c1c',
-  SKIPPED: '#64748b',
+  SKIPPED: 'var(--text-dim)',
   PENDING: '#92400e',
 };
 
@@ -198,7 +199,7 @@ const Notifications = () => {
           </div>
 
           {loadingLogs ? (
-            <p style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading SMS log…</p>
+            <AppLoader inline message="Loading SMS log…" />
           ) : filteredLogs.length === 0 ? (
             <div style={{ padding: '24px' }}>
               <EmptyState
@@ -210,7 +211,7 @@ const Notifications = () => {
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border)' }}>
+                <tr style={{ background: 'var(--surface-muted)', borderBottom: '1px solid var(--border)' }}>
                   <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px' }}>When</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px' }}>Type</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px' }}>To</th>
@@ -226,7 +227,7 @@ const Notifications = () => {
                     </td>
                     <td style={{ padding: '12px 16px', fontWeight: '600' }}>{log.notification_type}</td>
                     <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '12px' }}>{log.recipient}</td>
-                    <td style={{ padding: '12px 16px', fontWeight: '700', color: statusColor[log.status] || '#64748b' }}>
+                    <td style={{ padding: '12px 16px', fontWeight: '700', color: statusColor[log.status] || 'var(--text-dim)' }}>
                       {log.status}
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: '13px', maxWidth: '320px' }}>

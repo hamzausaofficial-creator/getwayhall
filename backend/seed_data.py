@@ -1,5 +1,5 @@
 """
-Legacy entry point — delegates to seed_db using domain apps (not orphaned api app).
+Legacy entry point - delegates to seed_db using domain apps (not orphaned api app).
 Run: python seed_data.py  OR  python seed_db.py
 """
 from seed_db import seed_db

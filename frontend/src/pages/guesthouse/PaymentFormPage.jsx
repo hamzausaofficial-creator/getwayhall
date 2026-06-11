@@ -7,6 +7,7 @@ import {
   listStays, createGhPayment, updateGhPayment, getGhPayment,
 } from '../../api/guesthouse';
 import toast from 'react-hot-toast';
+import AppLoader from '../../components/AppLoader';
 import { usePermissions } from '../../hooks/usePermissions';
 import { formatRs, formatCollectDuePKR, hasCollectDue } from '../../utils/currency';
 
@@ -139,7 +140,7 @@ export default function PaymentFormPage() {
         navigate('/gh/payments');
       } else {
         const created = await createGhPayment(payload);
-        toast.success('Payment recorded — opening print preview');
+        toast.success('Payment recorded - opening print preview');
         navigate(`/gh/print/payment/${created.id}`);
       }
     } catch (err) {
@@ -154,11 +155,7 @@ export default function PaymentFormPage() {
   };
 
   if (loading) {
-    return (
-      <div className="animate-fade-in" style={{ padding: '48px', textAlign: 'center' }}>
-        Loading…
-      </div>
-    );
+    return <AppLoader message="Loading…" />;
   }
 
   return (
@@ -241,8 +238,8 @@ export default function PaymentFormPage() {
                       const due = Math.max(0, Number(s.total_amount) - Number(s.advance_paid));
                       return (
                         <option key={s.id} value={s.id}>
-                          {s.booking_ref} — {s.customer_name} — Room {s.room_number}
-                          {due > 0 ? ` — Due ${formatRs(due)}` : ' — Paid'}
+                          {s.booking_ref} - {s.customer_name} - Room {s.room_number}
+                          {due > 0 ? ` - Due ${formatRs(due)}` : ' - Paid'}
                         </option>
                       );
                     })}

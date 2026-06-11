@@ -11,11 +11,14 @@ import {
   Wallet,
   Sparkles,
   FileText,
+  XCircle,
 } from 'lucide-react';
+import CancelBookingModal from '../components/bookings/CancelBookingModal';
+import AppLoader from '../components/AppLoader';
 import { getBooking } from '../api/bookings';
 import client from '../api/client';
 import toast from 'react-hot-toast';
-import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 import {
   formatRs,
   formatCollectDue,
@@ -30,7 +33,7 @@ const STATUS_STYLE = {
   PENDING: { bg: '#fef3c7', color: '#92400e', label: 'Pending' },
   CONFIRMED: { bg: '#dcfce7', color: '#166534', label: 'Confirmed' },
   COMPLETED: { bg: '#dbeafe', color: '#1e40af', label: 'Completed' },
-  CANCELLED: { bg: '#f1f5f9', color: '#64748b', label: 'Cancelled' },
+  CANCELLED: { bg: 'var(--surface-elevated)', color: 'var(--text-dim)', label: 'Cancelled' },
 };
 
 const PAYMENT_STYLE = {
@@ -45,7 +48,7 @@ const DetailRow = ({ label, value, highlight }) => (
       {label}
     </p>
     <p style={{ fontSize: '15px', fontWeight: highlight ? '800' : '600', color: highlight ? 'var(--primary)' : 'var(--text-main)' }}>
-      {value ?? '—'}
+      {value ?? '-'}
     </p>
   </div>
 );
@@ -53,12 +56,13 @@ const DetailRow = ({ label, value, highlight }) => (
 const BookingDetail = () => {
   const { bookingId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const canEdit = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+  const { canManage, canAccessPayments } = usePermissions();
+  const canEdit = canManage;
 
   const [booking, setBooking] = useState(null);
   const [inventoryLines, setInventoryLines] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -84,11 +88,7 @@ const BookingDetail = () => {
   }, [bookingId, navigate]);
 
   if (isLoading) {
-    return (
-      <div className="animate-fade-in" style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
-        Loading booking…
-      </div>
-    );
+    return <AppLoader message="Loading booking…" />;
   }
 
   if (!booking) return null;
@@ -97,6 +97,13 @@ const BookingDetail = () => {
   const ps = PAYMENT_STYLE[booking.payment_status] || PAYMENT_STYLE.UNPAID;
   const due = bookingCollectDue(booking);
   const totalGuests = (booking.gents_count || 0) + (booking.ladies_count || 0);
+  const isCancelled = booking.booking_status === 'CANCELLED';
+  const canCancel = canEdit && !isCancelled && booking.booking_status !== 'COMPLETED';
+
+  const reloadBooking = async () => {
+    const data = await getBooking(bookingId);
+    setBooking(data);
+  };
 
   return (
     <div className="animate-fade-in">
@@ -124,7 +131,7 @@ const BookingDetail = () => {
           </p>
           <h2 style={{ fontSize: '28px', fontWeight: '800' }}>{booking.event_name}</h2>
           <p style={{ color: 'var(--text-muted)', marginTop: '8px', fontSize: '15px' }}>
-            Booking details — yeh reservation ki poori summary hai
+            Booking details - yeh reservation ki poori summary hai
           </p>
           <div style={{ display: 'flex', gap: '10px', marginTop: '14px', flexWrap: 'wrap' }}>
             <span style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', backgroundColor: bs.bg, color: bs.color }}>
@@ -139,12 +146,32 @@ const BookingDetail = () => {
           <button
             type="button"
             className="btn-secondary"
-            onClick={() => navigate(`/print/${booking.id}`)}
+            onClick={() => navigate(isCancelled ? `/print/${booking.id}?doc=cancellation` : `/print/${booking.id}`)}
             style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            <Printer size={18} /> Print
+            <Printer size={18} /> {isCancelled ? 'Print cancellation' : 'Print'}
           </button>
-          {due > 0 && (
+          {canCancel && (
+            <button
+              type="button"
+              onClick={() => setShowCancelModal(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 16px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid #fecaca',
+                background: '#fef2f2',
+                color: '#b91c1c',
+                fontWeight: '700',
+                fontSize: '14px',
+              }}
+            >
+              <XCircle size={18} /> Cancel booking
+            </button>
+          )}
+          {canAccessPayments && due > 0 && (
             <button
               type="button"
               className="btn-secondary"
@@ -162,7 +189,7 @@ const BookingDetail = () => {
               <Wallet size={18} /> Record payment
             </button>
           )}
-          {canEdit && (
+          {canEdit && !isCancelled && (
             <button
               type="button"
               className="btn-primary"
@@ -175,15 +202,39 @@ const BookingDetail = () => {
         </div>
       </div>
 
+      {isCancelled && (
+        <div
+          className="premium-card"
+          style={{
+            padding: '20px 24px',
+            marginBottom: '24px',
+            borderColor: '#fecaca',
+            background: '#fef2f2',
+          }}
+        >
+          <p style={{ fontWeight: '800', color: '#991b1b', marginBottom: '8px' }}>This booking has been cancelled</p>
+          {booking.cancelled_at && (
+            <p style={{ fontSize: '13px', color: '#7f1d1d', marginBottom: '6px' }}>
+              Cancelled on: {new Date(booking.cancelled_at).toLocaleString()}
+            </p>
+          )}
+          {booking.cancellation_reason && (
+            <p style={{ fontSize: '14px', color: '#7f1d1d', margin: 0 }}>
+              Reason: {booking.cancellation_reason}
+            </p>
+          )}
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
         <div className="premium-card" style={{ padding: '24px' }}>
           <h3 style={{ fontSize: '14px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)' }}>
             <Calendar size={18} /> Event
           </h3>
           <div style={{ display: 'grid', gap: '16px' }}>
-            <DetailRow label="Event date" value={booking.event_date || '—'} />
+            <DetailRow label="Event date" value={booking.event_date || '-'} />
             <DetailRow label="Slot" value={slotLabel(booking.slot)} />
-            <DetailRow label="Booking date" value={booking.booking_date || '—'} />
+            <DetailRow label="Booking date" value={booking.booking_date || '-'} />
             <DetailRow label="Guests" value={`${totalGuests} (${booking.gents_count || 0} gents, ${booking.ladies_count || 0} ladies)`} />
           </div>
         </div>
@@ -196,8 +247,7 @@ const BookingDetail = () => {
             <DetailRow label="Name" value={booking.customer_name} />
             {booking.cnic && <DetailRow label="CNIC" value={booking.cnic} />}
             <Link
-              to="/customers"
-              state={{ selectedCustomerId: booking.customer }}
+              to={`/customers/${booking.customer}`}
               style={{ fontSize: '13px', fontWeight: '700', color: 'var(--primary)' }}
             >
               View customer profile →
@@ -230,14 +280,14 @@ const BookingDetail = () => {
             padding: '20px',
             background: 'var(--background)',
             borderRadius: '12px',
-            border: '1px solid var(--border)',
+            border: 'none',
           }}
         >
           <DetailRow label="Rate per head" value={formatRs(booking.rate_per_head)} />
           <DetailRow label="Grand total" value={formatRs(booking.total_price)} highlight />
           <DetailRow label="Advance paid" value={formatRs(booking.advance_paid)} />
           <DetailRow
-            label="Lena (due)"
+            label="Due"
             value={formatCollectDue(due)}
             highlight={hasCollectDue(due)}
           />
@@ -255,7 +305,7 @@ const BookingDetail = () => {
             label="Decoration"
             value={
               booking.decoration_package_name
-                ? `${booking.decoration_package_name} — ${formatRs(booking.decoration_charge)}`
+                ? `${booking.decoration_package_name} - ${formatRs(booking.decoration_charge)}`
                 : formatRs(booking.decoration_charge)
             }
           />
@@ -276,11 +326,11 @@ const BookingDetail = () => {
                 style={{
                   padding: '12px 16px',
                   borderRadius: '10px',
-                  border: '1px solid var(--border)',
+                  border: 'none',
                   fontSize: '14px',
                 }}
               >
-                <strong>{line.item_name || 'Item'}</strong> — {line.quantity_used} {line.item_unit || ''}
+                <strong>{line.item_name || 'Item'}</strong> - {line.quantity_used} {line.item_unit || ''}
               </li>
             ))}
           </ul>
@@ -293,6 +343,13 @@ const BookingDetail = () => {
           <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.6 }}>{booking.notes}</p>
         </div>
       )}
+
+      <CancelBookingModal
+        booking={booking}
+        open={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onCancelled={reloadBooking}
+      />
     </div>
   );
 };

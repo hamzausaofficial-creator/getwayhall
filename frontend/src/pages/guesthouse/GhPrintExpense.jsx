@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getGhExpense } from '../../api/guesthouse';
 import { formatRs } from '../../utils/currency';
 import GhPrintShell, { GhPrintHeader, GhPrintFooter } from '../../components/guesthouse/GhPrintShell';
+import AppLoader from '../../components/AppLoader';
 
 const CATEGORY_LABELS = {
   SALARY: 'Salary',
@@ -26,7 +27,7 @@ export default function GhPrintExpense() {
   }, [expenseId, navigate]);
 
   if (!expense) {
-    return <div style={{ padding: '48px', textAlign: 'center' }}>Loading voucher…</div>;
+    return <AppLoader fullScreen message="Loading voucher…" />;
   }
 
   const voucherId = `EXP-${String(expense.id).padStart(5, '0')}`;
@@ -56,7 +57,7 @@ export default function GhPrintExpense() {
           {[
             ['Title', expense.title],
             ['Category', CATEGORY_LABELS[expense.category] || expense.category],
-            ['Recorded by', expense.created_by_name || '—'],
+            ['Recorded by', expense.created_by_name || '-'],
           ].map(([label, value]) => (
             <tr key={label}>
               <td style={{ padding: '10px 0', color: '#64748b', width: '38%', fontSize: '13px' }}>{label}</td>

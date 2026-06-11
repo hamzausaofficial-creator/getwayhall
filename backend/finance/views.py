@@ -3,8 +3,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from core.mixins import TenantQuerysetMixin
 from core.permissions import (
+    IsAdminOrManager,
     IsAdminOrManagerOrReadOnly,
-    IsAdminOrManagerOrStaffWrite,
     IsAdminOrManagerNoStaff,
     IsTenantOwner,
     IsMarriageHallApp,
@@ -16,7 +16,7 @@ from .serializers import PaymentSerializer, ExpenseSerializer
 class PaymentViewSet(TenantQuerysetMixin, viewsets.ModelViewSet):
     queryset = Payment.objects.all().order_by('-payment_date', '-id')
     serializer_class = PaymentSerializer
-    permission_classes = [IsMarriageHallApp, IsAdminOrManagerOrStaffWrite, IsTenantOwner]
+    permission_classes = [IsMarriageHallApp, IsAdminOrManager, IsTenantOwner]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['status', 'payment_method', 'booking']
     ordering_fields = ['payment_date', 'amount']

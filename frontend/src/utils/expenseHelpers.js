@@ -67,7 +67,7 @@ export const getNotesOnly = (expense) => {
     .trim();
 };
 
-export const getCategoryLabel = (category) => CATEGORY_LABELS[category] || category || '—';
+export const getCategoryLabel = (category) => CATEGORY_LABELS[category] || category || '-';
 
 export const parseExpenseToForm = (expense) => {
   const accountMatch = expense.description?.match(/\[Account Title: (.*?)\]/);

@@ -15,6 +15,8 @@ import { getExpense } from '../api/finance';
 import client from '../api/client';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import AppLogo from '../components/AppLogo';
+import { BRAND_FULL_NAME } from '../constants/brand';
 import {
   getAccountTitleLabel,
   getAccountTitleMeta,
@@ -22,6 +24,7 @@ import {
   getNotesOnly,
   getCategoryLabel,
 } from '../utils/expenseHelpers';
+import AppLoader from '../components/AppLoader';
 
 const ExpenseDetail = () => {
   const { expenseId } = useParams();
@@ -62,11 +65,7 @@ const ExpenseDetail = () => {
   const handlePrint = () => window.print();
 
   if (isLoading) {
-    return (
-      <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
-        Loading voucher…
-      </div>
-    );
+    return <AppLoader message="Loading voucher…" />;
   }
 
   if (!expense) return null;
@@ -102,7 +101,7 @@ const ExpenseDetail = () => {
             </p>
             <h2 style={{ fontSize: '28px', fontWeight: '800' }}>{expense.title}</h2>
             <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>
-              Payment voucher — yeh expense / receipt ki detail hai
+              Payment voucher - yeh expense / receipt ki detail hai
             </p>
             <span
               style={{
@@ -112,8 +111,8 @@ const ExpenseDetail = () => {
                 borderRadius: '20px',
                 fontSize: '12px',
                 fontWeight: '700',
-                backgroundColor: '#e2e8f0',
-                color: '#475569',
+                backgroundColor: 'var(--surface-elevated)',
+                color: 'var(--text-muted)',
               }}
             >
               {getCategoryLabel(expense.category)}
@@ -202,22 +201,21 @@ const ExpenseDetail = () => {
 
       <div
         id="printable-expense-voucher"
-        className="card"
+        className="card print-page-a5"
         style={{
-          maxWidth: '640px',
           margin: '0 auto 40px',
-          padding: '20px',
-          backgroundColor: 'white',
+          padding: '16px',
+          backgroundColor: 'var(--surface)',
         }}
       >
         <div style={{ border: '2px solid #000', padding: '16px', fontFamily: '"Courier New", Courier, monospace', color: '#000' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '3px double #000', paddingBottom: '10px' }}>
             <div>
-              <h2 style={{ fontSize: '18px', fontWeight: '900', margin: 0, textTransform: 'uppercase' }}>Gateway Marriage Hall</h2>
-              <p style={{ fontSize: '9px', margin: '2px 0 0', fontWeight: '600' }}>GT Road, Lahore | Official Accounts Ledger</p>
+              <AppLogo size="sm" tone="dark" showName name={BRAND_FULL_NAME} className="app-logo--print" />
+              <p style={{ fontSize: '9px', margin: '6px 0 0', fontWeight: '600' }}>GT Road, Lahore | Official Accounts Ledger</p>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <h3 style={{ border: '1.5px solid #000', padding: '4px 8px', margin: 0, fontSize: '11px', fontWeight: '800', backgroundColor: '#f1f5f9' }}>
+              <h3 style={{ border: '1.5px solid #000', padding: '4px 8px', margin: 0, fontSize: '11px', fontWeight: '800', backgroundColor: 'var(--surface-elevated)' }}>
                 PAYMENT VOUCHER
               </h3>
               <p style={{ fontSize: '10px', margin: '4px 0 0', fontWeight: '700' }}>
@@ -275,6 +273,7 @@ const ExpenseDetail = () => {
         dangerouslySetInnerHTML={{
           __html: `
       @media print {
+        @page { size: A5 portrait; margin: 10mm; }
         body * { visibility: hidden; }
         #printable-expense-voucher, #printable-expense-voucher * { visibility: visible; }
         #printable-expense-voucher {

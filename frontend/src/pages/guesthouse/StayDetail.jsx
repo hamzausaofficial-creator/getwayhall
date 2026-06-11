@@ -4,14 +4,19 @@ import { format, parseISO } from 'date-fns';
 import {
   ArrowLeft, Calendar, User, BedDouble, CreditCard, Printer, Edit2,
   Wallet, Phone, Clock, Users, FileText, LogIn, LogOut, CheckCircle, XCircle,
+  Plus, Trash2,
 } from 'lucide-react';
 import {
-  getStay, stayCheckIn, stayCheckOut, stayCancel, stayConfirm, listGhPayments,
+  getStay, stayCheckIn, stayCheckOut, stayConfirm, listGhPayments,
+  addStayCharge, removeStayCharge,
 } from '../../api/guesthouse';
+import CancelStayModal from '../../components/guesthouse/CancelStayModal';
+import AppLoader from '../../components/AppLoader';
 import toast from 'react-hot-toast';
 import { usePermissions } from '../../hooks/usePermissions';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { formatRs, formatCollectDuePKR, hasCollectDue } from '../../utils/currency';
+import { canCancelGhStay } from '../../utils/ghStay';
 import '../../styles/dashboard.css';
 import './stay-detail.css';
 
@@ -32,7 +37,7 @@ const TRACK_STEPS = [
 const STATUS_ORDER = { PENDING: 0, CONFIRMED: 1, CHECKED_IN: 2, CHECKED_OUT: 3, CANCELLED: -1 };
 
 const formatDate = (d) => {
-  if (!d) return '—';
+  if (!d) return '-';
   try {
     return format(parseISO(d), 'EEE, dd MMM yyyy');
   } catch {
@@ -41,7 +46,7 @@ const formatDate = (d) => {
 };
 
 const formatDateShort = (d) => {
-  if (!d) return '—';
+  if (!d) return '-';
   try {
     return format(parseISO(d), 'dd MMM yyyy');
   } catch {
@@ -89,22 +94,27 @@ export default function StayDetail() {
   const { stayId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { canManage } = usePermissions();
+  const { canManage, canAccessPayments, canCancelStay } = usePermissions();
   const backTo = location.state?.from || '/gh/stays';
   const backLabel = location.state?.fromLabel || 'Back to stays';
   const [stay, setStay] = useState(null);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [chargeDesc, setChargeDesc] = useState('');
+  const [chargeAmount, setChargeAmount] = useState('');
+  const [addingCharge, setAddingCharge] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [s, pays] = await Promise.all([
-        getStay(stayId),
-        listGhPayments({ stay: stayId }),
-      ]);
+      const s = await getStay(stayId);
       setStay(s);
-      setPayments(pays);
+      if (canAccessPayments) {
+        setPayments(await listGhPayments({ stay: stayId }));
+      } else {
+        setPayments([]);
+      }
     } catch {
       toast.error('Stay not found');
       navigate('/gh/stays');
@@ -179,26 +189,9 @@ export default function StayDetail() {
     }
   };
 
-  const handleCancel = async () => {
-    if (!window.confirm('Cancel this stay?')) return;
-    const paid = Number(stay.advance_paid) || 0;
-    let refundAdvance = false;
-    if (paid > 0) {
-      refundAdvance = window.confirm(`Refund advance of ${formatRs(paid)} to guest?`);
-    }
-    try {
-      const updated = await stayCancel(stayId, { refund_advance: refundAdvance });
-      setStay(updated);
-      toast.success(refundAdvance ? 'Stay cancelled — advance refunded' : 'Stay cancelled');
-      load();
-    } catch (err) {
-      toast.error(err.response?.data?.detail || 'Cancel failed');
-    }
-  };
-
   const billing = useMemo(() => {
     if (!stay) return null;
-    const due = Number(stay.remaining_balance || 0);
+    const due = stay.status === 'CANCELLED' ? 0 : Number(stay.remaining_balance || 0);
     const total = Number(stay.total_amount || 0);
     const paid = Number(stay.advance_paid || 0);
     const paidPct = total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 0;
@@ -206,16 +199,51 @@ export default function StayDetail() {
   }, [stay]);
 
   if (loading) {
-    return (
-      <div className="animate-fade-in sd-page" style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
-        Loading reservation…
-      </div>
-    );
+    return <AppLoader message="Loading reservation…" />;
   }
   if (!stay || !billing) return null;
 
   const { due, total, paid, paidPct } = billing;
-  const canAct = canManage && stay.status !== 'CANCELLED' && stay.status !== 'CHECKED_OUT';
+  const isCancelled = stay.status === 'CANCELLED';
+  const canAct = canManage && !isCancelled && stay.status !== 'CHECKED_OUT';
+  const showCancel = canCancelStay && canCancelGhStay(stay);
+  const canAddCharges = canManage && !isCancelled && stay.status !== 'CHECKED_OUT';
+  const handleAddCharge = async (e) => {
+    e.preventDefault();
+    const desc = chargeDesc.trim();
+    const amt = Number(chargeAmount);
+    if (!desc) {
+      toast.error('Enter a description');
+      return;
+    }
+    if (!amt || amt <= 0) {
+      toast.error('Enter a valid amount');
+      return;
+    }
+    setAddingCharge(true);
+    try {
+      const updated = await addStayCharge(stayId, { description: desc, amount: amt });
+      setStay(updated);
+      setChargeDesc('');
+      setChargeAmount('');
+      toast.success('Charge added');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Could not add charge');
+    } finally {
+      setAddingCharge(false);
+    }
+  };
+
+  const handleRemoveCharge = async (chargeId) => {
+    if (!window.confirm('Remove this charge?')) return;
+    try {
+      const updated = await removeStayCharge(stayId, chargeId);
+      setStay(updated);
+      toast.success('Charge removed');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Could not remove charge');
+    }
+  };
 
   return (
     <div className="animate-fade-in sd-page">
@@ -247,18 +275,38 @@ export default function StayDetail() {
           </div>
         </div>
         <div className="page-header__actions">
-          <button type="button" className="btn-secondary" onClick={() => navigate(`/gh/print/stay/${stay.id}?doc=advance`)}>
-            <Printer size={16} /> Receipt
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => navigate(
+              isCancelled
+                ? `/gh/print/stay/${stay.id}?doc=cancellation`
+                : `/gh/print/stay/${stay.id}?doc=advance`,
+            )}
+          >
+            <Printer size={16} /> {isCancelled ? 'Print cancellation' : 'Receipt'}
           </button>
-          <button type="button" className="btn-secondary" onClick={() => navigate(`/gh/print/stay/${stay.id}?doc=invoice`)}>
-            <FileText size={16} /> Invoice
-          </button>
-          {canManage && (
+          {!isCancelled && (
+            <button type="button" className="btn-secondary" onClick={() => navigate(`/gh/print/stay/${stay.id}?doc=invoice`)}>
+              <FileText size={16} /> Invoice
+            </button>
+          )}
+          {canManage && !isCancelled && (
             <button type="button" className="btn-secondary" onClick={() => navigate(`/gh/stays/${stay.id}/edit`)}>
               <Edit2 size={16} /> Edit
             </button>
           )}
-          {canManage && hasCollectDue(due) && (
+          {showCancel && (
+            <button
+              type="button"
+              className="sd-btn-cancel"
+              onClick={() => setShowCancelModal(true)}
+              style={{ padding: '10px 16px', width: 'auto' }}
+            >
+              <XCircle size={16} /> Cancel stay
+            </button>
+          )}
+          {canAccessPayments && hasCollectDue(due) && (
             <button type="button" className="btn-primary" onClick={() => navigate(`/gh/payments/new?stay=${stay.id}`)}>
               <CreditCard size={16} /> Collect payment
             </button>
@@ -267,6 +315,30 @@ export default function StayDetail() {
       </div>
 
       <StatusTrack status={stay.status} />
+
+      {isCancelled && (
+        <div
+          className="premium-card"
+          style={{
+            padding: '20px 22px',
+            marginBottom: '20px',
+            borderColor: '#fecaca',
+            background: '#fef2f2',
+          }}
+        >
+          <p style={{ fontWeight: '800', color: '#991b1b', marginBottom: '8px' }}>This stay has been cancelled</p>
+          {stay.cancelled_at && (
+            <p style={{ fontSize: '13px', color: '#7f1d1d', marginBottom: '6px' }}>
+              Cancelled on: {new Date(stay.cancelled_at).toLocaleString()}
+            </p>
+          )}
+          {stay.cancellation_reason && (
+            <p style={{ fontSize: '14px', color: '#7f1d1d', margin: 0 }}>
+              Reason: {stay.cancellation_reason}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="sd-kpi-row">
         {[
@@ -300,10 +372,10 @@ export default function StayDetail() {
               </div>
               <div>
                 <p className="sd-field__label">Phone</p>
-                <p className="sd-field__value">{stay.customer_phone || '—'}</p>
+                <p className="sd-field__value">{stay.customer_phone || '-'}</p>
               </div>
             </div>
-            <Link to="/gh/customers" state={{ selectedCustomerId: stay.customer }} className="sd-link">
+            <Link to={`/gh/customers/${stay.customer}`} className="sd-link">
               View customer profile →
             </Link>
           </div>
@@ -324,58 +396,60 @@ export default function StayDetail() {
             {stay.notes && <div className="sd-notes">{stay.notes}</div>}
           </div>
 
-          <div className="premium-card sd-section" style={{ padding: '22px' }}>
-            <h3 className="sd-section-title"><Wallet size={18} /> Payment history</h3>
-            {payments.length === 0 ? (
-              <div className="sd-empty">
-                <CreditCard size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
-                <p style={{ margin: '0 0 12px 0', fontWeight: 600 }}>No payments yet</p>
-                {canManage && hasCollectDue(due) && (
-                  <button type="button" className="btn-primary" onClick={() => navigate(`/gh/payments/new?stay=${stay.id}`)}>
-                    Record payment
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="sd-pay-row">
-                {payments.map((p) => {
-                  const isRefund = Number(p.amount) < 0 || (p.notes || '').includes('Refund');
-                  const isAdvance = (p.notes || '').includes('Initial advance');
-                  return (
-                    <div key={p.id} className={`sd-pay-card${isRefund ? ' sd-pay-card--refund' : ''}`}>
-                      <div className="sd-pay-card__top">
-                        <div style={{ minWidth: 0 }}>
-                          <p className="sd-pay-card__amt" style={{ color: isRefund ? '#b91c1c' : '#166534' }}>
-                            {formatRs(p.amount)}
-                            {isRefund && <span className="sd-tag sd-tag--refund">Refund</span>}
-                            {isAdvance && <span className="sd-tag sd-tag--advance">Advance</span>}
-                          </p>
-                          <p className="sd-pay-card__meta">
-                            {METHOD_LABELS[p.payment_method] || p.payment_method}
-                            {p.payment_date && ` · ${new Date(p.payment_date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`}
-                          </p>
-                          {p.notes && !isAdvance && !isRefund && (
-                            <p className="sd-pay-card__meta">{p.notes}</p>
-                          )}
-                        </div>
-                        <div className="sd-pay-card__actions">
-                          <button
-                            type="button"
-                            className="btn-secondary"
-                            onClick={() => navigate(`/gh/print/payment/${p.id}`)}
-                            style={{ padding: '8px 12px', fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                          >
-                            <Printer size={14} /> Receipt
-                          </button>
+          {canAccessPayments && (
+            <div className="premium-card sd-section" style={{ padding: '22px' }}>
+              <h3 className="sd-section-title"><Wallet size={18} /> Payment history</h3>
+              {payments.length === 0 ? (
+                <div className="sd-empty">
+                  <CreditCard size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
+                  <p style={{ margin: '0 0 12px 0', fontWeight: 600 }}>No payments yet</p>
+                  {hasCollectDue(due) && (
+                    <button type="button" className="btn-primary" onClick={() => navigate(`/gh/payments/new?stay=${stay.id}`)}>
+                      Record payment
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="sd-pay-row">
+                  {payments.map((p) => {
+                    const isRefund = Number(p.amount) < 0 || (p.notes || '').includes('Refund');
+                    const isAdvance = (p.notes || '').includes('Initial advance');
+                    return (
+                      <div key={p.id} className={`sd-pay-card${isRefund ? ' sd-pay-card--refund' : ''}`}>
+                        <div className="sd-pay-card__top">
+                          <div style={{ minWidth: 0 }}>
+                            <p className="sd-pay-card__amt" style={{ color: isRefund ? '#b91c1c' : '#166534' }}>
+                              {formatRs(p.amount)}
+                              {isRefund && <span className="sd-tag sd-tag--refund">Refund</span>}
+                              {isAdvance && <span className="sd-tag sd-tag--advance">Advance</span>}
+                            </p>
+                            <p className="sd-pay-card__meta">
+                              {METHOD_LABELS[p.payment_method] || p.payment_method}
+                              {p.payment_date && ` · ${new Date(p.payment_date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`}
+                            </p>
+                            {p.notes && !isAdvance && !isRefund && (
+                              <p className="sd-pay-card__meta">{p.notes}</p>
+                            )}
+                          </div>
+                          <div className="sd-pay-card__actions">
+                            <button
+                              type="button"
+                              className="btn-secondary"
+                              onClick={() => navigate(`/gh/print/payment/${p.id}`)}
+                              style={{ padding: '8px 12px', fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                            >
+                              <Printer size={14} /> Receipt
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            <Link to="/gh/payments" className="sd-link">All payments →</Link>
-          </div>
+                    );
+                  })}
+                </div>
+              )}
+              <Link to="/gh/payments" className="sd-link">All payments →</Link>
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -385,6 +459,77 @@ export default function StayDetail() {
               <p className="sd-bill__total-amt">{formatRs(total)}</p>
             </div>
             <div className="sd-bill__body">
+              {stay.billing_breakdown && (
+                <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>
+                      Room ({stay.billing_breakdown.nights} night{stay.billing_breakdown.nights !== 1 ? 's' : ''})
+                    </span>
+                    <span style={{ fontWeight: 700 }}>{formatRs(stay.billing_breakdown.room_base)}</span>
+                  </div>
+                  {stay.billing_breakdown.extra_guests > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>
+                        Extra guests ({stay.billing_breakdown.extra_guests})
+                      </span>
+                      <span style={{ fontWeight: 700 }}>{formatRs(stay.billing_breakdown.extra_guest_total)}</span>
+                    </div>
+                  )}
+                  {(stay.billing_breakdown.service_charges || []).map((line) => (
+                    <div key={line.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>{line.description}</span>
+                      <span style={{ fontWeight: 700 }}>{formatRs(line.amount)}</span>
+                    </div>
+                  ))}
+                  {(stay.billing_breakdown.custom_charges || []).map((line) => (
+                    <div key={line.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                      <span style={{ color: 'var(--text-muted)' }}>{line.description}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontWeight: 700 }}>{formatRs(line.amount)}</span>
+                        {canAddCharges && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCharge(line.id)}
+                            style={{ border: 'none', background: 'transparent', color: '#b91c1c', cursor: 'pointer', padding: 2 }}
+                            title="Remove charge"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {canAddCharges && (
+                <form onSubmit={handleAddCharge} style={{ marginBottom: 16, paddingTop: 8, borderTop: '1px dashed var(--border)' }}>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Add custom charge
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <input
+                      type="text"
+                      value={chargeDesc}
+                      onChange={(e) => setChargeDesc(e.target.value)}
+                      placeholder="e.g. Minibar, laundry, damage"
+                      style={{ width: '100%' }}
+                    />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        type="number"
+                        min="1"
+                        value={chargeAmount}
+                        onChange={(e) => setChargeAmount(e.target.value)}
+                        placeholder="Amount (Rs)"
+                        style={{ flex: 1 }}
+                      />
+                      <button type="submit" className="btn-secondary" disabled={addingCharge} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                        <Plus size={14} /> {addingCharge ? 'Adding…' : 'Add'}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              )}
               <div className="sd-bill__bar-wrap">
                 <div className="sd-bill__bar-head">
                   <span style={{ color: 'var(--text-muted)' }}>Paid</span>
@@ -408,7 +553,7 @@ export default function StayDetail() {
                 <span>Balance due</span>
                 <span>{formatCollectDuePKR(due)}</span>
               </div>
-              {canManage && hasCollectDue(due) && (
+              {canAccessPayments && hasCollectDue(due) && (
                 <button
                   type="button"
                   className="btn-primary"
@@ -421,28 +566,28 @@ export default function StayDetail() {
             </div>
           </div>
 
-          {canAct && (
+          {(canAct || showCancel) && (
             <div className="premium-card" style={{ padding: '20px 22px' }}>
               <h3 className="sd-section-title" style={{ marginBottom: 14 }}><Clock size={18} /> Actions</h3>
               <div className="sd-actions">
-                {stay.status === 'PENDING' && (
+                {canAct && stay.status === 'PENDING' && (
                   <button type="button" className="btn-secondary" onClick={() => runAction(stayConfirm, 'Stay confirmed')}>
                     <CheckCircle size={16} /> Confirm booking
                   </button>
                 )}
-                {['CONFIRMED', 'PENDING'].includes(stay.status) && (
+                {canAct && ['CONFIRMED', 'PENDING'].includes(stay.status) && (
                   <button type="button" className="btn-primary" onClick={handleCheckIn}>
                     <LogIn size={16} /> Check in
                   </button>
                 )}
-                {stay.status === 'CHECKED_IN' && (
+                {canAct && stay.status === 'CHECKED_IN' && (
                   <button type="button" className="btn-primary" onClick={handleCheckOut}>
                     <LogOut size={16} /> Check out
                   </button>
                 )}
-                {stay.status !== 'CHECKED_IN' && (
-                  <button type="button" className="sd-btn-cancel" onClick={handleCancel}>
-                    <XCircle size={16} /> Cancel stay
+                {showCancel && (
+                  <button type="button" className="sd-btn-cancel" onClick={() => setShowCancelModal(true)}>
+                    <XCircle size={16} /> Cancel stay booking
                   </button>
                 )}
               </div>
@@ -451,13 +596,20 @@ export default function StayDetail() {
         </div>
       </div>
 
-      {canManage && hasCollectDue(due) && (
+      {canAccessPayments && hasCollectDue(due) && (
         <div className="sd-mobile-bar">
           <button type="button" className="btn-primary" onClick={() => navigate(`/gh/payments/new?stay=${stay.id}`)}>
             <CreditCard size={18} /> Collect {formatCollectDuePKR(due)}
           </button>
         </div>
       )}
+
+      <CancelStayModal
+        stay={stay}
+        open={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onCancelled={load}
+      />
     </div>
   );
 }

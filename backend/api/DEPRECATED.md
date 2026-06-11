@@ -1,4 +1,4 @@
-# Deprecated — do not use
+# Deprecated - do not use
 
 The `api` app is not registered in `INSTALLED_APPS` and is not mounted in URLs.
 

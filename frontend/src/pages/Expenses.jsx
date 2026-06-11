@@ -264,7 +264,7 @@ const Expenses = () => {
       <div className="card table-scroll" style={{ padding: 0, borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
-            <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid var(--border)' }}>
+            <tr style={{ backgroundColor: 'var(--surface-muted)', borderBottom: '1px solid var(--border)' }}>
               <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Voucher / Reason</th>
               <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Account Title</th>
               <th style={{ padding: '18px 24px', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--text-muted)' }}>Payee Vendor</th>
@@ -301,14 +301,14 @@ const Expenses = () => {
                   </div>
                 </td>
                 <td style={{ padding: '20px 24px' }}>
-                  <span style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '20px', fontWeight: '700', backgroundColor: '#e2e8f0', color: '#475569', display: 'inline-block' }}>
+                  <span style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '20px', fontWeight: '700', backgroundColor: 'var(--surface-elevated)', color: 'var(--text-muted)', display: 'inline-block' }}>
                     {getAccountTitleLabel(expense)}
                   </span>
                 </td>
                 <td style={{ padding: '20px 24px', fontSize: '14px', fontWeight: '600', color: 'var(--secondary)' }}>
                   {getPayeeName(expense)}
                 </td>
-                <td style={{ padding: '20px 24px', fontSize: '13px', color: '#475569', fontWeight: '500' }}>
+                <td style={{ padding: '20px 24px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <CalendarIcon size={14} color="var(--text-muted)" />
                     {new Date(expense.expense_date).toLocaleDateString()}
@@ -383,7 +383,7 @@ const Expenses = () => {
             
             {/* Account Title Selector */}
             <div className="input-group">
-              <label style={{ fontSize: '13px', fontWeight: '700', color: '#475569', marginBottom: '8px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px' }}>
                 Account Title
               </label>
               <select 
@@ -399,7 +399,7 @@ const Expenses = () => {
 
             {/* Title / specific reason */}
             <div className="input-group">
-              <label style={{ fontSize: '13px', fontWeight: '700', color: '#475569', marginBottom: '8px' }}>Voucher Reason / Specific Title</label>
+              <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px' }}>Voucher Reason / Specific Title</label>
               <input 
                 type="text"
                 required 
@@ -413,7 +413,7 @@ const Expenses = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               {/* Payee / vendor */}
               <div className="input-group">
-                <label style={{ fontSize: '13px', fontWeight: '700', color: '#475569', marginBottom: '8px' }}>Vendor / Payee Name</label>
+                <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px' }}>Vendor / Payee Name</label>
                 <input 
                   type="text" 
                   required
@@ -426,7 +426,7 @@ const Expenses = () => {
 
               {/* Amount */}
               <div className="input-group">
-                <label style={{ fontSize: '13px', fontWeight: '700', color: '#475569', marginBottom: '8px' }}>Amount Paid (PKR)</label>
+                <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px' }}>Amount Paid (PKR)</label>
                 <input 
                   type="number" 
                   required 
@@ -441,7 +441,7 @@ const Expenses = () => {
 
             {/* Date */}
             <div className="input-group">
-              <label style={{ fontSize: '13px', fontWeight: '700', color: '#475569', marginBottom: '8px' }}>Voucher Date</label>
+              <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px' }}>Voucher Date</label>
               <input 
                 type="date" 
                 required 
@@ -453,7 +453,7 @@ const Expenses = () => {
 
             {/* Notes */}
             <div className="input-group">
-              <label style={{ fontSize: '13px', fontWeight: '700', color: '#475569', marginBottom: '8px' }}>Voucher Remarks / Notes</label>
+              <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px' }}>Voucher Remarks / Notes</label>
               <textarea 
                 rows="2" 
                 value={formData.description} 

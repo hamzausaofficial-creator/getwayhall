@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { createRoom, updateRoom, getRoom } from '../../api/guesthouse';
 import toast from 'react-hot-toast';
+import AppLoader from '../../components/AppLoader';
 import { usePermissions } from '../../hooks/usePermissions';
 import { formatRs } from '../../utils/currency';
 import { resolveMediaUrl } from '../../utils/media';
@@ -17,15 +18,17 @@ const ROOM_TYPES = [
 ];
 
 const STATUS_OPTIONS = [
-  { value: 'ACTIVE', label: 'Active — available for stays' },
-  { value: 'MAINTENANCE', label: 'Maintenance — temporarily unavailable' },
-  { value: 'INACTIVE', label: 'Inactive — hidden from new bookings' },
+  { value: 'ACTIVE', label: 'Active - available for stays' },
+  { value: 'MAINTENANCE', label: 'Maintenance - temporarily unavailable' },
+  { value: 'INACTIVE', label: 'Inactive - hidden from new bookings' },
 ];
 
 const emptyForm = {
   room_number: '',
   room_type: 'DOUBLE',
   beds: 1,
+  included_guests: 0,
+  extra_guest_fee_per_night: '',
   price_per_night: '',
   status: 'ACTIVE',
   description: '',
@@ -69,7 +72,7 @@ export default function RoomFormPage() {
   useEffect(() => {
     if (!canManage) {
       toast.error('You do not have permission to manage rooms.');
-      navigate('/gh/rooms');
+      navigate('/gh/settings?tab=rooms');
     }
   }, [canManage, navigate]);
 
@@ -83,6 +86,8 @@ export default function RoomFormPage() {
             room_number: room.room_number || '',
             room_type: room.room_type || 'DOUBLE',
             beds: room.beds ?? 1,
+            included_guests: room.included_guests ?? 0,
+            extra_guest_fee_per_night: room.extra_guest_fee_per_night ?? '',
             price_per_night: room.price_per_night ?? '',
             status: room.status || 'ACTIVE',
             description: room.description || '',
@@ -91,7 +96,7 @@ export default function RoomFormPage() {
         }
       } catch {
         toast.error('Room not found');
-        navigate('/gh/rooms');
+        navigate('/gh/settings?tab=rooms');
       } finally {
         setLoading(false);
       }
@@ -145,6 +150,8 @@ export default function RoomFormPage() {
       room_number: form.room_number.trim(),
       room_type: form.room_type,
       beds: Number(form.beds),
+      included_guests: Number(form.included_guests) || 0,
+      extra_guest_fee_per_night: Number(form.extra_guest_fee_per_night) || 0,
       price_per_night: Number(form.price_per_night),
       status: form.status,
       description: form.description,
@@ -163,7 +170,7 @@ export default function RoomFormPage() {
         await createRoom(payload, imageFile);
         toast.success('Room added');
       }
-      navigate('/gh/rooms');
+      navigate('/gh/settings?tab=rooms');
     } catch (err) {
       const msg = err.response?.data
         ? Object.values(err.response.data).flat().join(' ')
@@ -176,11 +183,7 @@ export default function RoomFormPage() {
   };
 
   if (loading) {
-    return (
-      <div className="animate-fade-in" style={{ padding: '48px', textAlign: 'center' }}>
-        Loading…
-      </div>
-    );
+    return <AppLoader message="Loading…" />;
   }
 
   return (
@@ -201,7 +204,7 @@ export default function RoomFormPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button
               type="button"
-              onClick={() => navigate('/gh/rooms')}
+              onClick={() => navigate('/gh/settings?tab=rooms')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -313,6 +316,26 @@ export default function RoomFormPage() {
                     value={form.price_per_night}
                     onChange={(e) => setForm({ ...form, price_per_night: e.target.value })}
                     placeholder="e.g. 3500"
+                  />
+                </div>
+                <div className="input-group">
+                  <label>Included guests (base rate)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.included_guests}
+                    onChange={(e) => setForm({ ...form, included_guests: e.target.value })}
+                    placeholder="0 = same as beds"
+                  />
+                </div>
+                <div className="input-group">
+                  <label>Extra guest fee / night (Rs)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.extra_guest_fee_per_night}
+                    onChange={(e) => setForm({ ...form, extra_guest_fee_per_night: e.target.value })}
+                    placeholder="e.g. 500 per extra person"
                   />
                 </div>
                 <div className="input-group" style={{ gridColumn: '1 / -1' }}>
@@ -466,20 +489,20 @@ export default function RoomFormPage() {
 
                 <div>
                   <p style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 4px 0', color: 'var(--secondary)' }}>
-                    {form.room_number ? `Room ${form.room_number}` : 'Room —'}
+                    {form.room_number ? `Room ${form.room_number}` : 'Room -'}
                   </p>
                   <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>{typeLabel}</p>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>
                   <Users size={14} />
-                  {form.beds || '—'} bed{Number(form.beds) !== 1 ? 's' : ''}
+                  {form.beds || '-'} bed{Number(form.beds) !== 1 ? 's' : ''}
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
                   <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '600' }}>Nightly rate</span>
                   <span style={{ fontSize: '22px', fontWeight: '900', color: 'var(--primary)' }}>
-                    {nightly > 0 ? formatRs(nightly) : '—'}
+                    {nightly > 0 ? formatRs(nightly) : '-'}
                   </span>
                 </div>
 
@@ -491,7 +514,7 @@ export default function RoomFormPage() {
                     fontSize: '11px',
                     fontWeight: '700',
                     backgroundColor: form.status === 'ACTIVE' ? '#dcfce7' : '#f1f5f9',
-                    color: form.status === 'ACTIVE' ? '#166534' : '#64748b',
+                    color: form.status === 'ACTIVE' ? '#166534' : 'var(--text-dim)',
                   }}
                 >
                   {form.status}
@@ -524,7 +547,7 @@ export default function RoomFormPage() {
                 <button
                   type="button"
                   className="btn-secondary"
-                  onClick={() => navigate('/gh/rooms')}
+                  onClick={() => navigate('/gh/settings?tab=rooms')}
                   style={{
                     display: 'flex',
                     alignItems: 'center',

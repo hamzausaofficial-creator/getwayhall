@@ -10,6 +10,7 @@ import {
 } from 'date-fns';
 import { getGuestHouseCalendar } from '../../api/guesthouse';
 import toast from 'react-hot-toast';
+import AppLoader from '../../components/AppLoader';
 import { formatCollectDue, hasCollectDue } from '../../utils/currency';
 import { usePermissions } from '../../hooks/usePermissions';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -111,7 +112,7 @@ export default function StayCalendar() {
           </div>
 
           {loading ? (
-            <p style={{ textAlign: 'center', padding: '32px' }}>Loading calendar…</p>
+            <AppLoader inline message="Loading calendar…" />
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
               {days.map((day) => {

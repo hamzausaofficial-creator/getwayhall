@@ -126,3 +126,14 @@ class IsAdminOrManagerNoStaff(permissions.BasePermission):
         if request.user.is_superuser:
             return True
         return getattr(request.user, 'role', None) in ('ADMIN', 'MANAGER')
+
+
+class IsGhStaffOrAbove(permissions.BasePermission):
+    """Guest House front-desk actions: ADMIN, MANAGER, and STAFF."""
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser:
+            return True
+        return getattr(request.user, 'role', None) in ('ADMIN', 'MANAGER', 'STAFF')

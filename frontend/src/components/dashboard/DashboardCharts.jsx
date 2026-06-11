@@ -46,7 +46,7 @@ export function RevenueChart({ data }) {
   return (
     <ChartCard
       title="Revenue overview"
-      subtitle="Completed payments — last 6 months"
+      subtitle="Completed payments - last 6 months"
       empty={
         !hasData
           ? {

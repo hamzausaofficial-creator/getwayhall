@@ -62,6 +62,24 @@ export const AuthProvider = ({ children }) => {
     return updatedUser;
   };
 
+  const refreshUser = async () => {
+    const userData = await getMe();
+    if (userData?.role) localStorage.setItem('user_role', userData.role);
+    if (userData?.app_type) localStorage.setItem('user_app_type', userData.app_type);
+    setUser(userData);
+    return userData;
+  };
+
+  const clearSession = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('user_role');
+    localStorage.removeItem('user_app_type');
+    setUser(null);
+    setIsAuthenticated(false);
+  };
+
   const logout = () => {
     localStorage.clear();
     setUser(null);
@@ -70,7 +88,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthenticated, login, updateProfile, logout }}>
+    <AuthContext.Provider value={{ user, loading, isAuthenticated, login, updateProfile, refreshUser, logout, clearSession }}>
       {children}
     </AuthContext.Provider>
   );

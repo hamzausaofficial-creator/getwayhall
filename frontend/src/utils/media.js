@@ -4,7 +4,7 @@ export function resolveMediaUrl(url) {
 
   if (url.startsWith('blob:')) return url;
 
-  // DRF may return absolute backend URL — use path so Vite /media proxy works in dev
+  // DRF may return absolute backend URL - use path so Vite /media proxy works in dev
   if (url.startsWith('http://') || url.startsWith('https://')) {
     try {
       const { pathname } = new URL(url);

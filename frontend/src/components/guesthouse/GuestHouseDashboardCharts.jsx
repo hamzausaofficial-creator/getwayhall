@@ -36,7 +36,7 @@ export function GhRevenueChart({ data }) {
   return (
     <ChartCard
       title="Collections overview"
-      subtitle="Completed payments — last 6 months"
+      subtitle="Completed payments - last 6 months"
       empty={!hasData ? { icon: LineChart, title: 'No payment data', description: 'Record payments to see trends.' } : null}
     >
       {hasData && (

@@ -53,6 +53,15 @@ class BookingSerializer(serializers.ModelSerializer):
             data['end_date'] = start_date + timedelta(days=1)
             end_date = data['end_date']
 
+        if settings.USE_TZ:
+            current_tz = timezone.get_current_timezone()
+            if start_date and timezone.is_naive(start_date):
+                start_date = timezone.make_aware(start_date, current_tz)
+                data['start_date'] = start_date
+            if end_date and timezone.is_naive(end_date):
+                end_date = timezone.make_aware(end_date, current_tz)
+                data['end_date'] = end_date
+
         if start_date >= end_date:
             raise serializers.ValidationError(
                 "Start date must be before end date."

@@ -15,7 +15,7 @@ const STATUS_MAP = {
 };
 
 function formatLabel(status) {
-  if (!status) return '—';
+  if (!status) return '-';
   return String(status)
     .replace(/_/g, ' ')
     .toLowerCase()

@@ -1,7 +1,7 @@
 import { useAuth } from '../context/AuthContext';
 
 /**
- * Central role checks — use everywhere instead of inline user?.role.
+ * Central role checks - use everywhere instead of inline user?.role.
  * Unknown/missing role is treated as STAFF (least privilege).
  */
 export function usePermissions() {
@@ -17,6 +17,7 @@ export function usePermissions() {
     (isAuthenticated && !loading && user && !isAdmin && !isManager);
 
   const canManage = isAdmin || isManager;
+  const canCancelStay = isAdmin || isManager || isStaff;
 
   return {
     user,
@@ -26,11 +27,13 @@ export function usePermissions() {
     isManager,
     isStaff,
     canManage,
+    canCancelStay,
     canAccessExpenses: canManage,
     canAccessReports: canManage,
     canAccessNotifications: canManage,
     canAccessStaff: isAdmin,
-    canAccessSettings: isAdmin,
+    canAccessSettings: canManage,
     canAccessDashboard: canManage,
+    canAccessPayments: canManage,
   };
 }

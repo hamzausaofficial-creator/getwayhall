@@ -10,11 +10,14 @@ import { useIsMobile } from '../hooks/useMediaQuery';
 import { globalSearch } from '../api/core';
 import { guestHouseSearch } from '../api/guesthouse';
 import { useAppType } from '../hooks/useAppType';
+import { usePermissions } from '../hooks/usePermissions';
 import { GhPageVisibilityProvider } from '../context/GhPageVisibilityContext';
+import { resolveMediaUrl } from '../utils/media';
 
 const DashboardLayout = () => {
   const { user } = useAuth();
   const { isGuestHouse } = useAppType();
+  const { canAccessPayments } = usePermissions();
   const profilePath = isGuestHouse ? '/gh/profile' : '/profile';
   const navigate = useNavigate();
   const location = useLocation();
@@ -24,24 +27,31 @@ const DashboardLayout = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const { notifications, unreadCount, markAllRead } = useNotifications();
 
   useEffect(() => {
-    if (searchQuery.trim().length < 2) {
+    const q = searchQuery.trim();
+    if (q.length < 2) {
       setSearchResults(null);
+      setSearchLoading(false);
+      setSearchOpen(false);
       return undefined;
     }
+    setSearchOpen(true);
+    setSearchLoading(true);
     const t = setTimeout(async () => {
       try {
         const data = isGuestHouse
-          ? await guestHouseSearch(searchQuery.trim())
-          : await globalSearch(searchQuery.trim());
+          ? await guestHouseSearch(q)
+          : await globalSearch(q);
         setSearchResults(data);
-        setSearchOpen(true);
       } catch {
         setSearchResults(null);
+      } finally {
+        setSearchLoading(false);
       }
     }, 300);
     return () => clearTimeout(t);
@@ -67,6 +77,8 @@ const DashboardLayout = () => {
 
   const closeSearch = () => {
     setSearchQuery('');
+    setSearchResults(null);
+    setSearchLoading(false);
     setSearchOpen(false);
     setMobileSearchOpen(false);
   };
@@ -77,7 +89,7 @@ const DashboardLayout = () => {
     || (searchResults.customers?.length > 0)
     || (searchResults.venues?.length > 0)
     || (searchResults.rooms?.length > 0)
-    || (searchResults.payments?.length > 0)
+    || (canAccessPayments && searchResults.payments?.length > 0)
     || (searchResults.inventory?.length > 0)
   );
 
@@ -88,6 +100,11 @@ const DashboardLayout = () => {
       return;
     }
     if (n.type === 'payment' || n.type === 'payment_due') {
+      if (!canAccessPayments) {
+        if (n.stayId) navigate(`/gh/stays/${n.stayId}`);
+        else if (n.bookingId) navigate(isGuestHouse ? `/gh/stays/${n.bookingId}` : `/bookings/${n.bookingId}`);
+        return;
+      }
       const payPath = isGuestHouse ? '/gh/payments' : '/payments';
       const stateKey = isGuestHouse ? 'preselectedStayId' : 'preselectedBookingId';
       navigate(payPath, n.bookingId || n.stayId ? {
@@ -100,7 +117,7 @@ const DashboardLayout = () => {
     } else if (n.bookingId) {
       navigate(isGuestHouse ? `/gh/stays/${n.bookingId}` : '/bookings', isGuestHouse ? undefined : { state: { editBookingId: n.bookingId } });
     } else if (n.customerId) {
-      navigate(isGuestHouse ? '/gh/customers' : '/customers', { state: { selectedCustomerId: n.customerId } });
+      navigate(isGuestHouse ? `/gh/customers/${n.customerId}` : `/customers/${n.customerId}`);
     }
   };
 
@@ -137,22 +154,23 @@ const DashboardLayout = () => {
                 <Menu size={20} />
               </button>
             )}
-            {isMobile && (
+          </div>
+
+          <div className="dashboard-header__actions">
+            {isMobile && !mobileSearchOpen && (
               <button
                 type="button"
-                className="btn-menu-mobile"
-                onClick={() => setMobileSearchOpen((v) => !v)}
+                className="btn-menu-mobile dashboard-header__search-toggle"
+                onClick={() => setMobileSearchOpen(true)}
                 aria-label="Search"
               >
                 <Search size={20} />
               </button>
             )}
             <div
-              className={`dashboard-header__search ${isMobile ? '' : ''}`}
+              className={`dashboard-header__search${isMobile && mobileSearchOpen ? ' dashboard-header__search--mobile-open' : ''}`}
               style={{
-                display: isMobile && !mobileSearchOpen ? 'none' : 'block',
-                flex: isMobile ? 1 : undefined,
-                minWidth: isMobile ? 0 : undefined,
+                display: isMobile && !mobileSearchOpen ? 'none' : undefined,
               }}
             >
               <SearchInput
@@ -160,19 +178,30 @@ const DashboardLayout = () => {
                 placeholder={isGuestHouse ? 'Search stays, guests, rooms...' : 'Search bookings, customers...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => searchResults && setSearchOpen(true)}
-                onBlur={() => setTimeout(() => setSearchOpen(false), 200)}
+                onFocus={() => searchQuery.trim().length >= 2 && setSearchOpen(true)}
+                onBlur={() => {
+                  setTimeout(() => {
+                    setSearchOpen(false);
+                    if (isMobile && !searchQuery.trim()) setMobileSearchOpen(false);
+                  }, 200);
+                }}
+                role="combobox"
+                aria-expanded={searchOpen}
+                aria-autocomplete="list"
               />
-              {searchOpen && searchResults && (
+              {searchOpen && searchQuery.trim().length >= 2 && (
                 <div
-                  className="surface-dropdown"
+                  className="surface-dropdown dashboard-header__search-dropdown"
                   style={{
-                    position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0,
+                    position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                    width: 'min(360px, calc(100vw - 32px))',
                     backgroundColor: 'var(--surface)', borderRadius: '12px', boxShadow: 'var(--shadow-lg)',
                     border: '1px solid var(--border)', zIndex: 9999, maxHeight: '320px', overflowY: 'auto',
                   }}
                 >
-                  {hasSearchHits ? (
+                  {searchLoading ? (
+                    <p style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)' }}>Searching…</p>
+                  ) : hasSearchHits ? (
                     <>
                       {searchResults.stays?.map((s) => (
                         <button
@@ -193,7 +222,7 @@ const DashboardLayout = () => {
                           key={`r-${r.id}`}
                           type="button"
                           onMouseDown={() => {
-                            navigate('/gh/rooms');
+                            navigate('/gh/settings?tab=rooms');
                             closeSearch();
                           }}
                           style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' }}
@@ -221,13 +250,13 @@ const DashboardLayout = () => {
                           key={`c-${c.id}`}
                           type="button"
                           onMouseDown={() => {
-                            navigate(isGuestHouse ? '/gh/customers' : '/customers', { state: { selectedCustomerId: c.id } });
+                            navigate(isGuestHouse ? `/gh/customers/${c.id}` : `/customers/${c.id}`);
                             closeSearch();
                           }}
                           style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' }}
                         >
                           <p style={{ fontSize: '13px', fontWeight: '700' }}>{c.name}</p>
-                          <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Customer · {c.phone || '—'}</p>
+                          <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Customer · {c.phone || '-'}</p>
                         </button>
                       ))}
                       {searchResults.venues?.map((v) => (
@@ -235,7 +264,7 @@ const DashboardLayout = () => {
                           key={`v-${v.id}`}
                           type="button"
                           onMouseDown={() => {
-                            navigate('/halls');
+                            navigate('/settings?tab=halls');
                             closeSearch();
                           }}
                           style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' }}
@@ -244,7 +273,7 @@ const DashboardLayout = () => {
                           <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Hall · {v.location}</p>
                         </button>
                       ))}
-                      {searchResults.payments?.map((p) => (
+                      {canAccessPayments && searchResults.payments?.map((p) => (
                         <button
                           key={`p-${p.id}`}
                           type="button"
@@ -281,9 +310,6 @@ const DashboardLayout = () => {
                 </div>
               )}
             </div>
-          </div>
-
-          <div className="dashboard-header__actions">
             <ThemeToggle />
             <div className="dashboard-header__bell-wrap">
               <button
@@ -391,7 +417,7 @@ const DashboardLayout = () => {
               <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                 {user?.avatar ? (
                   <img
-                    src={user.avatar}
+                    src={resolveMediaUrl(user.avatar)}
                     alt="Profile"
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />

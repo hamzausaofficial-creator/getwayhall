@@ -40,4 +40,4 @@ class BookingInventoryItem(models.Model):
         unique_together = [['booking', 'inventory_item']]
 
     def __str__(self):
-        return f"{self.booking_id} — {self.inventory_item.name} x{self.quantity_used}"
+        return f"{self.booking_id} - {self.inventory_item.name} x{self.quantity_used}"

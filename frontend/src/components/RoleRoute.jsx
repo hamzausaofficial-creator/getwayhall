@@ -1,10 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
 import { useAppType } from '../hooks/useAppType';
-
-const Loading = () => (
-  <div className="flex h-screen items-center justify-center">Loading...</div>
-);
+import AppLoader from './AppLoader';
 
 /** Only ADMIN */
 export function AdminRoute({ children }) {
@@ -13,7 +10,7 @@ export function AdminRoute({ children }) {
   const staffHome = isGuestHouse ? '/gh/stays' : '/bookings';
   const managerHome = isGuestHouse ? '/gh/dashboard' : '/dashboard';
 
-  if (loading) return <Loading />;
+  if (loading) return <AppLoader fullScreen />;
   if (!isAdmin) {
     return <Navigate to={isStaff ? staffHome : managerHome} replace />;
   }
@@ -26,7 +23,7 @@ export function ManagerRoute({ children }) {
   const { isGuestHouse } = useAppType();
   const fallback = isGuestHouse ? '/gh/stays' : '/bookings';
 
-  if (loading) return <Loading />;
+  if (loading) return <AppLoader fullScreen />;
   if (!canManage) return <Navigate to={fallback} replace />;
   return children;
 }
@@ -37,7 +34,7 @@ export function StaffBlockedRoute({ children }) {
   const { isGuestHouse } = useAppType();
   const fallback = isGuestHouse ? '/gh/stays' : '/bookings';
 
-  if (loading) return <Loading />;
+  if (loading) return <AppLoader fullScreen />;
   if (!canAccessDashboard) return <Navigate to={fallback} replace />;
   return children;
 }

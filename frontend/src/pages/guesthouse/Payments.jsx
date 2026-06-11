@@ -16,11 +16,14 @@ import {
   listGhPayments, listStays, deleteGhPayment,
 } from '../../api/guesthouse';
 import toast from 'react-hot-toast';
+import AppLoader from '../../components/AppLoader';
 import { usePermissions } from '../../hooks/usePermissions';
 import SearchInput from '../../components/SearchInput';
 import { formatRs, formatCollectDue, hasCollectDue } from '../../utils/currency';
+import { todayISO, matchesDateFilter } from '../../utils/ghDate';
 import StatusBadge from '../../components/ui/StatusBadge';
 import StatCard from '../../components/ui/StatCard';
+import GhFilterSelect, { GH_DATE_FILTER_OPTIONS } from '../../components/guesthouse/GhFilterSelect';
 import '../../styles/dashboard.css';
 
 const METHOD_LABELS = {
@@ -41,6 +44,8 @@ export default function GuestHousePayments() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMethod, setFilterMethod] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
+  const [dateFilter, setDateFilter] = useState('today');
+  const [filterDate, setFilterDate] = useState(todayISO());
   const [selectedPayment, setSelectedPayment] = useState(null);
 
   const load = async () => {
@@ -94,9 +99,10 @@ export default function GuestHousePayments() {
         || String(p.id).includes(q);
       const matchesMethod = filterMethod === 'ALL' || p.payment_method === filterMethod;
       const matchesStatus = filterStatus === 'ALL' || p.status === filterStatus;
-      return matchesSearch && matchesMethod && matchesStatus;
+      const matchesDate = matchesDateFilter(p.payment_date, dateFilter, filterDate);
+      return matchesSearch && matchesMethod && matchesStatus && matchesDate;
     });
-  }, [payments, searchQuery, filterMethod, filterStatus]);
+  }, [payments, searchQuery, filterMethod, filterStatus, dateFilter, filterDate]);
 
   const openRecord = () => {
     if (!canManage) {
@@ -166,32 +172,51 @@ export default function GuestHousePayments() {
           />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)' }}>Date</span>
+          <GhFilterSelect
+            value={dateFilter}
+            onChange={setDateFilter}
+            options={GH_DATE_FILTER_OPTIONS}
+            aria-label="Payment date filter"
+          />
+          {dateFilter === 'date' && (
+            <input
+              type="date"
+              className="search-filter-bar__select"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+            />
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)' }}>Method</span>
-          <select
-            className="search-filter-bar__select"
+          <GhFilterSelect
             value={filterMethod}
-            onChange={(e) => setFilterMethod(e.target.value)}
-          >
-            <option value="ALL">All</option>
-            <option value="CASH">Cash</option>
-            <option value="CARD">Card</option>
-            <option value="BANK_TRANSFER">Bank transfer</option>
-            <option value="ONLINE">Online</option>
-          </select>
+            onChange={setFilterMethod}
+            options={[
+              { value: 'ALL', label: 'All' },
+              { value: 'CASH', label: 'Cash' },
+              { value: 'CARD', label: 'Card' },
+              { value: 'BANK_TRANSFER', label: 'Bank transfer' },
+              { value: 'ONLINE', label: 'Online' },
+            ]}
+            aria-label="Payment method filter"
+          />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)' }}>Status</span>
-          <select
-            className="search-filter-bar__select"
+          <GhFilterSelect
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-          >
-            <option value="ALL">All</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="PENDING">Pending</option>
-          </select>
+            onChange={setFilterStatus}
+            options={[
+              { value: 'ALL', label: 'All' },
+              { value: 'COMPLETED', label: 'Completed' },
+              { value: 'PENDING', label: 'Pending' },
+            ]}
+            aria-label="Payment status filter"
+          />
         </div>
-        {(searchQuery || filterMethod !== 'ALL' || filterStatus !== 'ALL') && (
+        {(searchQuery || filterMethod !== 'ALL' || filterStatus !== 'ALL' || dateFilter !== 'today') && (
           <button
             type="button"
             className="btn-secondary"
@@ -199,6 +224,8 @@ export default function GuestHousePayments() {
               setSearchQuery('');
               setFilterMethod('ALL');
               setFilterStatus('ALL');
+              setDateFilter('today');
+              setFilterDate(todayISO());
             }}
             style={{ padding: '10px 18px', fontSize: '12px', fontWeight: '700' }}
           >
@@ -213,7 +240,7 @@ export default function GuestHousePayments() {
             Click a row to view payment and stay details
           </p>
           {loading ? (
-            <p style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading payments…</p>
+            <AppLoader inline message="Loading payments…" />
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
               <thead>
@@ -265,11 +292,11 @@ export default function GuestHousePayments() {
                         <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
                           {p.payment_date
                             ? new Date(p.payment_date).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
-                            : '—'}
+                            : '-'}
                         </p>
                         <StatusBadge status={p.status} />
                       </td>
-                      <td style={{ padding: '14px 16px', fontWeight: '700' }}>{p.customer_name || '—'}</td>
+                      <td style={{ padding: '14px 16px', fontWeight: '700' }}>{p.customer_name || '-'}</td>
                       <td style={{ padding: '14px 16px' }}>
                         <span style={{ fontWeight: '600' }}>{p.stay_ref}</span>
                         <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
@@ -284,13 +311,13 @@ export default function GuestHousePayments() {
                           color: due != null && hasCollectDue(due) ? 'var(--error)' : 'var(--text-muted)',
                         }}
                       >
-                        {due != null ? formatCollectDue(due) : '—'}
+                        {due != null ? formatCollectDue(due) : '-'}
                       </td>
                       <td style={{ padding: '14px 16px', fontWeight: '800', color: '#166534', fontSize: '14px' }}>
                         {formatRs(p.amount)}
                         <ChevronRight size={14} style={{ display: 'inline', marginLeft: '4px', verticalAlign: 'middle' }} />
                       </td>
-                      <td style={{ padding: '14px 16px' }} onClick={(e) => e.stopPropagation()}>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           className="btn-ghost"
@@ -325,7 +352,7 @@ export default function GuestHousePayments() {
             <div style={{ marginBottom: '16px', padding: '16px', borderRadius: '12px', background: 'var(--surface-elevated)', border: '1px solid var(--border)' }}>
               <p style={{ fontSize: '11px', fontWeight: '800', color: 'var(--primary)', textTransform: 'uppercase', marginBottom: '8px' }}>Guest</p>
               <p style={{ fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                <User size={16} /> {selectedPayment.customer_name || '—'}
+                <User size={16} /> {selectedPayment.customer_name || '-'}
               </p>
             </div>
 

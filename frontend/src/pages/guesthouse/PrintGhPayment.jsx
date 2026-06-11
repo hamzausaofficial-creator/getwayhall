@@ -3,6 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getGhPayment } from '../../api/guesthouse';
 import { formatRs } from '../../utils/currency';
 import GhPrintShell from '../../components/guesthouse/GhPrintShell';
+import AppLoader from '../../components/AppLoader';
+import AppLogo from '../../components/AppLogo';
+import { BRAND_GUEST_HOUSE } from '../../constants/brand';
 
 const METHOD_LABELS = {
   CASH: 'Cash',
@@ -23,7 +26,7 @@ export default function PrintGhPayment() {
   }, [paymentId, navigate]);
 
   if (!payment) {
-    return <div style={{ padding: '48px', textAlign: 'center' }}>Loading receipt…</div>;
+    return <AppLoader fullScreen message="Loading receipt…" />;
   }
 
   const slipId = `PAY-${String(payment.id).padStart(5, '0')}`;
@@ -38,16 +41,19 @@ export default function PrintGhPayment() {
       thermal
     >
       <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-        <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '900' }}>GATEWAY GUEST HOUSE</h3>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+          <AppLogo size="sm" tone="dark" />
+        </div>
+        <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '900' }}>{BRAND_GUEST_HOUSE.toUpperCase()}</h3>
         <p style={{ margin: 0, fontSize: '10px' }}>Payment receipt</p>
         <p style={{ margin: '8px 0' }}>--------------------------------</p>
       </div>
 
       <p style={{ margin: '4px 0' }}><strong>Slip ID:</strong> {slipId}</p>
       <p style={{ margin: '4px 0' }}><strong>Date:</strong> {paidAt}</p>
-      <p style={{ margin: '4px 0' }}><strong>Guest:</strong> {payment.customer_name || '—'}</p>
-      <p style={{ margin: '4px 0' }}><strong>Stay ref:</strong> {payment.stay_ref || '—'}</p>
-      <p style={{ margin: '4px 0' }}><strong>Room:</strong> {payment.room_number || '—'}</p>
+      <p style={{ margin: '4px 0' }}><strong>Guest:</strong> {payment.customer_name || '-'}</p>
+      <p style={{ margin: '4px 0' }}><strong>Stay ref:</strong> {payment.stay_ref || '-'}</p>
+      <p style={{ margin: '4px 0' }}><strong>Room:</strong> {payment.room_number || '-'}</p>
       <p style={{ margin: '4px 0' }}><strong>Method:</strong> {METHOD_LABELS[payment.payment_method] || payment.payment_method}</p>
       <p style={{ margin: '4px 0' }}><strong>Status:</strong> {payment.status}</p>
       {payment.recorded_by_name && (

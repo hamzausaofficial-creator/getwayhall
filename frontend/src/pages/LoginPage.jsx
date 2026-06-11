@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { User, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
+import AppLogo from '../components/AppLogo';
 import {
   APP_GUEST_HOUSE,
   APP_MARRIAGE_HALL,
@@ -21,7 +22,7 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, clearSession } = useAuth();
 
   const isHall = portal === APP_MARRIAGE_HALL;
 
@@ -41,10 +42,11 @@ const LoginPage = () => {
       const userApp = normalizeAppType(loggedIn?.app_type);
 
       if (userApp !== portal) {
+        clearSession();
         const wrong =
           userApp === APP_GUEST_HOUSE
-            ? 'This account is for Guest House. Switch to Guest House login.'
-            : 'This account is for Marriage Hall. Switch to Marriage Hall login.';
+            ? 'This account is for Guest House. Portal switched - sign in again.'
+            : 'This account is for Marriage Hall. Portal switched - sign in again.';
         setError(wrong);
         setPortal(userApp);
         return;
@@ -67,9 +69,7 @@ const LoginPage = () => {
       <ThemeToggle className="theme-toggle--floating" />
       <div className="login-card login-card--wide">
         <div className="login-card__brand">
-          <span className={`login-card__logo${!isHall ? ' login-card__logo--gh' : ''}`}>
-            {isHall ? 'G' : 'GH'}
-          </span>
+          <AppLogo size="sm" tone="dark" className="login-card__logo-mark" />
           <div>
             <button
               type="button"

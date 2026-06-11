@@ -19,6 +19,18 @@ export const buildCustomerPayload = ({ full_name, cnic, email, phone, address, n
   cnic: (cnic || '').trim(),
   phone: (phone || '').trim(),
   email: (email || '').trim() || null,
-  address: address || '',
+  address: (address || '').trim(),
   notes: notes || '',
 });
+
+/** Guest House - full name, phone, and CNIC required; address optional. */
+export const validateGhCustomerForm = ({ full_name, cnic, phone, email }) => {
+  const errors = {};
+  if (!full_name?.trim()) errors.full_name = 'Full name is required.';
+  if (!phone?.trim()) errors.phone = 'Phone number is required.';
+  if (!cnic?.trim()) errors.cnic = 'CNIC is required.';
+  if (email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    errors.email = 'Enter a valid email address.';
+  }
+  return errors;
+};

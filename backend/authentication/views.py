@@ -11,8 +11,13 @@ from .serializers import (
     StaffSerializer,
     ChangePasswordSerializer,
     StaffResetPasswordSerializer,
+    CustomTokenObtainPairSerializer,
 )
 from .models import StaffProfile, User
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
 
 
 class RegisterView(generics.CreateAPIView):

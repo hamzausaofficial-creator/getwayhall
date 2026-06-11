@@ -1,9 +1,12 @@
 from django.contrib import admin
+
+from core.admin_mixins import TenantScopedAdminMixin
+
 from .models import Venue
 
 
 @admin.register(Venue)
-class VenueAdmin(admin.ModelAdmin):
+class VenueAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = (
         'name', 'location', 'capacity', 'price_per_day',
         'status', 'tenant', 'created_at',

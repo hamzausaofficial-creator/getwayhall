@@ -1,17 +1,28 @@
-import { useEffect, useState, useMemo } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { format, addDays, parseISO, differenceInCalendarDays } from 'date-fns';
 import {
   ChevronLeft, Calendar, User, BedDouble, Wallet, FileText,
   CheckCircle, X, HelpCircle, Sparkles, Users, CreditCard,
   Banknote, Building2, Globe,
 } from 'lucide-react';
-import { createStay, getAvailableRooms } from '../../api/guesthouse';
+import { createStay, getAvailableRooms, listGhServices } from '../../api/guesthouse';
+import { computeStayBilling } from '../../utils/ghBilling';
+import { StayAddonsPicker, StayBillingBreakdown, GuestsCountHint } from '../../components/guesthouse/StayAddonsSection';
 import client from '../../api/client';
 import toast from 'react-hot-toast';
+import AppLoader from '../../components/AppLoader';
 import { usePermissions } from '../../hooks/usePermissions';
-import { customerDisplayName } from '../../utils/customer';
+import CustomerSearchSelect from '../../components/CustomerSearchSelect';
+import CnicScannerPanel from '../../components/guesthouse/CnicScannerPanel';
+import ScannedGuestPanel from '../../components/guesthouse/ScannedGuestPanel';
 import { formatRs } from '../../utils/currency';
+import { customerDisplayName } from '../../utils/customer';
+import {
+  resolveGuestFromIdScan,
+  isPhoneCompleteForAutoSave,
+  saveGuestFromDraft,
+} from '../../utils/idCardCustomer';
 
 const METHOD_OPTIONS = [
   { value: 'CASH', label: 'Cash', icon: Banknote },
@@ -54,9 +65,10 @@ export default function BookFutureStayPage() {
   const prefillCheckIn = location.state?.check_in || searchParams.get('check_in') || '';
   const prefillCheckOut = location.state?.check_out || searchParams.get('check_out') || '';
   const prefillRoom = location.state?.room || searchParams.get('room') || '';
+  const prefillCustomer = location.state?.prefillCustomer || searchParams.get('customer') || '';
 
   const [form, setForm] = useState({
-    customer: '',
+    customer: prefillCustomer ? String(prefillCustomer) : '',
     room: prefillRoom ? String(prefillRoom) : '',
     check_in: prefillCheckIn,
     check_out: prefillCheckOut || (prefillCheckIn ? format(addDays(parseISO(prefillCheckIn), 1), 'yyyy-MM-dd') : ''),
@@ -71,9 +83,20 @@ export default function BookFutureStayPage() {
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [availabilityInfo, setAvailabilityInfo] = useState(null);
   const [customers, setCustomers] = useState([]);
+  const [services, setServices] = useState([]);
+  const [selectedAddonIds, setSelectedAddonIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const [scannedGuest, setScannedGuest] = useState(null);
+  const [creatingGuest, setCreatingGuest] = useState(false);
+  const savingGuestRef = useRef(false);
+
+  const toggleAddon = (id) => {
+    setSelectedAddonIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
 
   useEffect(() => {
     if (!canManage) {
@@ -86,9 +109,13 @@ export default function BookFutureStayPage() {
     const loadCustomers = async () => {
       setLoading(true);
       try {
-        const custRes = await client.get('/customers/');
+        const [custRes, svcList] = await Promise.all([
+          client.get('/customers/'),
+          listGhServices(),
+        ]);
         const custData = custRes.data?.results || custRes.data || [];
         setCustomers(Array.isArray(custData) ? custData : []);
+        setServices(svcList);
       } catch {
         toast.error('Failed to load booking data');
         navigate('/gh/calendar');
@@ -143,11 +170,21 @@ export default function BookFutureStayPage() {
     if (!form.check_in || !form.check_out || !selectedRoom) return null;
     const nights = differenceInCalendarDays(parseISO(form.check_out), parseISO(form.check_in));
     if (nights <= 0) return { error: 'Check-out must be after check-in.' };
-    const nightly = parseFloat(selectedRoom.price_per_night) || 0;
-    const total = nights * nightly;
+    const billing = computeStayBilling({
+      room: selectedRoom,
+      guestsCount: form.guests_count,
+      nights,
+      services,
+      selectedServiceIds: selectedAddonIds,
+    });
     const advance = Number(form.advance_paid) || 0;
-    return { nights, nightly, total, due: Math.max(0, total - advance) };
-  }, [form.check_in, form.check_out, form.advance_paid, selectedRoom]);
+    return {
+      ...billing,
+      nightly: billing.nightly,
+      due: Math.max(0, billing.total - advance),
+      error: null,
+    };
+  }, [form.check_in, form.check_out, form.guests_count, form.advance_paid, selectedRoom, services, selectedAddonIds]);
 
   const formattedDates = useMemo(() => {
     if (!form.check_in || !form.check_out) return null;
@@ -160,6 +197,104 @@ export default function BookFutureStayPage() {
       return null;
     }
   }, [form.check_in, form.check_out]);
+
+  const reloadCustomers = async () => {
+    const custRes = await client.get('/customers/');
+    const custData = custRes.data?.results || custRes.data || [];
+    const list = Array.isArray(custData) ? custData : [];
+    setCustomers(list);
+    return list;
+  };
+
+  const selectGuest = (customer) => {
+    setForm((f) => ({ ...f, customer: String(customer.id) }));
+    setScannedGuest(null);
+    toast.success(`Guest selected: ${customerDisplayName(customer)}`, { id: 'id-scan' });
+  };
+
+  const saveGuestFromScan = async (guestDraft) => {
+    if (savingGuestRef.current) return false;
+    savingGuestRef.current = true;
+    setCreatingGuest(true);
+    try {
+      const result = await saveGuestFromDraft(guestDraft);
+      if (!result.ok) {
+        toast.error(result.error || 'Please complete all required fields');
+        return false;
+      }
+      const list = await reloadCustomers();
+      const match = list.find((c) => c.id === result.customer.id) || result.customer;
+      selectGuest(match);
+      if (result.created) {
+        toast.success(`Guest saved & selected: ${customerDisplayName(match)}`, { id: 'id-scan' });
+      }
+      return true;
+    } catch (err) {
+      const data = err.response?.data;
+      const msg = data?.cnic?.[0] || data?.phone?.[0] || data?.detail || 'Failed to save guest';
+      toast.error(msg);
+      return false;
+    } finally {
+      savingGuestRef.current = false;
+      setCreatingGuest(false);
+    }
+  };
+
+  const handleIdScan = async (parsed) => {
+    if (creatingGuest || savingGuestRef.current) return;
+    setScannedGuest(null);
+    setForm((f) => ({ ...f, customer: '' }));
+    setCreatingGuest(true);
+    try {
+      const result = await resolveGuestFromIdScan(parsed, { customers });
+      if (result.status === 'invalid') {
+        toast.error('Could not read ID card. Scan again.');
+        return;
+      }
+      if (result.status === 'existing') {
+        const list = await reloadCustomers();
+        const match = list.find((c) => c.id === result.customer.id) || result.customer;
+        selectGuest(match);
+        return;
+      }
+      if (result.status === 'created') {
+        const list = await reloadCustomers();
+        const created = list.find((c) => c.id === result.customer.id) || result.customer;
+        setForm((f) => ({ ...f, customer: String(created.id) }));
+        setScannedGuest(null);
+        toast.success(`New guest saved: ${customerDisplayName(created)}`, { id: 'id-scan' });
+        return;
+      }
+      setScannedGuest(result.draft);
+      setForm((f) => ({ ...f, customer: '' }));
+      toast('ID card read — check fields and add phone', { id: 'id-scan', icon: 'ℹ️' });
+    } catch {
+      toast.error('Failed to process ID card scan');
+    } finally {
+      setCreatingGuest(false);
+    }
+  };
+
+  const handleScannedGuestChange = (field, value) => {
+    setScannedGuest((prev) => {
+      if (!prev) return prev;
+      return { ...prev, [field]: value };
+    });
+  };
+
+  const handleScannedPhoneChange = async (value) => {
+    if (!scannedGuest) return;
+    const next = { ...scannedGuest, phone: value };
+    setScannedGuest(next);
+    if (isPhoneCompleteForAutoSave(value)) {
+      await saveGuestFromScan(next);
+    }
+  };
+
+  const handleCreateGuestFromScan = async () => {
+    if (!scannedGuest) return;
+    await saveGuestFromScan(scannedGuest);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -182,6 +317,7 @@ export default function BookFutureStayPage() {
         guests_count: Number(form.guests_count) || 1,
         advance_paid: parseFloat(form.advance_paid) || 0,
         advance_payment_method: form.advance_payment_method,
+        addon_service_ids: selectedAddonIds,
         status: form.status,
         notes: form.notes,
       });
@@ -203,15 +339,21 @@ export default function BookFutureStayPage() {
   };
 
   if (loading) {
-    return (
-      <div className="animate-fade-in" style={{ padding: '80px', textAlign: 'center' }}>
-        <div style={{ fontSize: '15px', color: 'var(--text-muted)' }}>Loading booking form…</div>
-      </div>
-    );
+    return <AppLoader message="Loading booking form…" />;
   }
 
   return (
     <div className="animate-fade-in">
+      <button
+        type="button"
+        className="dashboard-header__icon-btn"
+        onClick={() => navigate('/gh/calendar')}
+        aria-label="Back to calendar"
+        style={{ marginBottom: '12px' }}
+      >
+        <ChevronLeft size={22} />
+      </button>
+
       {/* Hero header */}
       <div
         style={{
@@ -227,25 +369,7 @@ export default function BookFutureStayPage() {
           gap: '16px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button
-            type="button"
-            onClick={() => navigate('/gh/calendar')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '44px',
-              height: '44px',
-              borderRadius: '12px',
-              border: '1px solid var(--border)',
-              backgroundColor: 'var(--surface)',
-            }}
-            aria-label="Back to calendar"
-          >
-            <ChevronLeft size={22} />
-          </button>
-          <div>
+        <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <span
                 style={{
@@ -271,7 +395,6 @@ export default function BookFutureStayPage() {
             <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: '6px 0 0 0' }}>
               Reserve a room, collect advance, and secure the dates.
             </p>
-          </div>
         </div>
         {formattedDates && (
           <div
@@ -323,28 +446,44 @@ export default function BookFutureStayPage() {
 
             {/* Guest */}
             <div className="premium-card" style={{ padding: '28px' }}>
-              <SectionHeader icon={User} title="Guest details" subtitle="Select the customer for this reservation" />
-              <div className="input-group">
+              <SectionHeader icon={User} title="Guest details" subtitle="Scan ID card or search guest for this reservation" />
+              <CnicScannerPanel onScan={handleIdScan} disabled={loading || submitting || creatingGuest} />
+              <ScannedGuestPanel
+                draft={scannedGuest}
+                loading={creatingGuest && !scannedGuest}
+                saving={creatingGuest}
+                onChange={handleScannedGuestChange}
+                onPhoneChange={handleScannedPhoneChange}
+                onSave={handleCreateGuestFromScan}
+                onCancel={() => setScannedGuest(null)}
+              />
+
+              <div className="input-group" style={{ marginTop: '16px' }}>
                 <label>Guest / Customer</label>
-                <select
-                  required
+                <CustomerSearchSelect
+                  customers={customers}
                   value={form.customer}
-                  onChange={(e) => setForm({ ...form, customer: e.target.value })}
-                  style={{ width: '100%', padding: '12px 14px', fontSize: '14px', borderRadius: '10px' }}
-                >
-                  <option value="">Choose a guest…</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {customerDisplayName(c)}{c.phone ? ` · ${c.phone}` : ''}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(customerId) => {
+                    setForm({ ...form, customer: customerId });
+                    if (customerId) setScannedGuest(null);
+                  }}
+                  placeholder="Search guest by name, phone, or CNIC…"
+                  disabled={loading}
+                />
+                {form.customer && (
+                  <Link
+                    to={`/gh/customers/${form.customer}`}
+                    style={{ marginTop: '10px', fontSize: '13px', fontWeight: '600', color: 'var(--primary)', display: 'inline-block' }}
+                  >
+                    View guest profile →
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={() => navigate('/gh/customers', { state: { openCreate: true } })}
-                  style={{ marginTop: '10px', fontSize: '13px', fontWeight: '600', color: 'var(--primary)', background: 'transparent', textAlign: 'left' }}
+                  style={{ marginTop: '10px', fontSize: '13px', fontWeight: '600', color: 'var(--primary)', background: 'transparent', textAlign: 'left', display: 'block' }}
                 >
-                  + Add new customer
+                  + Add new customer manually
                 </button>
               </div>
             </div>
@@ -396,6 +535,7 @@ export default function BookFutureStayPage() {
                       style={{ padding: '12px 14px 12px 36px', borderRadius: '10px', width: '100%' }}
                     />
                   </div>
+                  <GuestsCountHint room={selectedRoom} guestsCount={form.guests_count} />
                 </div>
                 <div className="input-group">
                   <label>Booking status</label>
@@ -413,7 +553,7 @@ export default function BookFutureStayPage() {
 
             {/* Room selection cards */}
             <div className="premium-card" style={{ padding: '28px' }}>
-              <SectionHeader icon={BedDouble} title="Select room" subtitle="All rooms are shown — booked rooms cannot be selected" />
+              <SectionHeader icon={BedDouble} title="Select room" subtitle="All rooms are shown - booked rooms cannot be selected" />
               {availabilityLoading ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Checking availability…</p>
               ) : !form.check_in || !form.check_out ? (
@@ -480,6 +620,14 @@ export default function BookFutureStayPage() {
                 </>
               )}
             </div>
+
+            <StayAddonsPicker
+              services={services}
+              selectedIds={selectedAddonIds}
+              onToggle={toggleAddon}
+              nights={stayEstimate?.nights || 0}
+              guestsCount={form.guests_count}
+            />
 
             {/* Advance payment */}
             <div
@@ -592,7 +740,7 @@ export default function BookFutureStayPage() {
                   Booking summary
                 </p>
                 <p style={{ fontSize: '22px', fontWeight: '900', margin: 0 }}>
-                  {stayEstimate && !stayEstimate.error ? formatRs(stayEstimate.total) : '—'}
+                  {stayEstimate && !stayEstimate.error ? formatRs(stayEstimate.total) : '-'}
                 </p>
               </div>
 
@@ -617,34 +765,11 @@ export default function BookFutureStayPage() {
 
                 {stayEstimate && !stayEstimate.error ? (
                   <>
-                    {[
-                      ['Nights', stayEstimate.nights],
-                      ['Subtotal', formatRs(stayEstimate.total)],
-                      ['Advance', formatRs(Number(form.advance_paid) || 0)],
-                    ].map(([label, val]) => (
-                      <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>{label}</span>
-                        <span style={{ fontWeight: '700' }}>{val}</span>
-                      </div>
-                    ))}
-                    <div
-                      style={{
-                        background: stayEstimate.due > 0 ? '#fef2f2' : 'var(--primary-light)',
-                        padding: '16px',
-                        borderRadius: '12px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginTop: '4px',
-                      }}
-                    >
-                      <span style={{ fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                        Balance due
-                      </span>
-                      <span style={{ fontSize: '22px', fontWeight: '900', color: stayEstimate.due > 0 ? '#b91c1c' : 'var(--primary)' }}>
-                        {formatRs(stayEstimate.due)}
-                      </span>
-                    </div>
+                    <StayBillingBreakdown
+                      billing={stayEstimate}
+                      advance={Number(form.advance_paid) || 0}
+                      compact
+                    />
                   </>
                 ) : (
                   <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>

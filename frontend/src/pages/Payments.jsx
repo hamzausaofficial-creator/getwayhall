@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import client from '../api/client';
 import toast from 'react-hot-toast';
+import AppLogo from '../components/AppLogo';
+import { BRAND_FULL_NAME } from '../constants/brand';
 import {
   formatRs,
   formatCollectDue,
@@ -223,6 +225,7 @@ const Payments = () => {
         <head>
           <title>Receipt_PAY-${selectedReceipt.id}</title>
           <style>
+            @page { size: A5 portrait; margin: 10mm; }
             @media print {
               body {
                 font-family: 'Courier New', monospace;
@@ -416,12 +419,12 @@ const Payments = () => {
           </p>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
-              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid var(--border)' }}>
+              <tr className="table-header-row">
                 <th style={{ padding: '14px 16px', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Payment</th>
                 <th style={{ padding: '14px 16px', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Customer (paid)</th>
                 <th style={{ padding: '14px 16px', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Event / Order</th>
                 <th style={{ padding: '14px 16px', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Received by</th>
-                <th style={{ padding: '14px 16px', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Lena (due)</th>
+                <th style={{ padding: '14px 16px', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Due</th>
                 <th style={{ padding: '14px 16px', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Amount</th>
               </tr>
             </thead>
@@ -445,21 +448,21 @@ const Payments = () => {
                       </p>
                     </td>
                     <td style={{ padding: '14px 16px' }}>
-                      <span style={{ fontWeight: '700', fontSize: '14px' }}>{payment.customer_name || '—'}</span>
+                      <span style={{ fontWeight: '700', fontSize: '14px' }}>{payment.customer_name || '-'}</span>
                       {payment.customer_phone && (
                         <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{payment.customer_phone}</p>
                       )}
                     </td>
                     <td style={{ padding: '14px 16px' }}>
-                      <span style={{ fontWeight: '600', fontSize: '13px' }}>{payment.booking_event_name || '—'}</span>
+                      <span style={{ fontWeight: '600', fontSize: '13px' }}>{payment.booking_event_name || '-'}</span>
                       {payment.booking_reference && (
                         <p style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{payment.booking_reference}</p>
                       )}
                     </td>
                     <td style={{ padding: '14px 16px', fontSize: '13px', color: 'var(--text-muted)' }}>
-                      {payment.recorded_by_name || '—'}
+                      {payment.recorded_by_name || '-'}
                     </td>
-                    <td style={{ padding: '14px 16px', fontWeight: '800', fontSize: '13px', color: hasCollectDue(payment.booking_remaining) ? '#b91c1c' : '#64748b' }}>
+                    <td style={{ padding: '14px 16px', fontWeight: '800', fontSize: '13px', color: hasCollectDue(payment.booking_remaining) ? '#b91c1c' : 'var(--text-dim)' }}>
                       {formatCollectDue(payment.booking_remaining)}
                     </td>
                     <td style={{ padding: '14px 16px', fontWeight: '800', color: '#166534', fontSize: '14px' }}>
@@ -490,10 +493,10 @@ const Payments = () => {
               </button>
             </div>
 
-            <div style={{ marginBottom: '20px', padding: '16px', borderRadius: '12px', background: '#f8fafc', border: '1px solid var(--border)' }}>
+            <div style={{ marginBottom: '20px', padding: '16px', borderRadius: '12px', background: 'var(--surface-muted)', border: '1px solid var(--border)' }}>
               <p style={{ fontSize: '11px', fontWeight: '800', color: 'var(--primary)', textTransform: 'uppercase', marginBottom: '10px' }}>Customer (jis ne di)</p>
               <p style={{ fontWeight: '700', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <User size={18} /> {selectedPayment.customer_name || '—'}
+                <User size={18} /> {selectedPayment.customer_name || '-'}
               </p>
               {selectedPayment.customer_phone && (
                 <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -516,19 +519,19 @@ const Payments = () => {
                   </>
                 )}
                 <dt style={{ color: 'var(--text-muted)' }}>Hall</dt>
-                <dd>{selectedPayment.venue_name || '—'}</dd>
+                <dd>{selectedPayment.venue_name || '-'}</dd>
                 <dt style={{ color: 'var(--text-muted)' }}>Event date</dt>
-                <dd>{selectedPayment.event_date || '—'}</dd>
+                <dd>{selectedPayment.event_date || '-'}</dd>
                 <dt style={{ color: 'var(--text-muted)' }}>Slot</dt>
-                <dd style={{ textTransform: 'capitalize' }}>{selectedPayment.booking_slot || '—'}</dd>
+                <dd style={{ textTransform: 'capitalize' }}>{selectedPayment.booking_slot || '-'}</dd>
                 <dt style={{ color: 'var(--text-muted)' }}>Status</dt>
-                <dd>{selectedPayment.booking_status || '—'}</dd>
+                <dd>{selectedPayment.booking_status || '-'}</dd>
                 <dt style={{ color: 'var(--text-muted)' }}>Order total</dt>
                 <dd style={{ fontWeight: '700' }}>{formatRs(selectedPayment.booking_total)}</dd>
                 <dt style={{ color: 'var(--text-muted)' }}>Paid (total)</dt>
                 <dd style={{ color: '#166534', fontWeight: '700' }}>{formatRs(selectedPayment.booking_paid)}</dd>
-                <dt style={{ color: 'var(--text-muted)' }}>Lena (abhi lena)</dt>
-                <dd style={{ color: hasCollectDue(selectedPayment.booking_remaining) ? '#b91c1c' : '#64748b', fontWeight: '700' }}>
+                <dt style={{ color: 'var(--text-muted)' }}>Due</dt>
+                <dd style={{ color: hasCollectDue(selectedPayment.booking_remaining) ? '#b91c1c' : 'var(--text-dim)', fontWeight: '700' }}>
                   {formatCollectDue(selectedPayment.booking_remaining)}
                 </dd>
               </dl>
@@ -619,7 +622,7 @@ const Payments = () => {
                   <option value="">-- Choose Reservation --</option>
                   {bookings.map((b) => (
                     <option key={b.id} value={b.id}>
-                      {b.event_name} — {b.customer_name || 'Customer'} ({b.event_date || 'no date'}) — Lena: {formatCollectDue(bookingCollectDue(b))}
+                      {b.event_name} - {b.customer_name || 'Customer'} ({b.event_date || 'no date'}) - Due: {formatCollectDue(bookingCollectDue(b))}
                     </option>
                   ))}
                 </select>
@@ -654,8 +657,8 @@ const Payments = () => {
                       </p>
                     </div>
                     <div>
-                      <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '0 0 2px 0' }}>Lena (due)</p>
-                      <p style={{ fontSize: '12px', fontWeight: '800', color: hasCollectDue(selectedBookingSpecs.remaining) ? '#b91c1c' : '#64748b', margin: 0 }}>
+                      <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '0 0 2px 0' }}>Due</p>
+                      <p style={{ fontSize: '12px', fontWeight: '800', color: hasCollectDue(selectedBookingSpecs.remaining) ? '#b91c1c' : 'var(--text-dim)', margin: 0 }}>
                         {formatCollectDuePKR(selectedBookingSpecs.remaining)}
                       </p>
                     </div>
@@ -775,7 +778,7 @@ const Payments = () => {
 
             {/* Receipt view modeled around 80mm thermal paper */}
             <div id="thermal-receipt-view" style={{ 
-              backgroundColor: '#fff', 
+              backgroundColor: 'var(--surface)', 
               color: '#000', 
               fontFamily: "'Courier New', monospace", 
               padding: '20px', 
@@ -784,7 +787,10 @@ const Payments = () => {
               lineHeight: '1.4'
             }}>
               <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '900' }}>GATEWAY VENUE</h3>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                  <AppLogo size="sm" tone="dark" />
+                </div>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '900' }}>{BRAND_FULL_NAME.toUpperCase()}</h3>
                 <p style={{ margin: 0, fontSize: '10px' }}>Marriage Hall & Events Management</p>
                 <p style={{ margin: '2px 0 0 0', fontSize: '9px' }}>Main Chowk Bypass | +92 300 1234567</p>
                 <p style={{ margin: '5px 0' }}>--------------------------------</p>
@@ -795,9 +801,9 @@ const Payments = () => {
               <div style={{ marginBottom: '15px' }}>
                 <p style={{ margin: '4px 0' }}><strong>Slip ID:</strong> PAY-{String(selectedReceipt.id).padStart(5, '0')}</p>
                 <p style={{ margin: '4px 0' }}><strong>Date:</strong> {new Date(selectedReceipt.payment_date).toLocaleDateString()} {new Date(selectedReceipt.payment_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                <p style={{ margin: '4px 0' }}><strong>Customer:</strong> {selectedReceipt.customer_name || '—'}</p>
+                <p style={{ margin: '4px 0' }}><strong>Customer:</strong> {selectedReceipt.customer_name || '-'}</p>
                 <p style={{ margin: '4px 0' }}><strong>Booking Ref:</strong> {selectedReceipt.booking_event_name}</p>
-                <p style={{ margin: '4px 0' }}><strong>Received by:</strong> {selectedReceipt.recorded_by_name || '—'}</p>
+                <p style={{ margin: '4px 0' }}><strong>Received by:</strong> {selectedReceipt.recorded_by_name || '-'}</p>
                 <p style={{ margin: '4px 0' }}><strong>Method:</strong> {selectedReceipt.payment_method}</p>
                 <p style={{ margin: '4px 0' }}><strong>Status:</strong> {selectedReceipt.status}</p>
               </div>

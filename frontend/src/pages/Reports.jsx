@@ -15,6 +15,8 @@ import {
   RefreshCw,
   Building
 } from 'lucide-react';
+import AppLogo from '../components/AppLogo';
+import { BRAND_FULL_NAME } from '../constants/brand';
 import { 
   BarChart, 
   Bar, 
@@ -30,6 +32,7 @@ import {
 } from 'recharts';
 import client from '../api/client';
 import toast from 'react-hot-toast';
+import AppLoader from '../components/AppLoader';
 
 // 12 Marriage Hall Standard Account Titles for categorization
 const ACCOUNT_TITLES = [
@@ -294,8 +297,8 @@ const Reports = () => {
             fontWeight: '700',
             borderRadius: '8px',
             border: 'none',
-            backgroundColor: activeTab === 'financial' ? 'white' : 'transparent',
-            color: activeTab === 'financial' ? 'var(--primary)' : '#64748b',
+            backgroundColor: activeTab === 'financial' ? 'var(--surface)' : 'transparent',
+            color: activeTab === 'financial' ? 'var(--primary)' : 'var(--text-dim)',
             boxShadow: activeTab === 'financial' ? 'var(--shadow-sm)' : 'none',
             display: 'flex',
             alignItems: 'center',
@@ -315,8 +318,8 @@ const Reports = () => {
             fontWeight: '700',
             borderRadius: '8px',
             border: 'none',
-            backgroundColor: activeTab === 'utilization' ? 'white' : 'transparent',
-            color: activeTab === 'utilization' ? 'var(--primary)' : '#64748b',
+            backgroundColor: activeTab === 'utilization' ? 'var(--surface)' : 'transparent',
+            color: activeTab === 'utilization' ? 'var(--primary)' : 'var(--text-dim)',
             boxShadow: activeTab === 'utilization' ? 'var(--shadow-sm)' : 'none',
             display: 'flex',
             alignItems: 'center',
@@ -336,8 +339,8 @@ const Reports = () => {
             fontWeight: '700',
             borderRadius: '8px',
             border: 'none',
-            backgroundColor: activeTab === 'expenses' ? 'white' : 'transparent',
-            color: activeTab === 'expenses' ? 'var(--primary)' : '#64748b',
+            backgroundColor: activeTab === 'expenses' ? 'var(--surface)' : 'transparent',
+            color: activeTab === 'expenses' ? 'var(--primary)' : 'var(--text-dim)',
             boxShadow: activeTab === 'expenses' ? 'var(--shadow-sm)' : 'none',
             display: 'flex',
             alignItems: 'center',
@@ -351,10 +354,7 @@ const Reports = () => {
       </div>
 
       {isLoading ? (
-        <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
-          <RefreshCw size={36} className="animate-spin" style={{ margin: '0 auto 16px', display: 'block', opacity: 0.5 }} />
-          Loading reports and compiling charts...
-        </div>
+        <AppLoader message="Loading reports and compiling charts…" />
       ) : (
         <>
           {/* TAB 1: FINANCIAL STATEMENT */}
@@ -435,7 +435,7 @@ const Reports = () => {
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead>
-                    <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid var(--border)' }}>
+                    <tr style={{ backgroundColor: 'var(--surface-muted)', borderBottom: '1px solid var(--border)' }}>
                       <th style={{ padding: '14px 24px', fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)' }}>TRANSACTION SUMMARY</th>
                       <th style={{ padding: '14px 24px', fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)' }}>TYPE</th>
                       <th style={{ padding: '14px 24px', fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)' }}>DATE</th>
@@ -529,7 +529,7 @@ const Reports = () => {
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead>
-                    <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid var(--border)' }}>
+                    <tr style={{ backgroundColor: 'var(--surface-muted)', borderBottom: '1px solid var(--border)' }}>
                       <th style={{ padding: '14px 24px', fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)' }}>HALL NAME</th>
                       <th style={{ padding: '14px 24px', fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)' }}>OCCUPANCY RATE</th>
                       <th style={{ padding: '14px 24px', fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)', textAlign: 'center' }}>TOTAL BOOKINGS</th>
@@ -572,7 +572,7 @@ const Reports = () => {
                   </div>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
-                      <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid var(--border)' }}>
+                      <tr style={{ backgroundColor: 'var(--surface-muted)', borderBottom: '1px solid var(--border)' }}>
                         <th style={{ padding: '14px 24px', fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)' }}>ACCOUNT TITLE</th>
                         <th style={{ padding: '14px 24px', fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)', textAlign: 'right' }}>TOTAL EXPENSE</th>
                         <th style={{ padding: '14px 24px', fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)', textAlign: 'right', width: '100px' }}>SHARE (%)</th>
@@ -649,13 +649,13 @@ const Reports = () => {
 
     </div>
 
-    {/* PRINT ONLY SHEET PREVIEW LAYOUT FOR PHYSICAL A4 SHEETS */}
+    {/* PRINT ONLY — A5 sheet */}
     <div className="print-sheet-wrapper" id="printable-report-sheet">
-      <div style={{ border: '2px solid #000', padding: '30px', fontFamily: '"Courier New", Courier, monospace', color: '#000', backgroundColor: '#fff' }}>
+      <div className="print-page-a5" style={{ border: '2px solid #000', padding: '16px', fontFamily: '"Courier New", Courier, monospace', color: '#000', backgroundColor: '#fff', fontSize: '10px' }}>
         
         {/* Letterhead */}
         <div style={{ borderBottom: '3px double #000', paddingBottom: '16px', marginBottom: '20px' }}>
-          <h2 style={{ fontSize: '24px', fontWeight: '900', margin: '0', textTransform: 'uppercase' }}>Gateway Marriage Hall</h2>
+          <AppLogo size="sm" tone="dark" showName name={BRAND_FULL_NAME} className="app-logo--print" />
           <p style={{ fontSize: '11px', margin: '4px 0 0 0', fontWeight: '700' }}>GT Road, Lahore, Pakistan | Official Business Audit & Report Statement</p>
           <p style={{ fontSize: '11px', margin: '2px 0 0 0', fontWeight: '700' }}>
             Period: <span style={{ textDecoration: 'underline' }}>{new Date(startDate).toLocaleDateString()} to {new Date(endDate).toLocaleDateString()}</span>
@@ -780,6 +780,7 @@ const Reports = () => {
         display: none !important;
       }
       @media print {
+        @page { size: A5 portrait; margin: 10mm; }
         .print-hide {
           display: none !important;
         }

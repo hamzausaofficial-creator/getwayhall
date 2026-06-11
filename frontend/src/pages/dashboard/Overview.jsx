@@ -20,6 +20,7 @@ import { getAlerts } from '../../api/core';
 import { getPayments } from '../../api/finance';
 import { getVenues } from '../../api/venues';
 import { useAuth } from '../../context/AuthContext';
+import { usePermissions } from '../../hooks/usePermissions';
 import StatCard from '../../components/ui/StatCard';
 import DataTable from '../../components/ui/DataTable';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -30,6 +31,7 @@ import {
   OccupancyChart,
 } from '../../components/dashboard/DashboardCharts';
 import NotificationsPanel from '../../components/dashboard/NotificationsPanel';
+import PeriodSelect from '../../components/dashboard/PeriodSelect';
 import {
   getGreeting,
   revenueTrendPercent,
@@ -74,6 +76,7 @@ const normalizeDashboardStats = (data) => ({
 export default function Overview() {
   const navigate = useNavigate();
   const { user, loading: authLoading, isAuthenticated } = useAuth();
+  const { canAccessPayments } = usePermissions();
   const [stats, setStats] = useState(EMPTY_STATS);
   const [venues, setVenues] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -203,7 +206,7 @@ export default function Overview() {
 
   refreshRef.current = refreshDashboard;
 
-  /* Load after login — never skip initial fetch due to document.hidden */
+  /* Load after login - never skip initial fetch due to document.hidden */
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;
     refreshRef.current({ silent: false });
@@ -289,7 +292,7 @@ export default function Overview() {
         </div>
         <div className="dash-header__meta">
           {lastUpdated && (
-            <span className="dash-live-badge" title="Live data — refreshes every 5 seconds">
+            <span className="dash-live-badge" title="Live data - refreshes every 5 seconds">
               <span
                 className={`dash-live-badge__dot ${isRefreshing ? 'dash-live-badge__dot--pulse' : ''}`}
               />
@@ -317,19 +320,7 @@ export default function Overview() {
               />
             </div>
           )}
-          <select
-            className="dash-period-select"
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            aria-label="Report period"
-          >
-            <option value="all">All time</option>
-            <option value="today">Today</option>
-            <option value="last7days">Last 7 days</option>
-            <option value="thismonth">This month</option>
-            <option value="thisyear">This year</option>
-            <option value="custom">Custom range</option>
-          </select>
+          <PeriodSelect value={period} onChange={setPeriod} aria-label="Report period" />
         </div>
       </header>
 
@@ -349,13 +340,15 @@ export default function Overview() {
         >
           <UserPlus size={16} /> Add customer
         </button>
-        <button
-          type="button"
-          className="dash-btn dash-btn--secondary"
-          onClick={() => navigate('/payments', { state: { autoOpenRecord: true } })}
-        >
-          <CreditCard size={16} /> Record payment
-        </button>
+        {canAccessPayments && (
+          <button
+            type="button"
+            className="dash-btn dash-btn--secondary"
+            onClick={() => navigate('/payments', { state: { autoOpenRecord: true } })}
+          >
+            <CreditCard size={16} /> Record payment
+          </button>
+        )}
       </div>
 
       {/* ── KPI cards ── */}
@@ -367,7 +360,7 @@ export default function Overview() {
           isCurrency
           trend={revenueTrend}
           variant="primary"
-          to="/payments"
+          to={canAccessPayments ? '/payments' : undefined}
           hint={
             stats.net_profit != null
               ? `Net profit Rs ${Number(stats.net_profit).toLocaleString()}`
@@ -389,16 +382,16 @@ export default function Overview() {
           isCurrency
           showZeroAs00
           variant="warning"
-          to="/payments"
-          state={{ focusPending: true }}
-          hint="Outstanding balance (lena)"
+          to={canAccessPayments ? '/payments' : undefined}
+          state={canAccessPayments ? { focusPending: true } : undefined}
+          hint="Outstanding balance"
         />
         <StatCard
           label="Active halls"
           value={activeHalls}
           icon={Building2}
           variant="primary"
-          to="/halls"
+          to="/settings?tab=halls"
           hint={`${venues.length} total venues`}
         />
       </section>
@@ -480,49 +473,44 @@ export default function Overview() {
           />
         </article>
 
-        <article className="dash-panel">
-          <header className="dash-panel__head">
-            <h3 className="dash-panel__title">Latest payments</h3>
-            <button
-              type="button"
-              className="dash-btn dash-btn--ghost dash-btn--sm"
-              onClick={() => navigate('/payments')}
-            >
-              View all <ChevronRight size={14} />
-            </button>
-          </header>
-          {payments.length === 0 ? (
-            <EmptyPayments />
-          ) : (
-            <div className="dash-payment-list">
-              {payments.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className="dash-payment-row"
-                  onClick={() => navigate('/payments')}
-                >
-                  <div>
-                    <p
-                      className="dash-table__cell-primary"
-                      style={{
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {p.booking_event_name || p.booking_reference || `Payment #${p.id}`}
-                    </p>
-                    <p className="dash-table__cell-muted">
-                      {p.customer_name || '—'} · {p.payment_method}
-                    </p>
-                  </div>
-                  <span className="dash-payment-row__amount">{formatRs(p.amount)}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </article>
+        {canAccessPayments ? (
+          <article className="dash-panel">
+            <header className="dash-panel__head">
+              <h3 className="dash-panel__title">Latest payments</h3>
+              <button
+                type="button"
+                className="dash-btn dash-btn--ghost dash-btn--sm"
+                onClick={() => navigate('/payments')}
+              >
+                View all <ChevronRight size={14} />
+              </button>
+            </header>
+            {payments.length === 0 ? (
+              <EmptyPayments />
+            ) : (
+              <div className="dash-payment-list">
+                {payments.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="dash-payment-row"
+                    onClick={() => navigate('/payments')}
+                  >
+                    <div>
+                      <p className="dash-table__cell-primary">
+                        {p.booking_event_name || p.booking_reference || `Payment #${p.id}`}
+                      </p>
+                      <p className="dash-table__cell-muted">
+                        {p.customer_name || '-'} · {p.payment_method}
+                      </p>
+                    </div>
+                    <span className="dash-payment-row__amount">{formatRs(p.amount)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </article>
+        ) : null}
 
         <NotificationsPanel alerts={alerts} />
       </section>

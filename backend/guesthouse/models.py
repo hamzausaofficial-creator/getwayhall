@@ -6,6 +6,8 @@ import datetime
 import random
 from decimal import Decimal
 
+from .billing import get_included_guests
+
 
 class Room(models.Model):
     TYPE_CHOICES = (
@@ -24,6 +26,16 @@ class Room(models.Model):
     room_number = models.CharField(max_length=20)
     room_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='DOUBLE')
     beds = models.PositiveIntegerField(default=1)
+    included_guests = models.PositiveIntegerField(
+        default=0,
+        help_text='Guests included in base rate. 0 = use bed count.',
+    )
+    extra_guest_fee_per_night = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text='Extra charge per additional guest per night.',
+    )
     price_per_night = models.DecimalField(max_digits=12, decimal_places=2)
     description = models.TextField(blank=True, default='')
     image = models.ImageField(upload_to='gh_rooms/', blank=True, null=True)
@@ -37,6 +49,33 @@ class Room(models.Model):
 
     def __str__(self):
         return f'{self.room_number} ({self.get_room_type_display()})'
+
+    def get_included_guests(self):
+        return get_included_guests(self)
+
+
+class GuestHouseService(models.Model):
+    PRICING_UNITS = (
+        ('PER_NIGHT', 'Per night'),
+        ('PER_STAY', 'Per stay'),
+        ('PER_GUEST', 'Per guest per night'),
+    )
+
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='gh_services')
+    code = models.CharField(max_length=32)
+    label = models.CharField(max_length=120)
+    price = models.DecimalField(max_digits=12, decimal_places=2)
+    pricing_unit = models.CharField(max_length=20, choices=PRICING_UNITS, default='PER_NIGHT')
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sort_order', 'label']
+        unique_together = [('tenant', 'code')]
+
+    def __str__(self):
+        return self.label
 
 
 class StayBooking(models.Model):
@@ -65,6 +104,8 @@ class StayBooking(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='UNPAID')
     notes = models.TextField(blank=True, default='')
+    cancellation_reason = models.TextField(blank=True, default='')
+    cancelled_at = models.DateTimeField(null=True, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -89,12 +130,28 @@ class StayBooking(models.Model):
 
     @property
     def remaining_balance(self):
+        if self.status == 'CANCELLED':
+            return Decimal('0')
         return max(Decimal(str(self.total_amount)) - Decimal(str(self.advance_paid)), Decimal('0'))
 
     def recalculate_total(self):
-        if self.room_id and self.check_in and self.check_out:
-            nights = max((self.check_out - self.check_in).days, 1)
-            self.total_amount = self.room.price_per_night * nights
+        if not (self.room_id and self.check_in and self.check_out):
+            return
+        room = self.room
+        nights = max((self.check_out - self.check_in).days, 1)
+        room_base = Decimal(str(room.price_per_night)) * nights
+
+        included = room.get_included_guests()
+        extra_guests = max(int(self.guests_count or 1) - included, 0)
+        extra_guest_total = (
+            Decimal(str(room.extra_guest_fee_per_night)) * extra_guests * nights
+        )
+
+        charges_total = Decimal('0')
+        if self.pk:
+            charges_total = self.charges.aggregate(t=models.Sum('amount'))['t'] or Decimal('0')
+
+        self.total_amount = room_base + extra_guest_total + charges_total
 
     def sync_payment_status(self):
         total = Decimal(str(self.total_amount))
@@ -112,10 +169,38 @@ class StayBooking(models.Model):
             date_part = datetime.date.today().strftime('%y%m%d')
             rand_part = str(random.randint(1000, 9999))
             self.booking_ref = f'{prefix}{date_part}{rand_part}'
-        if self.total_amount == 0 and self.room_id and self.check_in and self.check_out:
+        if self.room_id and self.check_in and self.check_out:
             self.recalculate_total()
         self.sync_payment_status()
         super().save(*args, **kwargs)
+
+
+class StayCharge(models.Model):
+    CHARGE_TYPES = (
+        ('SERVICE', 'Add-on service'),
+        ('CUSTOM', 'Custom charge'),
+    )
+
+    stay = models.ForeignKey(StayBooking, on_delete=models.CASCADE, related_name='charges')
+    service = models.ForeignKey(
+        GuestHouseService,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='stay_charges',
+    )
+    charge_type = models.CharField(max_length=20, choices=CHARGE_TYPES, default='SERVICE')
+    description = models.CharField(max_length=255)
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f'{self.description} - {self.amount}'
 
 
 class StayPayment(models.Model):
@@ -211,4 +296,4 @@ class GuestHousePageVisibility(models.Model):
 
     def __str__(self):
         status = 'Visible' if self.is_visible else 'Hidden'
-        return f'{self.label} ({self.tenant.name}) — {status}'
+        return f'{self.label} ({self.tenant.name}) - {status}'

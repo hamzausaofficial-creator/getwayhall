@@ -9,11 +9,12 @@ import {
 } from 'lucide-react';
 import { listRooms, deleteRoom } from '../../api/guesthouse';
 import toast from 'react-hot-toast';
+import AppLoader from '../../components/AppLoader';
 import { usePermissions } from '../../hooks/usePermissions';
 import SearchInput from '../../components/SearchInput';
 import { resolveMediaUrl } from '../../utils/media';
 
-const GuestHouseRooms = () => {
+const GuestHouseRooms = ({ embedded = false }) => {
   const navigate = useNavigate();
   const { canManage } = usePermissions();
   const [rooms, setRooms] = useState([]);
@@ -66,17 +67,25 @@ const GuestHouseRooms = () => {
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
-        <div>
-          <h2 style={{ fontSize: '24px', fontWeight: '700' }}>Room Management</h2>
-          <p style={{ color: 'var(--text-muted)' }}>Manage rooms, nightly rates, and availability.</p>
+      {!embedded ? (
+        <div className="page-header">
+          <div>
+            <h2 style={{ fontSize: '24px', fontWeight: '700' }}>Room Management</h2>
+            <p style={{ color: 'var(--text-muted)' }}>Manage rooms, nightly rates, and availability.</p>
+          </div>
+          {canManage && (
+            <button type="button" className="btn-primary" onClick={openCreate} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Plus size={18} /> Add New Room
+            </button>
+          )}
         </div>
-        {canManage && (
+      ) : canManage ? (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
           <button type="button" className="btn-primary" onClick={openCreate} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Plus size={18} /> Add New Room
           </button>
-        )}
-      </div>
+        </div>
+      ) : null}
 
       <div className="search-toolbar">
         <SearchInput
@@ -88,7 +97,7 @@ const GuestHouseRooms = () => {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px' }}>Loading rooms...</div>
+        <AppLoader inline message="Loading rooms…" />
       ) : (
         <div className="halls-grid">
           {filtered.length === 0 ? (
@@ -127,7 +136,7 @@ const GuestHouseRooms = () => {
                         width: '32px',
                         height: '32px',
                         borderRadius: '8px',
-                        backgroundColor: 'white',
+                        backgroundColor: 'var(--surface)',
                         color: 'var(--secondary)',
                         display: 'flex',
                         alignItems: 'center',
@@ -145,7 +154,7 @@ const GuestHouseRooms = () => {
                         width: '32px',
                         height: '32px',
                         borderRadius: '8px',
-                        backgroundColor: 'white',
+                        backgroundColor: 'var(--surface)',
                         color: '#ef4444',
                         display: 'flex',
                         alignItems: 'center',
@@ -168,8 +177,8 @@ const GuestHouseRooms = () => {
                       borderRadius: '20px',
                       fontSize: '11px',
                       fontWeight: '700',
-                      backgroundColor: room.status === 'ACTIVE' ? '#dcfce7' : '#f1f5f9',
-                      color: room.status === 'ACTIVE' ? '#166534' : '#64748b',
+                      backgroundColor: room.status === 'ACTIVE' ? '#dcfce7' : 'var(--surface-elevated)',
+                      color: room.status === 'ACTIVE' ? '#166534' : 'var(--text-dim)',
                     }}
                   >
                     {room.status}

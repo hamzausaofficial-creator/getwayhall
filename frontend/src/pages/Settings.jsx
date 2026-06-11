@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   User, 
   Building2, 
@@ -6,13 +7,13 @@ import {
   Shield, 
   Globe,
   Save,
-  Mail,
-  Lock,
   Eye,
   EyeOff,
-  Check,
-  Download,
-  Plus
+  LayoutGrid,
+  BedDouble,
+  BadgeCheck,
+  Archive,
+  Snowflake,
 } from 'lucide-react';
 import client from '../api/client';
 import { changePassword, updateMe } from '../api/auth';
@@ -20,6 +21,16 @@ import { getTenant, updateTenant, getUserSettings, updateUserSettings } from '..
 import toast from 'react-hot-toast';
 import { useTheme } from '../context/ThemeContext';
 import ThemeToggle from '../components/ThemeToggle';
+import { useAppType } from '../hooks/useAppType';
+import { usePermissions } from '../hooks/usePermissions';
+import AppLoader from '../components/AppLoader';
+import HallManagement from './HallManagement';
+import GuestHouseRooms from './guesthouse/Rooms';
+import GhServices from './guesthouse/GhServices';
+import Staff from './Staff';
+import AllRecords from './guesthouse/AllRecords';
+import { useGhPageVisibility } from '../context/GhPageVisibilityContext';
+import { GH_PAGE_KEYS } from '../constants/ghPages';
 
 const formatDateTime = (value) => {
   if (!value) return 'Never';
@@ -37,9 +48,28 @@ const parseApiError = (err) => {
   return 'Something went wrong. Please try again.';
 };
 
+const TAB_FROM_PARAM = {
+  halls: 'Halls',
+  rooms: 'Rooms',
+  services: 'Add-on Services',
+  staff: 'Staff',
+  records: 'All Records',
+  profile: 'Profile',
+  venue: 'Venue Info',
+  notifications: 'Notifications',
+  security: 'Security',
+  system: 'System',
+};
+
 const Settings = () => {
   const { theme, setThemeMode } = useTheme();
-  const [activeTab, setActiveTab] = useState('Profile');
+  const { isMarriageHall, isGuestHouse } = useAppType();
+  const { isAdmin } = usePermissions();
+  const { isPageVisible } = useGhPageVisibility();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const initialTab = TAB_FROM_PARAM[tabParam] || 'Profile';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -115,6 +145,37 @@ const Settings = () => {
   useEffect(() => {
     loadSettings();
   }, []);
+
+  const ghTabAllowed = (tabName) => {
+    if (!isGuestHouse) return true;
+    if (tabName === 'Rooms') return isPageVisible(GH_PAGE_KEYS.ROOMS);
+    if (tabName === 'All Records') return isPageVisible(GH_PAGE_KEYS.RECORDS);
+    if (tabName === 'Staff') return isAdmin && isPageVisible(GH_PAGE_KEYS.STAFF);
+    return true;
+  };
+
+  useEffect(() => {
+    const mapped = TAB_FROM_PARAM[tabParam];
+    if (!mapped) return;
+    if (mapped === 'Staff' && !isAdmin) {
+      setActiveTab('Profile');
+      setSearchParams({});
+      return;
+    }
+    if (!ghTabAllowed(mapped)) {
+      setActiveTab('Profile');
+      setSearchParams({});
+      return;
+    }
+    setActiveTab(mapped);
+  }, [tabParam, isAdmin, setSearchParams, isGuestHouse, isPageVisible]);
+
+  const handleTabChange = (tabName) => {
+    setActiveTab(tabName);
+    const param = Object.entries(TAB_FROM_PARAM).find(([, name]) => name === tabName)?.[0];
+    if (param) setSearchParams({ tab: param });
+    else setSearchParams({});
+  };
 
   const refreshUser = async () => {
     const userRes = await client.get('/auth/me/');
@@ -214,6 +275,11 @@ const Settings = () => {
 
   const tabs = [
     { name: 'Profile', icon: User },
+    ...(isMarriageHall ? [{ name: 'Halls', icon: LayoutGrid }] : []),
+    ...(isGuestHouse && isPageVisible(GH_PAGE_KEYS.ROOMS) ? [{ name: 'Rooms', icon: BedDouble }] : []),
+    ...(isGuestHouse ? [{ name: 'Add-on Services', icon: Snowflake }] : []),
+    ...(isGuestHouse && isPageVisible(GH_PAGE_KEYS.RECORDS) ? [{ name: 'All Records', icon: Archive }] : []),
+    ...(isAdmin && (!isGuestHouse || isPageVisible(GH_PAGE_KEYS.STAFF)) ? [{ name: 'Staff', icon: BadgeCheck }] : []),
     { name: 'Venue Info', icon: Building2 },
     { name: 'Notifications', icon: Bell },
     { name: 'Security', icon: Shield },
@@ -234,7 +300,7 @@ const Settings = () => {
       style={{ 
         width: '44px', 
         height: '24px', 
-        backgroundColor: active ? 'var(--primary)' : '#e2e8f0', 
+        backgroundColor: active ? 'var(--primary)' : 'var(--toggle-track)', 
         borderRadius: '12px', 
         position: 'relative', 
         cursor: 'pointer',
@@ -247,7 +313,7 @@ const Settings = () => {
         left: active ? '22px' : '2px', 
         width: '20px', 
         height: '20px', 
-        backgroundColor: 'white', 
+        backgroundColor: 'var(--surface)', 
         borderRadius: '50%', 
         transition: 'left 0.2s',
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
@@ -255,7 +321,7 @@ const Settings = () => {
     </div>
   );
 
-  if (isLoading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading settings...</div>;
+  if (isLoading) return <AppLoader message="Loading settings…" />;
 
   return (
     <div className="animate-fade-in">
@@ -270,7 +336,7 @@ const Settings = () => {
           {tabs.map(tab => (
             <button
               key={tab.name}
-              onClick={() => setActiveTab(tab.name)}
+              onClick={() => handleTabChange(tab.name)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -291,9 +357,28 @@ const Settings = () => {
         </div>
 
         {/* Content Area */}
-        <div className="card" style={{ padding: '40px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', paddingBottom: '16px', borderBottom: '1px solid var(--border)' }}>
-            <h3 style={{ fontSize: '20px', fontWeight: '700' }}>{activeTab} Settings</h3>
+        <div className={`card settings-panel-card${['Halls', 'Rooms', 'Add-on Services', 'Staff', 'All Records'].includes(activeTab) ? ' settings-panel-card--wide' : ''}`}>
+          <div className="settings-panel-card__head">
+            <div style={{ minWidth: 0 }}>
+              <h3 className="settings-panel-card__title">
+                {activeTab === 'Halls' ? 'Hall Management'
+                  : activeTab === 'Rooms' ? 'Room Management'
+                  : activeTab === 'Add-on Services' ? 'Add-on Services'
+                  : activeTab === 'Staff' ? 'Staff Management'
+                  : activeTab === 'All Records' ? 'All Records'
+                  : `${activeTab} Settings`}
+              </h3>
+              {activeTab === 'Add-on Services' && (
+                <p className="settings-panel-card__subtitle">
+                  AC, breakfast, laundry, and other extras available when booking stays.
+                </p>
+              )}
+              {activeTab === 'All Records' && (
+                <p className="settings-panel-card__subtitle">
+                  Reservations, payments, and expense vouchers in one searchable ledger.
+                </p>
+              )}
+            </div>
             {showSaveButton && (
               <button
                 type="button"
@@ -307,7 +392,27 @@ const Settings = () => {
             )}
           </div>
 
-          <div style={{ maxWidth: '650px' }}>
+          <div className={`settings-panel-card__body${['Halls', 'Rooms', 'Add-on Services', 'Staff', 'All Records'].includes(activeTab) ? ' settings-panel-card__body--wide' : ''}`}>
+            {activeTab === 'Halls' && isMarriageHall && (
+              <HallManagement embedded />
+            )}
+
+            {activeTab === 'Rooms' && isGuestHouse && (
+              <GuestHouseRooms embedded />
+            )}
+
+            {activeTab === 'Add-on Services' && isGuestHouse && (
+              <GhServices embedded />
+            )}
+
+            {activeTab === 'Staff' && isAdmin && (
+              <Staff embedded />
+            )}
+
+            {activeTab === 'All Records' && isGuestHouse && (
+              <AllRecords embedded />
+            )}
+
             {activeTab === 'Profile' && (
               <div className="animate-fade-in">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginBottom: '32px', padding: '24px', backgroundColor: 'var(--background)', borderRadius: '16px' }}>
@@ -320,8 +425,8 @@ const Settings = () => {
                     <h4 style={{ fontSize: '18px', fontWeight: '700' }}>{userData?.first_name} {userData?.last_name}</h4>
                     <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>{userData?.role} at {tenantData?.name}</p>
                     <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
-                      <span style={{ fontSize: '12px', padding: '2px 8px', backgroundColor: 'white', borderRadius: '4px', border: '1px solid var(--border)' }}>{userData?.role}</span>
-                      <span style={{ fontSize: '12px', padding: '2px 8px', backgroundColor: 'white', borderRadius: '4px', border: '1px solid var(--border)' }}>Active</span>
+                      <span style={{ fontSize: '12px', padding: '2px 8px', backgroundColor: 'var(--surface)', borderRadius: '4px', border: '1px solid var(--border)' }}>{userData?.role}</span>
+                      <span style={{ fontSize: '12px', padding: '2px 8px', backgroundColor: 'var(--surface)', borderRadius: '4px', border: '1px solid var(--border)' }}>Active</span>
                     </div>
                   </div>
                 </div>
@@ -396,7 +501,7 @@ const Settings = () => {
                   { key: 'notify_new_bookings', title: 'New Bookings', desc: 'Show new reservations in the notification bell.' },
                   { key: 'notify_payments', title: 'Payment Updates', desc: 'Show when payments are recorded.' },
                   { key: 'notify_weekly_reports', title: 'Upcoming Events', desc: 'Show events in the next 7 days.' },
-                  { key: 'notify_staff_activity', title: 'Payment Due Reminders', desc: 'Show bookings with balance still due (lena).' },
+                  { key: 'notify_staff_activity', title: 'Payment Due Reminders', desc: 'Show bookings with balance still due.' },
                 ].map((item, i) => (
                   <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderBottom: '1px solid var(--border)' }}>
                     <div>
@@ -446,11 +551,11 @@ const Settings = () => {
                   <div className="form-grid-2" style={{ gap: '12px', fontSize: '14px' }}>
                     <div>
                       <p style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>Username</p>
-                      <p style={{ fontWeight: '600', marginTop: '4px' }}>{userData?.username || '—'}</p>
+                      <p style={{ fontWeight: '600', marginTop: '4px' }}>{userData?.username || '-'}</p>
                     </div>
                     <div>
                       <p style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>Email</p>
-                      <p style={{ fontWeight: '600', marginTop: '4px' }}>{userData?.email || '—'}</p>
+                      <p style={{ fontWeight: '600', marginTop: '4px' }}>{userData?.email || '-'}</p>
                     </div>
                     <div>
                       <p style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>Last login</p>
@@ -468,7 +573,7 @@ const Settings = () => {
                     </div>
                     <div>
                       <p style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>Role</p>
-                      <p style={{ fontWeight: '600', marginTop: '4px' }}>{userData?.role || '—'}</p>
+                      <p style={{ fontWeight: '600', marginTop: '4px' }}>{userData?.role || '-'}</p>
                     </div>
                   </div>
                 </div>

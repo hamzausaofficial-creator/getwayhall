@@ -2,14 +2,18 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, Trash2, Edit2, Receipt, Printer, ChevronRight, X, Calendar,
-  Briefcase, Zap, Wrench,
+  Briefcase, Zap, Wrench, Copy, ExternalLink,
 } from 'lucide-react';
 import { listGhExpenses, deleteGhExpense } from '../../api/guesthouse';
 import toast from 'react-hot-toast';
+import AppLoader from '../../components/AppLoader';
 import { usePermissions } from '../../hooks/usePermissions';
 import { formatRs } from '../../utils/currency';
+import { voucherDisplayId } from '../../utils/ghExpenseHelpers';
 import SearchInput from '../../components/SearchInput';
 import StatCard from '../../components/ui/StatCard';
+import GhFilterSelect, { GH_DATE_FILTER_OPTIONS } from '../../components/guesthouse/GhFilterSelect';
+import { todayISO, matchesDateFilter } from '../../utils/ghDate';
 import '../../styles/dashboard.css';
 
 const CATEGORIES = [
@@ -50,6 +54,8 @@ export default function GuestHouseExpenses() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('ALL');
+  const [dateFilter, setDateFilter] = useState('today');
+  const [filterDate, setFilterDate] = useState(todayISO());
   const [selected, setSelected] = useState(null);
 
   const load = async () => {
@@ -74,9 +80,10 @@ export default function GuestHouseExpenses() {
         || (e.category || '').toLowerCase().includes(q)
         || (e.description || '').toLowerCase().includes(q)
         || (CATEGORY_LABELS[e.category] || '').toLowerCase().includes(q);
-      return matchCat && matchSearch;
+      const matchDate = matchesDateFilter(e.expense_date, dateFilter, filterDate);
+      return matchCat && matchSearch && matchDate;
     });
-  }, [expenses, searchQuery, filterCategory]);
+  }, [expenses, searchQuery, filterCategory, dateFilter, filterDate]);
 
   const metrics = useMemo(() => {
     const total = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
@@ -123,7 +130,7 @@ export default function GuestHouseExpenses() {
             Expenses & Vouchers
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '6px' }}>
-            Track guest house operating costs — salary, utilities, maintenance, and more.
+            Track guest house operating costs - salary, utilities, maintenance, and more.
           </p>
         </div>
         {canManage && (
@@ -173,20 +180,31 @@ export default function GuestHouseExpenses() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <select
-          className="search-filter-bar__select"
+        <GhFilterSelect
           value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </select>
-        {(searchQuery || filterCategory !== 'ALL') && (
+          onChange={setFilterCategory}
+          options={CATEGORIES}
+          aria-label="Expense category filter"
+        />
+        <GhFilterSelect
+          value={dateFilter}
+          onChange={setDateFilter}
+          options={GH_DATE_FILTER_OPTIONS}
+          aria-label="Expense date filter"
+        />
+        {dateFilter === 'date' && (
+          <input
+            type="date"
+            className="search-filter-bar__select"
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+          />
+        )}
+        {(searchQuery || filterCategory !== 'ALL' || dateFilter !== 'today') && (
           <button
             type="button"
             className="btn-secondary"
-            onClick={() => { setSearchQuery(''); setFilterCategory('ALL'); }}
+            onClick={() => { setSearchQuery(''); setFilterCategory('ALL'); setDateFilter('today'); setFilterDate(todayISO()); }}
             style={{ padding: '10px 18px', fontSize: '12px', fontWeight: '700' }}
           >
             Reset
@@ -197,10 +215,10 @@ export default function GuestHouseExpenses() {
       <div className={`split-layout ${selected ? 'split-layout--payments' : ''}`}>
         <div className="card table-scroll" style={{ padding: 0, borderRadius: '16px', overflow: 'hidden' }}>
           <p style={{ padding: '12px 20px', fontSize: '12px', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', margin: 0 }}>
-            Click a row to view voucher details
+            Click a row to open voucher - print or use again
           </p>
           {loading ? (
-            <p style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading expenses…</p>
+            <AppLoader inline message="Loading expenses…" />
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
               <thead>
@@ -261,7 +279,7 @@ export default function GuestHouseExpenses() {
                         −{formatRs(exp.amount)}
                         <ChevronRight size={14} style={{ display: 'inline', marginLeft: '4px', verticalAlign: 'middle' }} />
                       </td>
-                      <td style={{ padding: '16px' }} onClick={(e) => e.stopPropagation()}>
+                      <td style={{ padding: '16px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
                         <button type="button" className="btn-ghost" title="Print" onClick={() => navigate(`/gh/print/expense/${exp.id}`)}>
                           <Printer size={16} />
                         </button>
@@ -279,7 +297,7 @@ export default function GuestHouseExpenses() {
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
               <div>
                 <p style={{ fontSize: '11px', fontWeight: '800', fontFamily: 'monospace', color: 'var(--primary)', margin: '0 0 4px 0' }}>
-                  EXP-{String(selected.id).padStart(5, '0')}
+                  {voucherDisplayId(selected.id)}
                 </p>
                 <h3 style={{ fontSize: '18px', fontWeight: '800', margin: 0 }}>{selected.title}</h3>
               </div>
@@ -293,7 +311,7 @@ export default function GuestHouseExpenses() {
             </span>
 
             <div style={{ margin: '20px 0', padding: '16px', background: '#fef2f2', borderRadius: '12px', border: '1px solid #fecaca' }}>
-              <p style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: '#64748b', margin: '0 0 6px 0' }}>Amount</p>
+              <p style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 6px 0' }}>Amount</p>
               <p style={{ fontSize: '28px', fontWeight: '900', color: '#ef4444', margin: 0 }}>{formatRs(selected.amount)}</p>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '8px' }}>Date: {selected.expense_date}</p>
             </div>
@@ -310,9 +328,17 @@ export default function GuestHouseExpenses() {
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <button type="button" className="btn-primary" onClick={() => navigate(`/gh/print/expense/${selected.id}`)} style={{ padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <button type="button" className="btn-primary" onClick={() => navigate(`/gh/expenses/${selected.id}`)} style={{ padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <ExternalLink size={16} /> Open voucher
+              </button>
+              <button type="button" className="btn-secondary" onClick={() => navigate(`/gh/print/expense/${selected.id}`)} style={{ padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                 <Printer size={16} /> Print voucher
               </button>
+              {canManage && (
+                <button type="button" className="btn-secondary" onClick={() => navigate(`/gh/expenses/new?from=${selected.id}`)} style={{ padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <Copy size={16} /> Use again
+                </button>
+              )}
               {canManage && (
                 <button type="button" className="btn-secondary" onClick={() => navigate(`/gh/expenses/${selected.id}/edit`)} style={{ padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                   <Edit2 size={16} /> Edit voucher
