@@ -1,2 +1,2 @@
 web: cd backend && gunicorn hallora_backend.wsgi --bind 0.0.0.0:$PORT
-release: cd backend && python manage.py migrate --noinput
+release: cd backend && python manage.py migrate --noinput && python seed_production_users.py

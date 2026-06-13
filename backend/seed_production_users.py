@@ -89,12 +89,9 @@ def upsert_user(spec):
 
 
 if __name__ == '__main__':
-    if not os.environ.get('DATABASE_URL') and not os.environ.get('DB_NAME'):
-        print('Set DATABASE_URL to your Railway PostgreSQL connection string first.')
-        raise SystemExit(1)
-
     for spec in USERS:
         upsert_user(spec)
 
     print('Done. Marriage Hall: admin / admin123')
     print('Done. Guest House: gh_admin / admin123 (login via Guest House portal)')
+    print('Django admin: https://YOUR-RAILWAY-URL/admin/  (use admin / admin123)')

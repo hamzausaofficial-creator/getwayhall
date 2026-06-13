@@ -204,6 +204,12 @@ for _railway_var in ('RAILWAY_PUBLIC_DOMAIN', 'RAILWAY_STATIC_URL'):
         if _origin not in CSRF_TRUSTED_ORIGINS:
             CSRF_TRUSTED_ORIGINS.append(_origin)
 
+for _host in ALLOWED_HOSTS:
+    if _host and not _host.startswith('.'):
+        _origin = f'https://{_host}'
+        if _origin not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(_origin)
+
 # Railway / reverse-proxy HTTPS
 if os.environ.get('RAILWAY_ENVIRONMENT') or not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
