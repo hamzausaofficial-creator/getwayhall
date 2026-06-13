@@ -31,10 +31,28 @@ def api_root(request):
     return JsonResponse({
         'name': 'Gateway Marriage Hall API',
         'status': 'ok',
+        'health': '/api/health/',
+        'auth': '/api/auth/token/',
         'landing': '/api/landing/',
         'admin': '/admin/',
-        'message': 'Frontend is hosted separately (e.g. Vercel). Use /api/... endpoints.',
+        'endpoints': {
+            'auth': '/api/auth/',
+            'dashboard': '/api/dashboard/',
+            'venues': '/api/venues/',
+            'bookings': '/api/bookings/',
+            'customers': '/api/customers/',
+            'finance': '/api/finance/',
+            'inventory': '/api/inventory/',
+            'decorations': '/api/decorations/',
+            'guesthouse': '/api/guesthouse/',
+            'landing': '/api/landing/',
+        },
+        'message': 'API server running. Frontend is on Vercel.',
     })
+
+
+def health_check(request):
+    return JsonResponse({'status': 'ok', 'service': 'gateway-hall-api'})
 
 
 def api_not_found(request):
@@ -53,6 +71,7 @@ def _should_serve_frontend():
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/health/', health_check),
     path('api/auth/', include('authentication.urls')),
     path('api/dashboard/', include('core.urls')),
     path('api/core/', include('core.urls')),
@@ -96,6 +115,10 @@ if _should_serve_frontend():
 else:
     # API-only deploy (Railway backend + Vercel frontend)
     urlpatterns += [
+        re_path(
+            r'^static/(?P<path>.*)$',
+            never_cache(serve_static_files),
+        ),
         path('', api_root),
         path('api/', api_root),
         re_path(r'^.*$', api_not_found),

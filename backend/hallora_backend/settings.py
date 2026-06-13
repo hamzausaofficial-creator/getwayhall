@@ -145,7 +145,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 STATICFILES_DIRS = []
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
-WHITENOISE_USE_FINDERS = True
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -187,9 +186,29 @@ else:
         'http://localhost:8000',
         'http://127.0.0.1:8000',
     ]
+
+# Allow any Vercel preview/production frontend without manual env updates.
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r'^https://.*\.vercel\.app$',
+]
 CORS_ALLOW_CREDENTIALS = True
 
 _csrf_origins = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
-if _csrf_origins:
-    CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(',') if o.strip()]
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(',') if o.strip()] if _csrf_origins else []
+
+for _railway_var in ('RAILWAY_PUBLIC_DOMAIN', 'RAILWAY_STATIC_URL'):
+    _railway_origin = os.environ.get(_railway_var, '')
+    if _railway_origin:
+        _origin = _railway_origin if _railway_origin.startswith('http') else f'https://{_railway_origin}'
+        _origin = _origin.rstrip('/')
+        if _origin not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(_origin)
+
+# Railway / reverse-proxy HTTPS
+if os.environ.get('RAILWAY_ENVIRONMENT') or not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+WHITENOISE_USE_FINDERS = DEBUG
 
