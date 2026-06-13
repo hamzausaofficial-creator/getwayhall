@@ -3,6 +3,5 @@ builder = "nixpacks"
 buildCommand = "cd backend && python manage.py collectstatic --noinput"
 
 [deploy]
-startCommand = "cd backend && gunicorn hallora_backend.wsgi --bind 0.0.0.0:$PORT"
-releaseCommand = "cd backend && python manage.py migrate --noinput && python seed_production_users.py"
+startCommand = "cd backend && bash start.sh"
 restartPolicyType = "on_failure"
