@@ -1,0 +1,8 @@
+[build]
+builder = "nixpacks"
+buildCommand = "pip install -r requirements.txt && python manage.py collectstatic --noinput"
+
+[deploy]
+startCommand = "gunicorn hallora_backend.wsgi --bind 0.0.0.0:$PORT"
+releaseCommand = "python manage.py migrate --noinput"
+restartPolicyType = "on_failure"
