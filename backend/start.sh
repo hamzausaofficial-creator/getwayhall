@@ -7,5 +7,8 @@ python manage.py migrate --noinput
 echo "Ensuring production admin users exist..."
 python seed_production_users.py
 
+echo "Ensuring landing page content exists..."
+python manage.py seed_landing
+
 echo "Starting Gunicorn..."
 exec gunicorn hallora_backend.wsgi --bind "0.0.0.0:${PORT:-8080}"

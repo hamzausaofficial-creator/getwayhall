@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronLeft, ChevronRight, ImageIcon } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PhotoGallery } from '../ui/gallery';
 import { resolveMediaUrl } from '../../utils/media';
 import { getGalleryStockImage, isGenericHeroImage } from '../../utils/galleryPlaceholders';
+import { getLandingDefaults } from '../../utils/landingDefaults';
 
 function resolveGallerySrc(img) {
   if (img.image_url && !isGenericHeroImage(img.image_url)) {
@@ -14,7 +15,7 @@ function resolveGallerySrc(img) {
 
 export default function GallerySection({ images = [] }) {
   const [lightbox, setLightbox] = useState(null);
-  const items = images.length ? images : [];
+  const items = images.length ? images : getLandingDefaults().gallery;
 
   const galleryPhotos = useMemo(
     () => items.map((img, index) => ({
@@ -29,14 +30,7 @@ export default function GallerySection({ images = [] }) {
   );
 
   if (!items.length) {
-    return (
-      <section id="gallery" className="landing-section landing-section-white overflow-hidden">
-        <div className="landing-container" style={{ textAlign: 'center', padding: '4rem 0' }}>
-          <ImageIcon size={40} style={{ margin: '0 auto 1rem', color: '#cbd5e1' }} />
-          <p className="landing-text-muted">Gallery images can be added from Django Admin</p>
-        </div>
-      </section>
-    );
+    return null;
   }
 
   const close = () => setLightbox(null);

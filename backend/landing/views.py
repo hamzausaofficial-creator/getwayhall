@@ -71,5 +71,7 @@ class LandingContentView(APIView):
             payload['faqs'] = get_default_landing_payload(request)['faqs']
         if not payload['testimonials']:
             payload['testimonials'] = get_default_landing_payload(request)['testimonials']
+        if not payload['gallery']:
+            payload['gallery'] = get_default_landing_payload(request)['gallery']
 
         return Response(payload)
