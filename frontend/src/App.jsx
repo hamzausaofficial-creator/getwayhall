@@ -39,6 +39,7 @@ import GuestHouseReports from './pages/guesthouse/Reports';
 import GhPrintStay from './pages/guesthouse/GhPrintStay';
 import GhPrintPayment from './pages/guesthouse/GhPrintPayment';
 import BookFutureStayPage from './pages/guesthouse/BookFutureStayPage';
+import HallFormPage from './pages/HallFormPage';
 
 import { useAuth } from './context/AuthContext';
 import { AdminRoute, ManagerRoute, StaffBlockedRoute } from './components/RoleRoute';
@@ -93,6 +94,8 @@ function App() {
           <Route path="/bookings" element={<Bookings />} />
           <Route path="/bookings/:bookingId" element={<BookingDetail />} />
           <Route path="/calendar" element={<BookingCalendar />} />
+          <Route path="/halls/new" element={<ManagerRoute><HallFormPage /></ManagerRoute>} />
+          <Route path="/halls/:hallId/edit" element={<ManagerRoute><HallFormPage /></ManagerRoute>} />
           <Route path="/halls" element={<Navigate to="/settings?tab=halls" replace />} />
           <Route path="/customers" element={<CustomerManagement />} />
           <Route path="/customers/:customerId" element={<CustomerManagement />} />
