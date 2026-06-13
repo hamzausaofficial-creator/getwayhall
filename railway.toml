@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "cd backend && python manage.py collectstatic --noinput"
+buildCommand = "cd frontend && npm ci && VITE_API_BASE_URL=/api npm run build && cd ../backend && python manage.py collectstatic --noinput"
 
 [deploy]
 startCommand = "cd backend && gunicorn hallora_backend.wsgi --bind 0.0.0.0:$PORT"

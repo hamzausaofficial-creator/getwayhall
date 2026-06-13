@@ -1,0 +1,7 @@
+{
+  "name": "getwayhall",
+  "private": true,
+  "scripts": {
+    "build:frontend": "cd frontend && npm ci && npm run build"
+  }
+}
