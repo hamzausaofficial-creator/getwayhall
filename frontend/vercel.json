@@ -1,5 +1,9 @@
 {
   "rewrites": [
+    {
+      "source": "/media/:path*",
+      "destination": "https://getwayhall-production.up.railway.app/media/:path*"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

@@ -9,6 +9,8 @@ django-filter
 whitenoise
 Pillow
 gunicorn
+django-cloudinary-storage
+cloudinary
 waitress
 pyinstaller
 twilio

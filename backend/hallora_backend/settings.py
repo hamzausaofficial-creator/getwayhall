@@ -139,7 +139,26 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = os.environ.get('MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
+os.makedirs(MEDIA_ROOT, exist_ok=True)
+
+# Optional Cloudinary for persistent uploads on Railway (set CLOUDINARY_URL in env)
+if os.environ.get('CLOUDINARY_URL'):
+    INSTALLED_APPS = [
+        *INSTALLED_APPS[:INSTALLED_APPS.index('django.contrib.staticfiles')],
+        'cloudinary_storage',
+        'cloudinary',
+        *INSTALLED_APPS[INSTALLED_APPS.index('django.contrib.staticfiles'):],
+    ]
+    STORAGES = {
+        'default': {
+            'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+        },
+    }
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # React build is served via /assets/ in urls.py (not collected to STATIC_ROOT).
 STATICFILES_DIRS = []
