@@ -12,8 +12,26 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Login with role/app checks - staff accounts created via Staff management."""
 
     def validate(self, attrs):
-        data = super().validate(attrs)
-        user = self.user
+        username = (attrs.get(self.username_field) or '').strip()
+        password = attrs.get('password') or ''
+
+        if not username:
+            raise serializers.ValidationError({
+                self.username_field: 'Username is required.',
+            })
+
+        try:
+            user = User.objects.get(**{f'{self.username_field}__iexact': username})
+        except User.DoesNotExist:
+            raise serializers.ValidationError({
+                self.username_field: 'Username is incorrect.',
+            })
+
+        if not user.check_password(password):
+            raise serializers.ValidationError({
+                'password': 'Password is incorrect.',
+            })
+
         if not user.is_active:
             raise serializers.ValidationError({
                 'detail': 'This account is inactive. Contact your administrator.',
@@ -23,6 +41,13 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             raise serializers.ValidationError({
                 'detail': 'This account has been deactivated. Contact your administrator.',
             })
+
+        self.user = user
+        refresh = self.get_token(user)
+        data = {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
         data['role'] = user.role
         data['app_type'] = getattr(user, 'app_type', 'MARRIAGE_HALL')
         data['first_name'] = user.first_name
