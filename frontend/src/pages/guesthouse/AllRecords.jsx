@@ -36,18 +36,81 @@ function formatRecordDate(iso) {
   }
 }
 
-function RecordDetails({ title, subtitle }) {
+function RecordDetails({ title, subtitle, ref, date, compact = false }) {
   const subLines = subtitle
     ? subtitle.split(' · ').map((s) => s.trim()).filter(Boolean)
     : [];
 
   return (
     <div className="gh-records-table__details">
+      {ref ? <span className="gh-records-table__ref">{ref}</span> : null}
       <span className="gh-records-table__title">{title}</span>
       {subLines.map((line) => (
         <span key={line} className="gh-records-table__sub">{line}</span>
       ))}
+      {compact && date ? (
+        <span className="gh-records-table__date">{formatRecordDate(date)}</span>
+      ) : null}
     </div>
+  );
+}
+
+function RecordRow({ row, embedded, onOpen }) {
+  const meta = TYPE_META[row.record_type] || TYPE_META.stay;
+  const Icon = meta.icon;
+
+  if (embedded) {
+    return (
+      <tr onClick={() => onOpen(row)}>
+        <td className="gh-records-table__cell--type">
+          <span className={`gh-record-type gh-record-type--compact ${meta.className}`} title={row.record_type_label || meta.label}>
+            <Icon size={14} aria-hidden />
+            <span>{meta.label}</span>
+          </span>
+        </td>
+        <td className="gh-records-table__cell--details">
+          <RecordDetails
+            ref={row.ref}
+            title={row.title}
+            subtitle={row.subtitle}
+            date={row.date}
+            compact
+          />
+        </td>
+        <td className="gh-records-table__cell--amount">{formatRs(row.amount)}</td>
+        <td className="gh-records-table__cell--status">
+          <StatusBadge status={row.status} />
+        </td>
+        <td className="gh-records-table__cell--action" aria-label="Open record">
+          <ChevronRight size={16} color="var(--text-muted)" />
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr onClick={() => onOpen(row)}>
+      <td className="gh-records-table__cell--type">
+        <span className={`gh-record-type ${meta.className}`}>
+          <Icon size={14} aria-hidden />
+          {meta.label}
+        </span>
+      </td>
+      <td className="gh-records-table__cell--ref"><strong>{row.ref}</strong></td>
+      <td className="gh-records-table__cell--details">
+        <RecordDetails title={row.title} subtitle={row.subtitle} />
+      </td>
+      <td className="gh-records-table__cell--amount">{formatRs(row.amount)}</td>
+      <td className="gh-records-table__cell--status">
+        <StatusBadge status={row.status} />
+      </td>
+      <td className="gh-records-table__cell--date">
+        {formatRecordDate(row.date)}
+      </td>
+      <td className="gh-records-table__cell--action" aria-label="Open record">
+        <ChevronRight size={16} color="var(--text-muted)" />
+      </td>
+    </tr>
   );
 }
 
@@ -204,43 +267,38 @@ export default function AllRecords({ embedded = false }) {
             {filterAllTime ? 'No records found.' : `No records for ${selectedDate}.`}
           </p>
         ) : (
-          <table className="gh-records-table">
+          <table className={`gh-records-table${embedded ? ' gh-records-table--embedded' : ''}`}>
             <thead>
               <tr>
                 <th>Type</th>
-                <th>Reference</th>
-                <th>Details</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Date</th>
-                <th aria-label="Open" />
+                {embedded ? (
+                  <>
+                    <th>Record</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th aria-label="Open" />
+                  </>
+                ) : (
+                  <>
+                    <th>Reference</th>
+                    <th>Details</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th aria-label="Open" />
+                  </>
+                )}
               </tr>
             </thead>
             <tbody>
-              {filtered.map((row) => {
-                const meta = TYPE_META[row.record_type] || TYPE_META.stay;
-                const Icon = meta.icon;
-                return (
-                  <tr key={`${row.record_type}-${row.id}`} onClick={() => openRecord(row)}>
-                    <td>
-                      <span className={`gh-record-type ${meta.className}`}>
-                        <Icon size={14} />
-                        {row.record_type_label || meta.label}
-                      </span>
-                    </td>
-                    <td><strong>{row.ref}</strong></td>
-                    <td className="gh-records-table__cell--details">
-                      <RecordDetails title={row.title} subtitle={row.subtitle} />
-                    </td>
-                    <td className="gh-records-table__cell--amount">{formatRs(row.amount)}</td>
-                    <td><StatusBadge status={row.status} /></td>
-                    <td style={{ fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                      {formatRecordDate(row.date)}
-                    </td>
-                    <td><ChevronRight size={16} color="var(--text-muted)" /></td>
-                  </tr>
-                );
-              })}
+              {filtered.map((row) => (
+                <RecordRow
+                  key={`${row.record_type}-${row.id}`}
+                  row={row}
+                  embedded={embedded}
+                  onOpen={openRecord}
+                />
+              ))}
             </tbody>
           </table>
         )}
