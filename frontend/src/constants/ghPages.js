@@ -32,7 +32,7 @@ export const GH_PAGE_PATHS = {
   [GH_PAGE_KEYS.STAYS]: '/gh/stays',
   [GH_PAGE_KEYS.CALENDAR]: '/gh/calendar',
   [GH_PAGE_KEYS.ROOMS]: '/gh/settings?tab=rooms',
-  [GH_PAGE_KEYS.SERVICES]: '/gh/settings?tab=services',
+  [GH_PAGE_KEYS.SERVICES]: '/gh/services',
   [GH_PAGE_KEYS.CUSTOMERS]: '/gh/customers',
   [GH_PAGE_KEYS.RECORDS]: '/gh/settings?tab=records',
   [GH_PAGE_KEYS.PAYMENTS]: '/gh/payments',
