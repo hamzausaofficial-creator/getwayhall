@@ -227,6 +227,21 @@
   color: var(--primary);
 }
 
+.dashboard-header__profile-menu-divider {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--border);
+}
+
+.dashboard-header__profile-menu-item--danger {
+  color: #dc2626;
+}
+
+.dashboard-header__profile-menu-item--danger:hover {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
 .dashboard-header__profile-text {
   text-align: right;
 }

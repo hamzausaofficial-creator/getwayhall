@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { Bell, Search, User, Menu, Wallet, Settings } from 'lucide-react';
+import { Bell, Search, User, Menu, Wallet, Settings, LogOut } from 'lucide-react';
 import SearchInput from './SearchInput';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../context/AuthContext';
@@ -16,7 +16,7 @@ import { GH_PAGE_KEYS } from '../constants/ghPages';
 import { resolveMediaUrl } from '../utils/media';
 
 const DashboardLayoutContent = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { isGuestHouse } = useAppType();
   const { canAccessPayments, canAccessSettings } = usePermissions();
   const { isPageVisible } = useGhPageVisibility();
@@ -35,6 +35,7 @@ const DashboardLayoutContent = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef(null);
   const { notifications, unreadCount, markAllRead } = useNotifications();
 
   useEffect(() => {
@@ -84,12 +85,35 @@ const DashboardLayoutContent = () => {
     navigate(path);
   };
 
+  const handleSignOut = () => {
+    setProfileMenuOpen(false);
+    logout();
+  };
+
+  const toggleProfileMenu = () => {
+    setShowNotifications(false);
+    setProfileMenuOpen((open) => !open);
+  };
+
   const isProfileMenuItemActive = (path) => {
     if (path === settingsPath || path === paymentsPath) {
       return location.pathname === path || location.pathname.startsWith(`${path}/`);
     }
     return location.pathname === path;
   };
+
+  useEffect(() => {
+    if (!profileMenuOpen) return undefined;
+
+    const handleClickOutside = (event) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [profileMenuOpen]);
 
   useEffect(() => {
     if (!isMobile) setMobileMenuOpen(false);
@@ -101,6 +125,7 @@ const DashboardLayoutContent = () => {
   }, [mobileMenuOpen]);
 
   const handleBellClick = () => {
+    setProfileMenuOpen(false);
     setShowNotifications(!showNotifications);
     if (!showNotifications) markAllRead();
   };
@@ -433,14 +458,13 @@ const DashboardLayoutContent = () => {
             </div>
 
             <div
+              ref={profileMenuRef}
               className="dashboard-header__profile-wrap"
-              onMouseEnter={() => setProfileMenuOpen(true)}
-              onMouseLeave={() => setProfileMenuOpen(false)}
             >
               <button
                 type="button"
                 className="dashboard-header__profile"
-                onClick={() => setProfileMenuOpen((open) => !open)}
+                onClick={toggleProfileMenu}
                 aria-expanded={profileMenuOpen}
                 aria-haspopup="menu"
                 aria-label="Account menu"
@@ -462,7 +486,7 @@ const DashboardLayoutContent = () => {
                 </div>
               </button>
 
-              {profileMenuOpen && profileMenuItems.length > 0 && (
+              {profileMenuOpen && (
                 <div className="dashboard-header__profile-menu animate-fade-in surface-dropdown" role="menu">
                   {profileMenuItems.map((item) => {
                     const Icon = item.icon;
@@ -480,6 +504,16 @@ const DashboardLayoutContent = () => {
                       </button>
                     );
                   })}
+                  <div className="dashboard-header__profile-menu-divider" role="separator" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="dashboard-header__profile-menu-item dashboard-header__profile-menu-item--danger"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut size={16} aria-hidden />
+                    <span>Sign Out</span>
+                  </button>
                 </div>
               )}
             </div>

@@ -4,7 +4,6 @@ import {
   Calculator,
   Calendar,
   Users,
-  LogOut,
   ChevronLeft,
   ChevronRight,
   Wallet,
@@ -17,7 +16,6 @@ import {
   CalendarCheck,
   Plus,
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
 import AppLoader from '../components/AppLoader';
 import { usePermissions } from '../hooks/usePermissions';
 import { useAppType } from '../hooks/useAppType';
@@ -26,7 +24,6 @@ import { GH_PAGE_KEYS } from '../constants/ghPages';
 import AppLogo from './AppLogo';
 
 const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobileClose }) => {
-  const { logout } = useAuth();
   const { isGuestHouse } = useAppType();
   const {
     user,
@@ -72,11 +69,6 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
       </aside>
     );
   }
-
-  const handleSignOut = () => {
-    logout();
-    onMobileClose?.();
-  };
 
   const handleNavClick = () => {
     if (isMobile) onMobileClose?.();
@@ -165,24 +157,6 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
           )}
         </ul>
       </nav>
-
-      <div className="app-sidebar__footer">
-        <ul className="app-sidebar__nav-list app-sidebar__nav-list--footer">
-          <li className="app-sidebar__nav-item">
-            <button
-              type="button"
-              onClick={handleSignOut}
-              title="Sign Out"
-              className={`app-sidebar__nav-link app-sidebar__nav-link--danger${isCollapsed && !isMobile ? ' app-sidebar__nav-link--collapsed' : ''}`}
-            >
-              <LogOut size={20} className="app-sidebar__nav-icon" aria-hidden />
-              {(!isCollapsed || isMobile) && (
-                <span className="app-sidebar__nav-label app-sidebar__nav-label--danger">Sign Out</span>
-              )}
-            </button>
-          </li>
-        </ul>
-      </div>
     </aside>
   );
 };
