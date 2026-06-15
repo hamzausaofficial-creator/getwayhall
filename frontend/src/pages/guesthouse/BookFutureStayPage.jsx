@@ -3,8 +3,8 @@ import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-do
 import { format, addDays, parseISO, differenceInCalendarDays } from 'date-fns';
 import {
   ChevronLeft, Calendar, User, BedDouble, Wallet, FileText,
-  CheckCircle, X, HelpCircle, Sparkles, Users, CreditCard,
-  Banknote, Building2, Globe,
+  CheckCircle, X, HelpCircle, Sparkles, Users,
+  Banknote, Globe,
 } from 'lucide-react';
 import { createStay, getAvailableRooms, listGhServices } from '../../api/guesthouse';
 import { computeStayBilling } from '../../utils/ghBilling';
@@ -29,8 +29,6 @@ import {
 
 const METHOD_OPTIONS = [
   { value: 'CASH', label: 'Cash', icon: Banknote },
-  { value: 'CARD', label: 'Card', icon: CreditCard },
-  { value: 'BANK_TRANSFER', label: 'Bank', icon: Building2 },
   { value: 'ONLINE', label: 'Online', icon: Globe },
 ];
 

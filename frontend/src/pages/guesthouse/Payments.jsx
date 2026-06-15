@@ -196,8 +196,6 @@ export default function GuestHousePayments() {
             options={[
               { value: 'ALL', label: 'All' },
               { value: 'CASH', label: 'Cash' },
-              { value: 'CARD', label: 'Card' },
-              { value: 'BANK_TRANSFER', label: 'Bank transfer' },
               { value: 'ONLINE', label: 'Online' },
             ]}
             aria-label="Payment method filter"

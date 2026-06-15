@@ -25,8 +25,6 @@ import { formatRs } from '../../utils/currency';
 
 const METHOD_OPTIONS = [
   { value: 'CASH', label: 'Cash' },
-  { value: 'CARD', label: 'Card' },
-  { value: 'BANK_TRANSFER', label: 'Bank transfer' },
   { value: 'ONLINE', label: 'Online' },
 ];
 
