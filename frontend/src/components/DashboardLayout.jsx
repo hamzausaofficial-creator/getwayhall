@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { Bell, Search, User, Menu } from 'lucide-react';
+import { Bell, Search, User, Menu, Wallet, Settings } from 'lucide-react';
 import SearchInput from './SearchInput';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../context/AuthContext';
@@ -11,14 +11,18 @@ import { globalSearch } from '../api/core';
 import { guestHouseSearch } from '../api/guesthouse';
 import { useAppType } from '../hooks/useAppType';
 import { usePermissions } from '../hooks/usePermissions';
-import { GhPageVisibilityProvider } from '../context/GhPageVisibilityContext';
+import { GhPageVisibilityProvider, useGhPageVisibility } from '../context/GhPageVisibilityContext';
+import { GH_PAGE_KEYS } from '../constants/ghPages';
 import { resolveMediaUrl } from '../utils/media';
 
-const DashboardLayout = () => {
+const DashboardLayoutContent = () => {
   const { user } = useAuth();
   const { isGuestHouse } = useAppType();
-  const { canAccessPayments } = usePermissions();
+  const { canAccessPayments, canAccessSettings } = usePermissions();
+  const { isPageVisible } = useGhPageVisibility();
   const profilePath = isGuestHouse ? '/gh/profile' : '/profile';
+  const paymentsPath = isGuestHouse ? '/gh/payments' : '/payments';
+  const settingsPath = isGuestHouse ? '/gh/settings' : '/settings';
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
@@ -30,6 +34,7 @@ const DashboardLayout = () => {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const { notifications, unreadCount, markAllRead } = useNotifications();
 
   useEffect(() => {
@@ -59,7 +64,32 @@ const DashboardLayout = () => {
 
   useEffect(() => {
     setMobileMenuOpen(false);
+    setProfileMenuOpen(false);
   }, [location.pathname]);
+
+  const showPaymentsMenu = canAccessPayments
+    && (!isGuestHouse || isPageVisible(GH_PAGE_KEYS.PAYMENTS));
+  const showProfileMenu = !isGuestHouse || isPageVisible(GH_PAGE_KEYS.PROFILE);
+  const showSettingsMenu = canAccessSettings
+    && (!isGuestHouse || isPageVisible(GH_PAGE_KEYS.SETTINGS));
+
+  const profileMenuItems = [
+    ...(showPaymentsMenu ? [{ label: 'Payments', icon: Wallet, path: paymentsPath }] : []),
+    ...(showProfileMenu ? [{ label: 'Profile', icon: User, path: profilePath }] : []),
+    ...(showSettingsMenu ? [{ label: 'Settings', icon: Settings, path: settingsPath }] : []),
+  ];
+
+  const handleProfileNavigate = (path) => {
+    setProfileMenuOpen(false);
+    navigate(path);
+  };
+
+  const isProfileMenuItemActive = (path) => {
+    if (path === settingsPath || path === paymentsPath) {
+      return location.pathname === path || location.pathname.startsWith(`${path}/`);
+    }
+    return location.pathname === path;
+  };
 
   useEffect(() => {
     if (!isMobile) setMobileMenuOpen(false);
@@ -127,7 +157,6 @@ const DashboardLayout = () => {
   ].filter(Boolean).join(' ');
 
   return (
-    <GhPageVisibilityProvider enabled={isGuestHouse}>
     <div className={shellClass}>
       <div
         className={`sidebar-backdrop ${mobileMenuOpen ? 'sidebar-backdrop--visible' : ''}`}
@@ -404,27 +433,55 @@ const DashboardLayout = () => {
             </div>
 
             <div
-              className="dashboard-header__profile"
-              onClick={() => navigate(profilePath)}
-              onKeyDown={(e) => e.key === 'Enter' && navigate(profilePath)}
-              role="button"
-              tabIndex={0}
+              className="dashboard-header__profile-wrap"
+              onMouseEnter={() => setProfileMenuOpen(true)}
+              onMouseLeave={() => setProfileMenuOpen(false)}
             >
-              <div className="dashboard-header__profile-text hide-mobile">
-                <p style={{ fontSize: '14px', fontWeight: '600' }}>{user?.first_name} {user?.last_name}</p>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{user?.role}</p>
-              </div>
-              <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                {user?.avatar ? (
-                  <img
-                    src={resolveMediaUrl(user.avatar)}
-                    alt="Profile"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <User size={20} color="var(--primary)" />
-                )}
-              </div>
+              <button
+                type="button"
+                className="dashboard-header__profile"
+                onClick={() => setProfileMenuOpen((open) => !open)}
+                aria-expanded={profileMenuOpen}
+                aria-haspopup="menu"
+                aria-label="Account menu"
+              >
+                <div className="dashboard-header__profile-text hide-mobile">
+                  <p style={{ fontSize: '14px', fontWeight: '600' }}>{user?.first_name} {user?.last_name}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{user?.role}</p>
+                </div>
+                <div className="dashboard-header__profile-avatar">
+                  {user?.avatar ? (
+                    <img
+                      src={resolveMediaUrl(user.avatar)}
+                      alt="Profile"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <User size={20} color="var(--primary)" />
+                  )}
+                </div>
+              </button>
+
+              {profileMenuOpen && profileMenuItems.length > 0 && (
+                <div className="dashboard-header__profile-menu animate-fade-in surface-dropdown" role="menu">
+                  {profileMenuItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = isProfileMenuItemActive(item.path);
+                    return (
+                      <button
+                        key={item.label}
+                        type="button"
+                        role="menuitem"
+                        className={`dashboard-header__profile-menu-item${isActive ? ' dashboard-header__profile-menu-item--active' : ''}`}
+                        onClick={() => handleProfileNavigate(item.path)}
+                      >
+                        <Icon size={16} aria-hidden />
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </header>
@@ -434,6 +491,14 @@ const DashboardLayout = () => {
         </div>
       </main>
     </div>
+  );
+};
+
+const DashboardLayout = () => {
+  const { isGuestHouse } = useAppType();
+  return (
+    <GhPageVisibilityProvider enabled={isGuestHouse}>
+      <DashboardLayoutContent />
     </GhPageVisibilityProvider>
   );
 };

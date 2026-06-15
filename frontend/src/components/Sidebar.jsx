@@ -4,7 +4,6 @@ import {
   Calculator,
   Calendar,
   Users,
-  Settings,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -35,9 +34,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
     canAccessExpenses,
     canAccessReports,
     canAccessNotifications,
-    canAccessSettings,
     canAccessDashboard,
-    canAccessPayments,
   } = usePermissions();
   const { isPageVisible } = useGhPageVisibility();
 
@@ -45,7 +42,6 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
     { name: 'Bookings', icon: Calendar, path: '/bookings' },
     { name: 'Calendar', icon: CalendarDays, path: '/calendar' },
     { name: 'Customers', icon: Users, path: '/customers' },
-    ...(canAccessPayments ? [{ name: 'Payments', icon: Wallet, path: '/payments' }] : []),
     ...(canAccessExpenses ? [{ name: 'Expenses', icon: Wallet, path: '/expenses' }] : []),
     { name: 'Inventory', icon: Package, path: '/inventory' },
     { name: 'Decorations', icon: Sparkles, path: '/decoration-packages' },
@@ -58,7 +54,6 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
     { name: 'Stays', icon: CalendarCheck, path: '/gh/stays', pageKey: GH_PAGE_KEYS.STAYS },
     { name: 'Calendar', icon: CalendarDays, path: '/gh/calendar', pageKey: GH_PAGE_KEYS.CALENDAR },
     { name: 'Guests', icon: Users, path: '/gh/customers', pageKey: GH_PAGE_KEYS.CUSTOMERS },
-    ...(canAccessPayments ? [{ name: 'Payments', icon: Wallet, path: '/gh/payments', pageKey: GH_PAGE_KEYS.PAYMENTS }] : []),
     ...(canAccessExpenses ? [{ name: 'Expenses', icon: Wallet, path: '/gh/expenses', pageKey: GH_PAGE_KEYS.EXPENSES }] : []),
     ...(canAccessReports ? [{ name: 'Reports', icon: BarChart3, path: '/gh/reports', pageKey: GH_PAGE_KEYS.REPORTS }] : []),
     ...(canAccessNotifications ? [{ name: 'Notifications', icon: Bell, path: '/gh/notifications', pageKey: GH_PAGE_KEYS.NOTIFICATIONS }] : []),
@@ -68,8 +63,6 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
   const accountantNavItem = isGuestHouse
     ? { name: 'Dashboard', icon: Calculator, path: '/gh/dashboard', pageKey: GH_PAGE_KEYS.DASHBOARD }
     : { name: 'Accountant', icon: Calculator, path: '/dashboard' };
-
-  const settingsPath = isGuestHouse ? '/gh/settings' : '/settings';
   const brandSubtitle = isGuestHouse ? 'Guest House Management' : 'Marriage Hall Management';
 
   if (loading || !user) {
@@ -175,21 +168,6 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
 
       <div className="app-sidebar__footer">
         <ul className="app-sidebar__nav-list app-sidebar__nav-list--footer">
-          {canAccessSettings && (!isGuestHouse || isPageVisible(GH_PAGE_KEYS.SETTINGS)) && (
-            <li className="app-sidebar__nav-item">
-              <NavLink
-                to={settingsPath}
-                onClick={handleNavClick}
-                title="Settings"
-                className={({ isActive }) => navLinkClass(isActive)}
-              >
-                <Settings size={20} className="app-sidebar__nav-icon" aria-hidden />
-                {(!isCollapsed || isMobile) && (
-                  <span className="app-sidebar__nav-label">Settings</span>
-                )}
-              </NavLink>
-            </li>
-          )}
           <li className="app-sidebar__nav-item">
             <button
               type="button"
