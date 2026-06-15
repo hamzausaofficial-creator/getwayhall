@@ -121,7 +121,7 @@ export default function GallerySection({ images = [] }) {
                 <p className="landing-kicker">
                   {lightboxItem.category_label || lightboxItem.category}
                 </p>
-                <p className="landing-text-white font-bold text-xl">{lightboxItem.title}</p>
+                <p className="gallery-lightbox__caption-title">{lightboxItem.title}</p>
               </div>
             </motion.div>
           )}

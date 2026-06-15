@@ -2591,9 +2591,15 @@ html[data-page='landing'] body {
   align-items: center;
   justify-content: center;
   padding: 0.75rem 1rem;
-  background: rgba(0, 0, 0, 0.88);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.98) 0%,
+      rgba(250, 255, 247, 0.97) 48%,
+      rgba(247, 249, 251, 0.97) 100%
+    );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .gallery-lightbox__close,
@@ -2602,18 +2608,20 @@ html[data-page='landing'] body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.12);
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.08);
   border-radius: 9999px;
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .gallery-lightbox__close:hover,
 .gallery-lightbox__nav:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.28);
+  background: #f3fbea;
+  border-color: rgba(91, 213, 30, 0.35);
+  color: #15803d;
 }
 
 .gallery-lightbox__close {
@@ -2649,7 +2657,8 @@ html[data-page='landing'] body {
   max-width: min(90vw, 72rem);
   border-radius: 1rem;
   object-fit: contain;
-  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
 }
 
 .gallery-lightbox__caption {
@@ -2661,14 +2670,24 @@ html[data-page='landing'] body {
   max-width: min(90vw, 36rem);
   padding: 0.75rem 1.25rem;
   border-radius: 9999px;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
 
 .gallery-lightbox__caption .landing-kicker {
   margin-bottom: 0.2rem;
+  color: #64748b;
+}
+
+.gallery-lightbox__caption-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.3;
 }
 
 /* ============================================================
