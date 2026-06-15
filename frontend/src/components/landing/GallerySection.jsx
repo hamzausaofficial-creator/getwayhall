@@ -1,22 +1,24 @@
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, ImageIcon } from 'lucide-react';
 import { PhotoGallery } from '../ui/gallery';
 import { resolveMediaUrl } from '../../utils/media';
-import { getGalleryStockImage, isGenericHeroImage } from '../../utils/galleryPlaceholders';
-import { getLandingDefaults } from '../../utils/landingDefaults';
+import { getGalleryStockImage } from '../../utils/galleryPlaceholders';
 
 function resolveGallerySrc(img) {
-  if (img.image_url && !isGenericHeroImage(img.image_url)) {
+  if (img?.image_url) {
     return resolveMediaUrl(img.image_url);
   }
-  return getGalleryStockImage(img.category);
+  return getGalleryStockImage(img?.category || 'OTHER');
 }
 
 export default function GallerySection({ images = [] }) {
   const [lightbox, setLightbox] = useState(null);
-  const items = images.length ? images : getLandingDefaults().gallery;
+  const items = useMemo(
+    () => (images || []).filter((img) => img?.image_url),
+    [images],
+  );
 
   const galleryPhotos = useMemo(
     () => items.map((img, index) => ({
@@ -40,7 +42,17 @@ export default function GallerySection({ images = [] }) {
   }, [lightbox]);
 
   if (!items.length) {
-    return null;
+    return (
+      <section id="gallery" className="landing-section landing-section-white overflow-hidden">
+        <div className="landing-container" style={{ textAlign: 'center', padding: '4rem 0' }}>
+          <ImageIcon size={40} style={{ margin: '0 auto 1rem', color: '#cbd5e1' }} />
+          <p className="landing-text-muted" style={{ maxWidth: '28rem', margin: '0 auto' }}>
+            No gallery photos yet. Upload images in Django Admin → Gallery images.
+            On Railway, set CLOUDINARY_URL so uploads stay after deploy.
+          </p>
+        </div>
+      </section>
+    );
   }
 
   const close = () => setLightbox(null);

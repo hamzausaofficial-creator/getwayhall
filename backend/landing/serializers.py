@@ -1,14 +1,8 @@
 from rest_framework import serializers
 
+from core.media_urls import get_media_file_url
+
 from .models import HeroSlide, GalleryImage, Testimonial, LandingStatistic, LandingFAQ
-
-
-def _abs_url(request, file_field):
-    if not file_field:
-        return None
-    if request:
-        return request.build_absolute_uri(file_field.url)
-    return file_field.url
 
 
 class HeroSlideSerializer(serializers.ModelSerializer):
@@ -22,7 +16,7 @@ class HeroSlideSerializer(serializers.ModelSerializer):
         ]
 
     def get_background_image_url(self, obj):
-        return _abs_url(self.context.get('request'), obj.background_image)
+        return get_media_file_url(self.context.get('request'), obj.background_image)
 
 
 class GalleryImageSerializer(serializers.ModelSerializer):
@@ -34,7 +28,7 @@ class GalleryImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'category', 'category_label', 'image_url', 'sort_order']
 
     def get_image_url(self, obj):
-        return _abs_url(self.context.get('request'), obj.image)
+        return get_media_file_url(self.context.get('request'), obj.image)
 
 
 class TestimonialSerializer(serializers.ModelSerializer):
@@ -48,7 +42,7 @@ class TestimonialSerializer(serializers.ModelSerializer):
         ]
 
     def get_customer_photo_url(self, obj):
-        return _abs_url(self.context.get('request'), obj.customer_photo)
+        return get_media_file_url(self.context.get('request'), obj.customer_photo)
 
 
 class LandingStatisticSerializer(serializers.ModelSerializer):

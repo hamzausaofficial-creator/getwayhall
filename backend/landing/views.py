@@ -2,6 +2,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from django.db.models import Q
+
 from .models import HeroSlide, GalleryImage, Testimonial, LandingStatistic, LandingFAQ
 from .serializers import (
     HeroSlideSerializer,
@@ -30,7 +32,9 @@ class LandingContentView(APIView):
 
     def get(self, request):
         hero_slides = HeroSlide.objects.filter(is_active=True)
-        gallery = GalleryImage.objects.filter(is_active=True)
+        gallery = GalleryImage.objects.filter(is_active=True).exclude(
+            Q(image='') | Q(image__isnull=True),
+        )
         testimonials = Testimonial.objects.filter(is_active=True)
         statistics = LandingStatistic.objects.filter(is_active=True)
         faqs = LandingFAQ.objects.filter(is_active=True)
@@ -71,7 +75,5 @@ class LandingContentView(APIView):
             payload['faqs'] = get_default_landing_payload(request)['faqs']
         if not payload['testimonials']:
             payload['testimonials'] = get_default_landing_payload(request)['testimonials']
-        if not payload['gallery']:
-            payload['gallery'] = get_default_landing_payload(request)['gallery']
 
         return Response(payload)

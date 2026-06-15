@@ -2,27 +2,12 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AnimatedMarqueeHero } from '../ui/hero-3';
-import { resolveMediaUrl } from '../../utils/media';
-import { getGalleryStockImage, isGenericHeroImage, GALLERY_PLACEHOLDERS } from '../../utils/galleryPlaceholders';
+import { HERO_MARQUEE_STOCK_IMAGES } from '../../utils/galleryPlaceholders';
 import AnimatedCounter from './AnimatedCounter';
 
 const DEFAULT_TAGLINE = 'Trusted by venue owners across Pakistan';
 
-function resolveGallerySrc(img) {
-  if (img?.image_url && !isGenericHeroImage(img.image_url)) {
-    return resolveMediaUrl(img.image_url);
-  }
-  return getGalleryStockImage(img?.category || 'OTHER');
-}
-
-function buildMarqueeImages(galleryImages = []) {
-  if (galleryImages.length >= 4) {
-    return galleryImages.map(resolveGallerySrc);
-  }
-  return Object.values(GALLERY_PLACEHOLDERS).map((p) => p.stockImage);
-}
-
-export default function HeroSection({ slides = [], heroStats = [], galleryImages = [] }) {
+export default function HeroSection({ slides = [], heroStats = [] }) {
   const navigate = useNavigate();
   const items = slides.length ? slides : [{
     title: 'Manage Marriage Halls & Guest Houses With Ease',
@@ -42,7 +27,7 @@ export default function HeroSection({ slides = [], heroStats = [], galleryImages
     return () => clearInterval(t);
   }, [items.length, next]);
 
-  const marqueeImages = useMemo(() => buildMarqueeImages(galleryImages), [galleryImages]);
+  const marqueeImages = useMemo(() => HERO_MARQUEE_STOCK_IMAGES, []);
 
   const handlePrimary = () => {
     const link = current.button_link || '/login';

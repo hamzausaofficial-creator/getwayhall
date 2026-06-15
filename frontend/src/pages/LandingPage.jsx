@@ -49,7 +49,6 @@ export default function LandingPage() {
           <HeroSection
             slides={data.hero_slides}
             heroStats={heroStats}
-            galleryImages={data.gallery}
           />
           <TrustSection stats={trustStats} />
           <GallerySection images={data.gallery} />

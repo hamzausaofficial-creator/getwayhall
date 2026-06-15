@@ -48,6 +48,9 @@ export const GALLERY_PLACEHOLDERS = {
   },
 };
 
+/** Stock photos for hero marquee only — not tied to Django admin gallery uploads. */
+export const HERO_MARQUEE_STOCK_IMAGES = Object.values(GALLERY_PLACEHOLDERS).map((p) => p.stockImage);
+
 export function isGenericHeroImage(url) {
   if (!url) return true;
   const u = String(url).toLowerCase();
