@@ -137,3 +137,21 @@ class IsGhStaffOrAbove(permissions.BasePermission):
         if request.user.is_superuser:
             return True
         return getattr(request.user, 'role', None) in ('ADMIN', 'MANAGER', 'STAFF')
+
+
+class IsCustomerWritable(permissions.BasePermission):
+    """Customers: ADMIN/MANAGER full; STAFF read-only on Marriage Hall, create/update on Guest House."""
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser:
+            return True
+        role = getattr(request.user, 'role', None)
+        if request.method in permissions.SAFE_METHODS:
+            return role in ('ADMIN', 'MANAGER', 'STAFF')
+        if request.method == 'DELETE':
+            return role in ('ADMIN', 'MANAGER')
+        if role in ('ADMIN', 'MANAGER'):
+            return True
+        return role == 'STAFF' and _user_app_type(request.user) == GUEST_HOUSE_APP

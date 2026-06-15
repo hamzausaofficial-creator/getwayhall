@@ -1,4 +1,5 @@
 import { useAuth } from '../context/AuthContext';
+import { useAppType } from './useAppType';
 
 /**
  * Central role checks - use everywhere instead of inline user?.role.
@@ -6,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
  */
 export function usePermissions() {
   const { user, loading, isAuthenticated } = useAuth();
+  const { isGuestHouse } = useAppType();
   const cachedRole =
     typeof window !== 'undefined' ? localStorage.getItem('user_role') : '';
   const role = String(user?.role || cachedRole || '').toUpperCase();
@@ -17,6 +19,7 @@ export function usePermissions() {
     (isAuthenticated && !loading && user && !isAdmin && !isManager);
 
   const canManage = isAdmin || isManager;
+  const canOperate = canManage || (isGuestHouse && isStaff);
   const canCancelStay = isAdmin || isManager || isStaff;
 
   return {
@@ -26,7 +29,9 @@ export function usePermissions() {
     isAdmin,
     isManager,
     isStaff,
+    isGuestHouse,
     canManage,
+    canOperate,
     canCancelStay,
     canAccessExpenses: canManage,
     canAccessReports: canManage,
@@ -34,6 +39,6 @@ export function usePermissions() {
     canAccessStaff: isAdmin,
     canAccessSettings: canManage,
     canAccessDashboard: canManage,
-    canAccessPayments: canManage,
+    canAccessPayments: canManage || (isGuestHouse && isStaff),
   };
 }

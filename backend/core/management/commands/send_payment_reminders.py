@@ -6,6 +6,7 @@ from django.utils import timezone
 from bookings.models import Booking
 from core.models import Tenant, UserSettings
 from core.notifications.service import dispatch_customer_notification
+from guesthouse.models import StayBooking
 
 
 class Command(BaseCommand):
@@ -48,6 +49,31 @@ class Command(BaseCommand):
                     tenant=tenant,
                     booking=booking,
                     customer=booking.customer,
+                    channels=channels,
+                    message=msg,
+                    triggered_by=admin,
+                )
+                sent += len(logs)
+
+            gh_stays = StayBooking.objects.filter(
+                tenant=tenant,
+                check_in__gte=today,
+                check_in__lte=until,
+            ).exclude(status='CANCELLED').select_related('customer', 'room')
+
+            for stay in gh_stays:
+                due = float(stay.remaining_balance or 0)
+                if due <= 0:
+                    continue
+                msg = (
+                    f'Payment reminder: Rs {due:,.0f} due for stay in Room {stay.room.room_number} '
+                    f'({stay.check_in} to {stay.check_out}). Ref: {stay.booking_ref or stay.id}. '
+                    f'Gateway Guest House'
+                )
+                logs = dispatch_customer_notification(
+                    tenant=tenant,
+                    booking=None,
+                    customer=stay.customer,
                     channels=channels,
                     message=msg,
                     triggered_by=admin,

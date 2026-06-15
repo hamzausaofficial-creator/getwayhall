@@ -42,7 +42,7 @@ const emptyCustomer = {
 };
 
 export default function GhCustomers() {
-  const { canManage, canAccessPayments, canCancelStay } = usePermissions();
+  const { canOperate, canManage, canAccessPayments, canCancelStay } = usePermissions();
   const [cancelTarget, setCancelTarget] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -114,11 +114,11 @@ export default function GhCustomers() {
   }, [location.state?.selectedCustomerId, navigate]);
 
   useEffect(() => {
-    if (location.state?.openCreate && canManage) {
+    if (location.state?.openCreate && canOperate) {
       handleOpenFormModal();
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location.state?.openCreate, canManage, navigate, location.pathname]);
+  }, [location.state?.openCreate, canOperate, navigate, location.pathname]);
 
   useEffect(() => {
     if (selectedId) fetchSummary(selectedId);
@@ -146,7 +146,7 @@ export default function GhCustomers() {
   }, [customers]);
 
   const handleOpenFormModal = (customer = null) => {
-    if (!canManage) {
+    if (!canOperate) {
       toast.error('You do not have permission to modify customers.');
       return;
     }
@@ -281,7 +281,7 @@ export default function GhCustomers() {
               Manage guests, daily reservations, stay history, and balance due.
             </p>
           </div>
-          {canManage && (
+          {canOperate && (
             <div className="page-header__actions">
               <button type="button" className="btn-primary" onClick={() => handleOpenFormModal()}>
                 <UserPlus size={18} /> Add Guest
@@ -416,7 +416,7 @@ export default function GhCustomers() {
                 title={searchQuery ? 'No guests match your search' : 'No guests yet'}
                 description={searchQuery ? 'Try a different search term.' : 'Add your first guest to start booking stays.'}
                 action={
-                  canManage && !searchQuery ? (
+                  canOperate && !searchQuery ? (
                     <button type="button" className="btn-primary" onClick={() => handleOpenFormModal()} style={{ marginTop: 16 }}>
                       <UserPlus size={16} /> Add first guest
                     </button>
@@ -467,15 +467,15 @@ export default function GhCustomers() {
                         <p className="gh-cust-detail__sub">Guest profile & stay history</p>
                       </div>
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        {canOperate && (
+                          <button type="button" className="btn-secondary" onClick={() => handleOpenFormModal(selectedCustomer)} title="Edit" style={{ padding: '8px 10px' }}>
+                            <Edit2 size={16} />
+                          </button>
+                        )}
                         {canManage && (
-                          <>
-                            <button type="button" className="btn-secondary" onClick={() => handleOpenFormModal(selectedCustomer)} title="Edit" style={{ padding: '8px 10px' }}>
-                              <Edit2 size={16} />
-                            </button>
-                            <button type="button" onClick={() => handleDelete(selectedId)} title="Delete" style={{ padding: '8px 10px', background: 'transparent', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 8 }}>
-                              <Trash2 size={16} />
-                            </button>
-                          </>
+                          <button type="button" onClick={() => handleDelete(selectedId)} title="Delete" style={{ padding: '8px 10px', background: 'transparent', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 8 }}>
+                            <Trash2 size={16} />
+                          </button>
                         )}
                         <button type="button" onClick={() => navigate('/gh/customers')} title="Close" style={{ padding: '8px 10px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8 }}>
                           <X size={16} />
@@ -512,7 +512,7 @@ export default function GhCustomers() {
                       </div>
                     </div>
 
-                    {canManage && (
+                    {canOperate && (
                       <button
                         type="button"
                         className="btn-primary"
@@ -529,7 +529,7 @@ export default function GhCustomers() {
                       <div className="gh-cust-empty">
                         <BedDouble size={32} style={{ opacity: 0.25, marginBottom: 8 }} />
                         <p style={{ margin: 0, fontWeight: 600 }}>No stays for this guest yet</p>
-                        {canManage && (
+                        {canOperate && (
                           <button
                             type="button"
                             className="btn-primary"

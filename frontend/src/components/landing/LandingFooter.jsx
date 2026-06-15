@@ -1,10 +1,23 @@
+import { Link } from 'react-router-dom';
 import { Share2, MessageCircle, Globe, Mail } from 'lucide-react';
 import AppLogo from '../AppLogo';
 import { BRAND_FULL_NAME } from '../../constants/brand';
 
 const PRODUCT = ['Hall Booking', 'Guest House', 'Payments', 'Reports'];
-const COMPANY = ['About Us', 'Careers', 'Press Kit', 'Contact'];
+const COMPANY = [
+  { label: 'About Us', to: '/about' },
+  { label: 'Careers', href: '#' },
+  { label: 'Press Kit', href: '#' },
+  { label: 'Contact', href: 'mailto:support@gatewaymarriagehall.com' },
+];
 const SUPPORT = ['Help Center', 'Privacy Policy', 'Terms of Service', 'Cookie Settings'];
+
+function FooterLink({ item }) {
+  if (item.to) {
+    return <Link to={item.to}>{item.label}</Link>;
+  }
+  return <a href={item.href || '#'}>{item.label}</a>;
+}
 
 export default function LandingFooter() {
   return (
@@ -39,8 +52,8 @@ export default function LandingFooter() {
               <h5>{col.title}</h5>
               <ul>
                 {col.links.map((l) => (
-                  <li key={l}>
-                    <a href="#">{l}</a>
+                  <li key={typeof l === 'string' ? l : l.label}>
+                    {typeof l === 'string' ? <a href="#">{l}</a> : <FooterLink item={l} />}
                   </li>
                 ))}
               </ul>

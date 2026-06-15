@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon,
-  ChevronRight as ChevronRightIcon,
+  ChevronRight as ChevronRightIcon, X, User, BedDouble, CreditCard, Printer, Edit2, XCircle,
 } from 'lucide-react';
 import {
   format, addMonths, subMonths, addDays, startOfMonth, endOfMonth,
@@ -13,7 +13,9 @@ import toast from 'react-hot-toast';
 import AppLoader from '../../components/AppLoader';
 import { formatCollectDue, hasCollectDue } from '../../utils/currency';
 import { usePermissions } from '../../hooks/usePermissions';
+import { canCancelGhStay } from '../../utils/ghStay';
 import StatusBadge from '../../components/ui/StatusBadge';
+import CancelStayModal from '../../components/guesthouse/CancelStayModal';
 
 const STATUS_COLORS = {
   PENDING: '#fbbf24',
@@ -29,11 +31,13 @@ const openStay = (navigate, stay) => {
 
 export default function StayCalendar() {
   const navigate = useNavigate();
-  const { canManage } = usePermissions();
+  const { canOperate, canAccessPayments, canCancelStay } = usePermissions();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [stays, setStays] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedStay, setSelectedStay] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -70,7 +74,7 @@ export default function StayCalendar() {
   });
 
   const goToBook = (date = null) => {
-    if (!canManage) {
+    if (!canOperate) {
       toast.error('You do not have permission to create stays.');
       return;
     }
@@ -81,16 +85,18 @@ export default function StayCalendar() {
 
   const isFutureDay = (day) => !isBefore(startOfDay(day), startOfDay(new Date()));
 
+  const stayDue = (s) => Math.max(0, Number(s.total_amount) - Number(s.advance_paid));
+
   return (
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
           <h2 style={{ fontSize: 'clamp(22px, 4vw, 28px)', fontWeight: '800', margin: 0 }}>Stay Calendar</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '6px' }}>
-            Click a stay to open its full detail page. Double-click a future date to book.
+            Click a stay for quick actions. Double-click a future date to book.
           </p>
         </div>
-        {canManage && (
+        {canOperate && (
           <button type="button" className="btn-primary" onClick={() => goToBook()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Plus size={18} /> Book Stay
           </button>
@@ -124,7 +130,7 @@ export default function StayCalendar() {
                     key={day.toISOString()}
                     type="button"
                     onClick={() => setSelectedDate(day)}
-                    onDoubleClick={() => future && canManage && goToBook(day)}
+                    onDoubleClick={() => future && canOperate && goToBook(day)}
                     style={{
                       minHeight: '90px',
                       padding: '8px',
@@ -138,7 +144,7 @@ export default function StayCalendar() {
                   >
                     <span style={{ fontSize: '13px', fontWeight: '700', display: 'flex', justifyContent: 'space-between' }}>
                       {format(day, 'd')}
-                      {future && isSameMonth(day, currentDate) && canManage && (
+                      {future && isSameMonth(day, currentDate) && canOperate && (
                         <Plus size={12} color="var(--primary)" />
                       )}
                     </span>
@@ -148,12 +154,12 @@ export default function StayCalendar() {
                           key={s.id}
                           role="button"
                           tabIndex={0}
-                          onClick={(e) => { e.stopPropagation(); openStay(navigate, s); }}
+                          onClick={(e) => { e.stopPropagation(); setSelectedStay(s); }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
                               e.stopPropagation();
                               e.preventDefault();
-                              openStay(navigate, s);
+                              setSelectedStay(s);
                             }
                           }}
                           style={{
@@ -193,7 +199,7 @@ export default function StayCalendar() {
           {staysOnDay(selectedDate).length === 0 ? (
             <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)' }}>
               <p>No stays on this date.</p>
-              {canManage && (
+              {canOperate && (
                 <button
                   type="button"
                   className="btn-primary"
@@ -207,33 +213,24 @@ export default function StayCalendar() {
           ) : (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {staysOnDay(selectedDate).map((s) => {
-                const due = Math.max(0, Number(s.total_amount) - Number(s.advance_paid));
+                const due = stayDue(s);
                 return (
                   <li key={s.id}>
                     <button
                       type="button"
-                      onClick={() => openStay(navigate, s)}
+                      onClick={() => setSelectedStay(s)}
                       style={{
                         width: '100%',
                         textAlign: 'left',
                         padding: '14px',
                         borderRadius: '12px',
-                        border: '1px solid var(--border)',
+                        border: selectedStay?.id === s.id ? '2px solid var(--primary)' : '1px solid var(--border)',
                         background: 'var(--surface)',
                         cursor: 'pointer',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         gap: '10px',
-                        transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'rgba(91, 213, 30, 0.4)';
-                        e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--border)';
-                        e.currentTarget.style.boxShadow = 'none';
                       }}
                     >
                       <div style={{ minWidth: 0 }}>
@@ -260,6 +257,102 @@ export default function StayCalendar() {
           )}
         </div>
       </div>
+
+      {selectedStay && (
+        <div className="modal-overlay" onClick={() => setSelectedStay(null)}>
+          <div
+            className="card animate-fade-in"
+            style={{ width: '100%', maxWidth: '520px', padding: '28px', maxHeight: '90vh', overflowY: 'auto' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', gap: '12px' }}>
+              <div>
+                <p style={{ fontSize: '11px', fontWeight: '700', color: 'var(--primary)', fontFamily: 'monospace', marginBottom: '4px' }}>
+                  {selectedStay.booking_ref}
+                </p>
+                <h3 style={{ fontSize: '22px', fontWeight: '800', margin: 0 }}>{selectedStay.customer_name}</h3>
+                <div style={{ marginTop: '8px' }}><StatusBadge status={selectedStay.status} /></div>
+              </div>
+              <button type="button" onClick={() => setSelectedStay(null)} style={{ background: 'transparent', color: 'var(--text-muted)', padding: '4px' }}>
+                <X size={24} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px', fontSize: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <BedDouble size={16} color="var(--text-muted)" />
+                <span><strong>Room:</strong> {selectedStay.room_number}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <CalendarIcon size={16} color="var(--text-muted)" />
+                <span><strong>Stay:</strong> {selectedStay.check_in} → {selectedStay.check_out}</span>
+              </div>
+              <div style={{ padding: '14px', backgroundColor: 'var(--background)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                <p style={{ fontSize: '13px', marginBottom: '6px' }}><strong>Total:</strong> Rs {Number(selectedStay.total_amount || 0).toLocaleString()}</p>
+                <p style={{ fontSize: '13px', marginBottom: '6px' }}><strong>Paid:</strong> Rs {Number(selectedStay.advance_paid || 0).toLocaleString()}</p>
+                <p style={{ fontSize: '13px', color: hasCollectDue(stayDue(selectedStay)) ? '#b91c1c' : 'var(--text-dim)', fontWeight: '700' }}>
+                  <strong>Due:</strong> {formatCollectDue(stayDue(selectedStay))}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => openStay(navigate, selectedStay)}
+                style={{ width: '100%', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              >
+                <Edit2 size={18} /> View stay details
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => navigate(
+                  selectedStay.status === 'CANCELLED'
+                    ? `/gh/print/${selectedStay.id}?doc=cancellation`
+                    : `/gh/print/${selectedStay.id}`,
+                )}
+                style={{ width: '100%', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              >
+                <Printer size={18} /> Print documents
+              </button>
+              {canAccessPayments && hasCollectDue(stayDue(selectedStay)) && selectedStay.status !== 'CANCELLED' && (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => navigate('/gh/payments/new', { state: { preselectedStayId: selectedStay.id } })}
+                  style={{ width: '100%', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  <CreditCard size={18} /> Record payment
+                </button>
+              )}
+              {canCancelStay && canCancelGhStay(selectedStay) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCancelTarget(selectedStay);
+                    setSelectedStay(null);
+                  }}
+                  style={{ width: '100%', padding: '12px', background: 'transparent', color: '#b91c1c', fontWeight: '600', border: '1px solid #fecaca', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  <XCircle size={18} /> Cancel stay
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <CancelStayModal
+        stay={cancelTarget}
+        open={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onCancelled={() => {
+          setCancelTarget(null);
+          fetchCal();
+        }}
+      />
     </div>
   );
 }

@@ -180,7 +180,7 @@ function StayCard({ stay, today, canManage, canCancelStay, onOpen, onPay, onPrin
 
 const GuestHouseStays = () => {
   const navigate = useNavigate();
-  const { canManage, canAccessPayments, canCancelStay } = usePermissions();
+  const { canOperate, canManage, canAccessPayments, canCancelStay } = usePermissions();
   const [stays, setStays] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
@@ -282,7 +282,7 @@ const GuestHouseStays = () => {
   };
 
   const openCreate = () => {
-    if (!canManage) {
+    if (!canOperate) {
       toast.error('You do not have permission to create stays.');
       return;
     }
@@ -308,7 +308,7 @@ const GuestHouseStays = () => {
           <button type="button" className="btn-secondary" onClick={() => navigate('/gh/calendar')}>
             <CalendarDays size={18} /> Calendar
           </button>
-          {canManage && (
+          {canOperate && (
             <button type="button" className="btn-primary" onClick={openCreate}>
               <Plus size={18} /> Book Stay
             </button>
@@ -427,7 +427,7 @@ const GuestHouseStays = () => {
                 <button type="button" className="btn-secondary" onClick={() => navigate('/gh/settings?tab=records')}>
                   <Archive size={16} /> All Records
                 </button>
-                {canManage && (
+                {canOperate && (
                   <button type="button" className="btn-primary" onClick={openCreate}>
                     <Plus size={16} /> Book Stay
                   </button>
@@ -460,7 +460,7 @@ const GuestHouseStays = () => {
                 key={s.id}
                 stay={s}
                 today={today}
-                canManage={canManage}
+                canManage={canOperate}
                 canCancelStay={canCancelStay}
                 showDates={isSearching}
                 onOpen={() => navigate(`/gh/stays/${s.id}`)}

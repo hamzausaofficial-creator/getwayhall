@@ -21,12 +21,11 @@ const Notifications = () => {
   const { isGuestHouse } = useAppType();
   const { notifications, refresh: refreshActivity } = useNotifications();
   const [logs, setLogs] = useState([]);
-  const [loadingLogs, setLoadingLogs] = useState(!isGuestHouse);
+  const [loadingLogs, setLoadingLogs] = useState(true);
   const [filter, setFilter] = useState('ALL');
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchLogs = useCallback(async () => {
-    if (isGuestHouse) return;
     setLoadingLogs(true);
     try {
       const res = await client.get('/core/notifications/');
@@ -38,7 +37,7 @@ const Notifications = () => {
     } finally {
       setLoadingLogs(false);
     }
-  }, [isGuestHouse]);
+  }, []);
 
   useEffect(() => {
     fetchLogs();
@@ -46,7 +45,7 @@ const Notifications = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refreshActivity(), isGuestHouse ? Promise.resolve() : fetchLogs()]);
+    await Promise.all([refreshActivity(), fetchLogs()]);
     setRefreshing(false);
   };
 
@@ -101,7 +100,7 @@ const Notifications = () => {
           </h2>
           <p style={{ color: 'var(--text-muted)' }}>
             {isGuestHouse
-              ? 'Upcoming check-ins, balance due, and recent activity.'
+              ? 'Upcoming check-ins, balance due, activity, and customer SMS / WhatsApp messages.'
               : 'Alerts, bookings, payments, and customer SMS / WhatsApp messages.'}
           </p>
         </div>
@@ -162,8 +161,7 @@ const Notifications = () => {
         )}
       </section>
 
-      {!isGuestHouse && (
-        <section className="card table-scroll" style={{ padding: 0 }}>
+      <section className="card table-scroll" style={{ padding: 0 }}>
           <div
             style={{
               padding: '20px 24px',
@@ -242,7 +240,6 @@ const Notifications = () => {
             </table>
           )}
         </section>
-      )}
     </div>
   );
 };

@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PhotoGallery } from '../ui/gallery';
@@ -29,6 +30,15 @@ export default function GallerySection({ images = [] }) {
     [items],
   );
 
+  useEffect(() => {
+    if (lightbox === null) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [lightbox]);
+
   if (!items.length) {
     return null;
   }
@@ -58,68 +68,66 @@ export default function GallerySection({ images = [] }) {
         </motion.div>
       </div>
 
-      <AnimatePresence>
-        {lightbox !== null && lightboxItem && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 flex items-center justify-center p-3 sm:p-4"
-            style={{ zIndex: 100, backgroundColor: 'rgba(15, 23, 42, 0.97)', backdropFilter: 'blur(12px)' }}
-            onClick={close}
-          >
-            <button
-              type="button"
-              className="absolute top-5 right-5 landing-text-white p-2 rounded-full"
-              style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
+      {createPortal(
+        <AnimatePresence>
+          {lightbox !== null && lightboxItem && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="gallery-lightbox"
               onClick={close}
             >
-              <X size={24} />
-            </button>
-            {items.length > 1 && (
-              <>
-                <button
-                  type="button"
-                  className="absolute left-2 sm:left-4 landing-text-white p-2 sm:p-3 rounded-full"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
-                  onClick={(e) => { e.stopPropagation(); prev(); }}
-                >
-                  <ChevronLeft size={24} />
-                </button>
-                <button
-                  type="button"
-                  className="absolute right-2 sm:right-4 landing-text-white p-2 sm:p-3 rounded-full"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
-                  onClick={(e) => { e.stopPropagation(); next(); }}
-                >
-                  <ChevronRight size={24} />
-                </button>
-              </>
-            )}
-            <motion.img
-              key={lightbox}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              src={resolveGallerySrc(lightboxItem)}
-              alt={lightboxItem.title}
-              style={{
-                maxHeight: '85vh',
-                maxWidth: '90vw',
-                borderRadius: '1rem',
-                objectFit: 'contain',
-                boxShadow: '0 25px 80px rgba(0,0,0,0.5)',
-              }}
-              onClick={(e) => e.stopPropagation()}
-            />
-            <div className="absolute bottom-8" style={{ textAlign: 'center' }}>
-              <p className="landing-kicker" style={{ marginBottom: '0.25rem' }}>
-                {lightboxItem.category_label || lightboxItem.category}
-              </p>
-              <p className="landing-text-white font-bold text-xl">{lightboxItem.title}</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <button
+                type="button"
+                className="gallery-lightbox__close"
+                aria-label="Close gallery"
+                onClick={close}
+              >
+                <X size={24} />
+              </button>
+              {items.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="gallery-lightbox__nav gallery-lightbox__nav--prev"
+                    aria-label="Previous image"
+                    onClick={(e) => { e.stopPropagation(); prev(); }}
+                  >
+                    <ChevronLeft size={24} />
+                  </button>
+                  <button
+                    type="button"
+                    className="gallery-lightbox__nav gallery-lightbox__nav--next"
+                    aria-label="Next image"
+                    onClick={(e) => { e.stopPropagation(); next(); }}
+                  >
+                    <ChevronRight size={24} />
+                  </button>
+                </>
+              )}
+              <motion.img
+                key={lightbox}
+                initial={{ scale: 0.94, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.94, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="gallery-lightbox__image"
+                src={resolveGallerySrc(lightboxItem)}
+                alt={lightboxItem.title}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <div className="gallery-lightbox__caption" onClick={(e) => e.stopPropagation()}>
+                <p className="landing-kicker">
+                  {lightboxItem.category_label || lightboxItem.category}
+                </p>
+                <p className="landing-text-white font-bold text-xl">{lightboxItem.title}</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </section>
   );
 }

@@ -5,7 +5,7 @@ import {
   Printer, 
   ChevronLeft, 
   Sparkles, 
-  DollarSign, 
+  Wallet, 
   FileText, 
   Clock, 
   CheckCircle,
@@ -524,7 +524,7 @@ const PrintDocument = () => {
             ...(booking?.booking_status === 'CANCELLED' ? [
               { id: 'cancellation_notice', label: 'Cancellation Notice', icon: <XCircle size={14} />, desc: 'منسوخی کا نوٹس' },
             ] : [
-              { id: 'advance_receipt', label: 'Advance Receipt', icon: <DollarSign size={14} />, desc: 'ایڈوانس وصولی کی رسیڈ' },
+              { id: 'advance_receipt', label: 'Advance Receipt', icon: <Wallet size={14} />, desc: 'ایڈوانس وصولی کی رسیڈ' },
               { id: 'final_bill', label: 'Final Bill Summary', icon: <FileText size={14} />, desc: 'ایونٹ کا فائنل بل' },
               { id: 'operations_report', label: 'Setup & Logistics', icon: <Clock size={14} />, desc: 'تفصیلی رپورٹ' },
             ]),

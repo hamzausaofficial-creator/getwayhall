@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { DollarSign, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { Wallet, FileText, CheckCircle, XCircle } from 'lucide-react';
 import { getStay, listGhPayments } from '../../api/guesthouse';
 import { formatRs, formatCollectDuePKR } from '../../utils/currency';
 import GhPrintShell, { GhPrintHeader, GhPrintFooter } from '../../components/guesthouse/GhPrintShell';
@@ -93,7 +93,7 @@ export default function GhPrintStay() {
               cursor: 'pointer',
             }}
           >
-            {tab.id === 'advance' ? <DollarSign size={14} /> : tab.id === 'cancellation' ? <XCircle size={14} /> : <FileText size={14} />}
+            {tab.id === 'advance' ? <Wallet size={14} /> : tab.id === 'cancellation' ? <XCircle size={14} /> : <FileText size={14} />}
             {tab.label}
           </button>
         ))}

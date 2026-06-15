@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import DashboardLayout from './components/DashboardLayout';
 import Overview from './pages/dashboard/Overview';
 import LandingPage from './pages/LandingPage';
+import AboutPage from './pages/AboutPage';
 import LoginPage from './pages/LoginPage';
 import Bookings from './pages/Bookings';
 import BookingDetail from './pages/BookingDetail';
@@ -66,6 +67,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/about" element={<AboutPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<Navigate to="/login" replace />} />
 
@@ -125,7 +127,7 @@ function App() {
         >
           <Route path="/gh/dashboard" element={ghPage(GH_PAGE_KEYS.DASHBOARD, <StaffBlockedRoute><GuestHouseOverview /></StaffBlockedRoute>)} />
           <Route path="/gh/book" element={ghPage(GH_PAGE_KEYS.BOOK, <BookFutureStayPage />)} />
-          <Route path="/gh/stays/new" element={ghPage(GH_PAGE_KEYS.STAYS, <StayFormPage />)} />
+          <Route path="/gh/stays/new" element={<Navigate to="/gh/book" replace />} />
           <Route path="/gh/stays/:stayId/edit" element={ghPage(GH_PAGE_KEYS.STAYS, <StayFormPage />)} />
           <Route path="/gh/stays" element={ghPage(GH_PAGE_KEYS.STAYS, <GuestHouseStays />)} />
           <Route path="/gh/stays/:stayId" element={ghPage(GH_PAGE_KEYS.STAYS, <StayDetail />)} />

@@ -64,7 +64,7 @@ export default function StayFormPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { canManage } = usePermissions();
+  const { canOperate } = usePermissions();
   const isEdit = Boolean(stayId);
 
   const prefillCheckIn = location.state?.check_in || searchParams.get('check_in') || '';
@@ -182,11 +182,11 @@ export default function StayFormPage() {
   };
 
   useEffect(() => {
-    if (!canManage) {
+    if (!canOperate) {
       toast.error('You do not have permission to manage stays.');
       navigate('/gh/stays');
     }
-  }, [canManage, navigate]);
+  }, [canOperate, navigate]);
 
   useEffect(() => {
     const load = async () => {

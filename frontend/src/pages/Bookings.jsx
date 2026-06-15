@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import SearchInput from '../components/SearchInput';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
@@ -16,7 +16,6 @@ import {
   HelpCircle,
   ChevronRight,
   Sparkles,
-  DollarSign,
   Package
 } from 'lucide-react';
 import client from '../api/client';
@@ -25,6 +24,9 @@ import toast from 'react-hot-toast';
 import { customerDisplayName, buildCustomerPayload } from '../utils/customer';
 import { usePermissions } from '../hooks/usePermissions';
 import CancelBookingModal from '../components/bookings/CancelBookingModal';
+import CnicScannerPanel from '../components/guesthouse/CnicScannerPanel';
+import ScannedGuestPanel from '../components/guesthouse/ScannedGuestPanel';
+import { resolveGuestFromIdScan, isPhoneCompleteForAutoSave, saveGuestFromDraft } from '../utils/idCardCustomer';
 
 const BOOKING_STATUS_STYLE = {
   PENDING: { bg: '#fef3c7', color: '#92400e', label: 'Pending' },
@@ -100,6 +102,10 @@ const Bookings = () => {
   });
 
   const [bookingError, setBookingError] = useState('');
+  const [scanProcessing, setScanProcessing] = useState(false);
+  const [scannedClient, setScannedClient] = useState(null);
+  const [savingScannedClient, setSavingScannedClient] = useState(false);
+  const savingClientRef = useRef(false);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -176,6 +182,102 @@ const Bookings = () => {
     setEditingId(null);
     setSelectedDecorationId('');
     setInventoryLines([]);
+    setScannedClient(null);
+    setScanProcessing(false);
+    setSavingScannedClient(false);
+  };
+
+  const selectClientFromScan = (customer) => {
+    setCustomers((prev) => {
+      const exists = prev.some((c) => c.id === customer.id);
+      return exists ? prev.map((c) => (c.id === customer.id ? customer : c)) : [...prev, customer];
+    });
+    setFormData((prev) => ({
+      ...prev,
+      customer: String(customer.id),
+      cnic: customer.cnic || prev.cnic,
+    }));
+    setNewCustomerMode(false);
+    setScannedClient(null);
+    setNewCustomer({
+      full_name: '',
+      cnic: '',
+      email: '',
+      phone: '',
+      address: '',
+    });
+    toast.success(`Client selected: ${customerDisplayName(customer)}`, { id: 'booking-id-scan' });
+  };
+
+  const saveClientFromScan = async (clientDraft) => {
+    if (savingClientRef.current) return false;
+    savingClientRef.current = true;
+    setSavingScannedClient(true);
+    try {
+      const result = await saveGuestFromDraft(clientDraft);
+      if (!result.ok) {
+        toast.error(result.error || 'Please complete all required fields');
+        return false;
+      }
+      selectClientFromScan(result.customer);
+      if (result.created) {
+        toast.success(`New client saved: ${customerDisplayName(result.customer)}`, { id: 'booking-id-scan' });
+      }
+      return true;
+    } catch (err) {
+      const data = err.response?.data;
+      const msg = data?.cnic?.[0] || data?.phone?.[0] || data?.detail || 'Failed to save client';
+      toast.error(msg);
+      return false;
+    } finally {
+      savingClientRef.current = false;
+      setSavingScannedClient(false);
+    }
+  };
+
+  const handleIdScan = async (parsed) => {
+    if (scanProcessing || isEdit) return;
+    setScannedClient(null);
+    setScanProcessing(true);
+    try {
+      const result = await resolveGuestFromIdScan(parsed, { customers });
+      if (result.status === 'invalid') {
+        toast.error('Could not read ID card. Scan again or upload a clearer photo.');
+        return;
+      }
+      if (result.status === 'existing') {
+        selectClientFromScan(result.customer);
+        return;
+      }
+      if (result.status === 'created') {
+        selectClientFromScan(result.customer);
+        toast.success(`New client saved: ${customerDisplayName(result.customer)}`, { id: 'booking-id-scan' });
+        return;
+      }
+      setScannedClient(result.draft);
+      setNewCustomer({ ...result.draft });
+      setNewCustomerMode(true);
+      toast('ID card read — check fields and add phone', { id: 'booking-id-scan', icon: 'ℹ️' });
+    } catch {
+      toast.error('Failed to process ID card');
+    } finally {
+      setScanProcessing(false);
+    }
+  };
+
+  const handleScannedClientChange = (field, value) => {
+    setScannedClient((prev) => (prev ? { ...prev, [field]: value } : prev));
+    setNewCustomer((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleScannedClientPhoneChange = async (value) => {
+    if (!scannedClient) return;
+    const next = { ...scannedClient, phone: value };
+    setScannedClient(next);
+    setNewCustomer((prev) => ({ ...prev, phone: value }));
+    if (isPhoneCompleteForAutoSave(value)) {
+      await saveClientFromScan(next);
+    }
   };
 
   const loadBookingInventory = async (bookingId) => {
@@ -766,10 +868,10 @@ const Bookings = () => {
                     {/* Selector toggle */}
                     {!isEdit && (
                       <div style={{ display: 'flex', backgroundColor: 'var(--toggle-track)', borderRadius: '8px', padding: '2px' }}>
-                        <button type="button" onClick={() => setNewCustomerMode(false)} style={{ fontSize: '11px', fontWeight: '700', padding: '6px 12px', borderRadius: '6px', backgroundColor: !newCustomerMode ? 'var(--surface)' : 'transparent', color: !newCustomerMode ? 'var(--secondary)' : 'var(--text-dim)', boxShadow: !newCustomerMode ? 'var(--shadow-sm)' : 'none' }}>
+                        <button type="button" onClick={() => { setNewCustomerMode(false); setScannedClient(null); }} style={{ fontSize: '11px', fontWeight: '700', padding: '6px 12px', borderRadius: '6px', backgroundColor: !newCustomerMode ? 'var(--surface)' : 'transparent', color: !newCustomerMode ? 'var(--secondary)' : 'var(--text-dim)', boxShadow: !newCustomerMode ? 'var(--shadow-sm)' : 'none' }}>
                           Select Client
                         </button>
-                        <button type="button" onClick={() => setNewCustomerMode(true)} style={{ fontSize: '11px', fontWeight: '700', padding: '6px 12px', borderRadius: '6px', backgroundColor: newCustomerMode ? 'var(--surface)' : 'transparent', color: newCustomerMode ? 'var(--secondary)' : 'var(--text-dim)', boxShadow: newCustomerMode ? 'var(--shadow-sm)' : 'none' }}>
+                        <button type="button" onClick={() => { setNewCustomerMode(true); setScannedClient(null); }} style={{ fontSize: '11px', fontWeight: '700', padding: '6px 12px', borderRadius: '6px', backgroundColor: newCustomerMode ? 'var(--surface)' : 'transparent', color: newCustomerMode ? 'var(--secondary)' : 'var(--text-dim)', boxShadow: newCustomerMode ? 'var(--shadow-sm)' : 'none' }}>
                           + Add Client
                         </button>
                       </div>
@@ -804,51 +906,69 @@ const Bookings = () => {
                         )}
                       </div>
                     ) : (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                        <div className="input-group">
-                          <label>Full Name</label>
-                          <input type="text" required placeholder="e.g. Muhammad Ali Khan" value={newCustomer.full_name} onChange={(e) => setNewCustomer({ ...newCustomer, full_name: e.target.value })} />
-                        </div>
-                        <div className="input-group">
-                          <label>CNIC</label>
-                          <input type="text" placeholder="e.g. 35202-1234567-9" value={newCustomer.cnic} onChange={(e) => setNewCustomer({ ...newCustomer, cnic: e.target.value })} style={{ fontFamily: 'monospace' }} />
-                        </div>
-                        <div className="input-group">
-                          <label>Phone Number</label>
-                          <input type="tel" required placeholder="+92 300 0000000" value={newCustomer.phone} onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} />
-                        </div>
-                        <div className="input-group">
-                          <label>Email Address <span style={{ fontWeight: '400', color: 'var(--text-muted)' }}>(optional)</span></label>
-                          <input type="email" placeholder="example@gmail.com" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} />
-                        </div>
-                        <div className="input-group" style={{ gridColumn: 'span 2' }}>
-                          <label>Residential Address</label>
-                          <textarea rows="2" placeholder="Street address, City, Province" value={newCustomer.address} onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })} style={{ resize: 'none' }}></textarea>
-                        </div>
-                        <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
-                          <button 
-                            type="button" 
-                            onClick={handleSaveNewCustomerInline} 
-                            style={{
-                              backgroundColor: 'var(--primary)',
-                              color: 'white',
-                              padding: '10px 20px',
-                              borderRadius: '8px',
-                              fontSize: '13px',
-                              fontWeight: '700',
-                              border: 'none',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              boxShadow: 'var(--shadow-sm)',
-                              transition: 'opacity 0.2s'
-                            }}
-                            className="hover:opacity-90"
-                          >
-                            <Plus size={16} /> Save & Select Client
-                          </button>
-                        </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        <CnicScannerPanel
+                          onScan={handleIdScan}
+                          disabled={scanProcessing || savingScannedClient}
+                        />
+                        {scannedClient ? (
+                          <ScannedGuestPanel
+                            draft={scannedClient}
+                            loading={scanProcessing}
+                            saving={savingScannedClient}
+                            onChange={handleScannedClientChange}
+                            onPhoneChange={handleScannedClientPhoneChange}
+                            onSave={() => saveClientFromScan(scannedClient)}
+                            onCancel={() => setScannedClient(null)}
+                          />
+                        ) : (
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                            <div className="input-group">
+                              <label>Full Name</label>
+                              <input type="text" required placeholder="e.g. Muhammad Ali Khan" value={newCustomer.full_name} onChange={(e) => setNewCustomer({ ...newCustomer, full_name: e.target.value })} />
+                            </div>
+                            <div className="input-group">
+                              <label>CNIC</label>
+                              <input type="text" placeholder="e.g. 35202-1234567-9" value={newCustomer.cnic} onChange={(e) => setNewCustomer({ ...newCustomer, cnic: e.target.value })} style={{ fontFamily: 'monospace' }} />
+                            </div>
+                            <div className="input-group">
+                              <label>Phone Number</label>
+                              <input type="tel" required placeholder="+92 300 0000000" value={newCustomer.phone} onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} />
+                            </div>
+                            <div className="input-group">
+                              <label>Email Address <span style={{ fontWeight: '400', color: 'var(--text-muted)' }}>(optional)</span></label>
+                              <input type="email" placeholder="example@gmail.com" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} />
+                            </div>
+                            <div className="input-group" style={{ gridColumn: 'span 2' }}>
+                              <label>Residential Address</label>
+                              <textarea rows="2" placeholder="Street address, City, Province" value={newCustomer.address} onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })} style={{ resize: 'none' }}></textarea>
+                            </div>
+                            <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                              <button
+                                type="button"
+                                onClick={handleSaveNewCustomerInline}
+                                style={{
+                                  backgroundColor: 'var(--primary)',
+                                  color: 'white',
+                                  padding: '10px 20px',
+                                  borderRadius: '8px',
+                                  fontSize: '13px',
+                                  fontWeight: '700',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  boxShadow: 'var(--shadow-sm)',
+                                  transition: 'opacity 0.2s',
+                                }}
+                                className="hover:opacity-90"
+                              >
+                                <Plus size={16} /> Save & Select Client
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

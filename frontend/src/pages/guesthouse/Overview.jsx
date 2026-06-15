@@ -88,7 +88,7 @@ const normalizeStats = (data) => ({
 export default function GuestHouseOverview() {
   const navigate = useNavigate();
   const { user, loading: authLoading, isAuthenticated } = useAuth();
-  const { canAccessPayments } = usePermissions();
+  const { canOperate, canAccessPayments } = usePermissions();
   const [stats, setStats] = useState(EMPTY_STATS);
   const [alerts, setAlerts] = useState({ upcoming_checkins: [], payment_due: [] });
   const [isLoading, setIsLoading] = useState(true);
@@ -274,12 +274,16 @@ export default function GuestHouseOverview() {
       </section>
 
       <div className="dash-quick-actions">
-        <button type="button" className="dash-btn dash-btn--primary" onClick={() => navigate('/gh/book')}>
-          <Plus size={16} /> Book future stay
-        </button>
-        <button type="button" className="dash-btn dash-btn--secondary" onClick={() => navigate('/gh/customers')}>
-          <UserPlus size={16} /> Add customer
-        </button>
+        {canOperate && (
+          <button type="button" className="dash-btn dash-btn--primary" onClick={() => navigate('/gh/book')}>
+            <Plus size={16} /> Book future stay
+          </button>
+        )}
+        {canOperate && (
+          <button type="button" className="dash-btn dash-btn--secondary" onClick={() => navigate('/gh/customers', { state: { openCreate: true } })}>
+            <UserPlus size={16} /> Add customer
+          </button>
+        )}
         {canAccessPayments && (
           <button type="button" className="dash-btn dash-btn--secondary" onClick={() => navigate('/gh/payments/new')}>
             <CreditCard size={16} /> Record payment

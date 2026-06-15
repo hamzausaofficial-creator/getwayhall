@@ -94,7 +94,7 @@ export default function StayDetail() {
   const { stayId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { canManage, canAccessPayments, canCancelStay } = usePermissions();
+  const { canOperate, canAccessPayments, canCancelStay } = usePermissions();
   const backTo = location.state?.from || '/gh/stays';
   const backLabel = location.state?.fromLabel || 'Back to stays';
   const [stay, setStay] = useState(null);
@@ -205,9 +205,9 @@ export default function StayDetail() {
 
   const { due, total, paid, paidPct } = billing;
   const isCancelled = stay.status === 'CANCELLED';
-  const canAct = canManage && !isCancelled && stay.status !== 'CHECKED_OUT';
+  const canAct = canOperate && !isCancelled && stay.status !== 'CHECKED_OUT';
   const showCancel = canCancelStay && canCancelGhStay(stay);
-  const canAddCharges = canManage && !isCancelled && stay.status !== 'CHECKED_OUT';
+  const canAddCharges = canOperate && !isCancelled && stay.status !== 'CHECKED_OUT';
   const handleAddCharge = async (e) => {
     e.preventDefault();
     const desc = chargeDesc.trim();
@@ -291,7 +291,7 @@ export default function StayDetail() {
               <FileText size={16} /> Invoice
             </button>
           )}
-          {canManage && !isCancelled && (
+          {canOperate && !isCancelled && (
             <button type="button" className="btn-secondary" onClick={() => navigate(`/gh/stays/${stay.id}/edit`)}>
               <Edit2 size={16} /> Edit
             </button>

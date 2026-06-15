@@ -11,7 +11,7 @@ import {
   Trash2,
   Edit2,
   X,
-  DollarSign,
+  Wallet,
   Briefcase,
   FileText,
   Percent,
@@ -195,7 +195,7 @@ const Expenses = () => {
         <div className="premium-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div style={{ padding: '12px', backgroundColor: 'var(--primary-light)', borderRadius: '12px', color: 'var(--primary)' }}>
-              <DollarSign size={24} />
+              <Wallet size={24} />
             </div>
           </div>
           <div style={{ marginTop: '20px' }}>

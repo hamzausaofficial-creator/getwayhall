@@ -7,7 +7,7 @@ from django.db.models.functions import Greatest
 from decimal import Decimal
 
 from core.mixins import TenantQuerysetMixin, TenantAssignMixin
-from core.permissions import IsAdminOrManagerOrReadOnly, IsTenantOwner
+from core.permissions import IsCustomerWritable, IsTenantOwner
 from .models import Customer
 from .serializers import CustomerSerializer
 from bookings.models import Booking
@@ -17,7 +17,7 @@ from bookings.serializers import BookingSerializer
 class CustomerViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewSet):
     queryset = Customer.objects.all().order_by('-created_at')
     serializer_class = CustomerSerializer
-    permission_classes = [IsAdminOrManagerOrReadOnly, IsTenantOwner]
+    permission_classes = [IsCustomerWritable, IsTenantOwner]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['full_name', 'first_name', 'last_name', 'cnic', 'email', 'phone']
     ordering_fields = ['created_at', 'last_name']

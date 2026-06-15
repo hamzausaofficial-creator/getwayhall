@@ -17,6 +17,7 @@ import CustomerSearchSelect from '../../components/CustomerSearchSelect';
 import CnicScannerPanel from '../../components/guesthouse/CnicScannerPanel';
 import ScannedGuestPanel from '../../components/guesthouse/ScannedGuestPanel';
 import { formatRs } from '../../utils/currency';
+import { resolveMediaUrl } from '../../utils/media';
 import { customerDisplayName } from '../../utils/customer';
 import {
   resolveGuestFromIdScan,
@@ -60,7 +61,7 @@ export default function BookFutureStayPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { canManage } = usePermissions();
+  const { canOperate } = usePermissions();
 
   const prefillCheckIn = location.state?.check_in || searchParams.get('check_in') || '';
   const prefillCheckOut = location.state?.check_out || searchParams.get('check_out') || '';
@@ -99,11 +100,11 @@ export default function BookFutureStayPage() {
   };
 
   useEffect(() => {
-    if (!canManage) {
+    if (!canOperate) {
       toast.error('You do not have permission to book stays.');
       navigate('/gh/calendar');
     }
-  }, [canManage, navigate]);
+  }, [canOperate, navigate]);
 
   useEffect(() => {
     const loadCustomers = async () => {
@@ -586,7 +587,7 @@ export default function BookFutureStayPage() {
                         onClick={() => !isBooked && setForm({ ...form, room: String(r.id) })}
                         style={{
                           textAlign: 'left',
-                          padding: '18px',
+                          padding: r.image ? '0' : '18px',
                           borderRadius: '14px',
                           border: isBooked ? '1px solid #fecaca' : selected ? '2px solid var(--primary)' : '1px solid var(--border)',
                           background: isBooked ? '#fef2f2' : selected ? 'var(--primary-light)' : 'var(--surface)',
@@ -594,8 +595,19 @@ export default function BookFutureStayPage() {
                           opacity: isBooked ? 0.75 : 1,
                           transition: 'all 0.15s ease',
                           boxShadow: selected && !isBooked ? '0 4px 16px rgba(91, 213, 30, 0.15)' : 'none',
+                          overflow: 'hidden',
                         }}
                       >
+                        {r.image && (
+                          <div style={{ height: '110px', overflow: 'hidden', background: 'var(--surface-muted)' }}>
+                            <img
+                              src={resolveMediaUrl(r.image)}
+                              alt={`Room ${r.room_number}`}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                            />
+                          </div>
+                        )}
+                        <div style={{ padding: r.image ? '14px 16px 16px' : 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px', gap: 8 }}>
                           <span style={{ fontSize: '18px', fontWeight: '900', color: isBooked ? '#b91c1c' : selected ? 'var(--primary)' : 'var(--secondary)' }}>
                             {r.room_number}
@@ -613,6 +625,7 @@ export default function BookFutureStayPage() {
                           {formatRs(r.price_per_night)}
                           <span style={{ fontSize: '11px', fontWeight: '500', color: 'var(--text-muted)' }}> / night</span>
                         </p>
+                        </div>
                       </button>
                     );
                   })}

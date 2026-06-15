@@ -5,6 +5,7 @@ DEFAULT_GH_PAGES = (
     ('stays', 'Stays', 20),
     ('calendar', 'Calendar', 30),
     ('rooms', 'Rooms', 40),
+    ('services', 'Add-on Services', 45),
     ('customers', 'Guest Directory', 50),
     ('records', 'All Records', 55),
     ('payments', 'Payments & Collections', 60),

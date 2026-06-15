@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { 
   User, 
@@ -14,9 +14,14 @@ import {
   BadgeCheck,
   Archive,
   Snowflake,
+  Camera,
+  Mail,
+  AtSign,
+  Lock,
 } from 'lucide-react';
 import client from '../api/client';
-import { changePassword, updateMe } from '../api/auth';
+import { changePassword, updateMe, uploadAvatar } from '../api/auth';
+import { useAuth } from '../context/AuthContext';
 import { getTenant, updateTenant, getUserSettings, updateUserSettings } from '../api/core';
 import toast from 'react-hot-toast';
 import { useTheme } from '../context/ThemeContext';
@@ -31,10 +36,41 @@ import Staff from './Staff';
 import AllRecords from './guesthouse/AllRecords';
 import { useGhPageVisibility } from '../context/GhPageVisibilityContext';
 import { GH_PAGE_KEYS } from '../constants/ghPages';
+import { resolveMediaUrl } from '../utils/media';
+import StatusBadge from '../components/ui/StatusBadge';
 
 const formatDateTime = (value) => {
   if (!value) return 'Never';
   return new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+};
+
+const profileInitials = (user) => {
+  const first = user?.first_name?.[0] || '';
+  const last = user?.last_name?.[0] || '';
+  const combined = `${first}${last}`.toUpperCase();
+  if (combined) return combined;
+  return user?.username?.[0]?.toUpperCase() || 'A';
+};
+
+const formatRole = (role) => {
+  if (!role) return 'Staff';
+  return String(role)
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
+const TAB_HEADINGS = {
+  Profile: { title: 'My profile', subtitle: 'Update your photo, display name, and view account details.' },
+  Halls: { title: 'Hall management', subtitle: 'Venues, capacity, and pricing for Marriage Hall bookings.' },
+  Rooms: { title: 'Room management', subtitle: 'Rooms, rates, and availability for guest stays.' },
+  'Add-on Services': { title: 'Add-on services', subtitle: 'AC, breakfast, laundry, and other extras when booking stays.' },
+  Staff: { title: 'Staff management', subtitle: 'Team accounts, roles, and access for your organization.' },
+  'All Records': { title: 'All records', subtitle: 'Reservations, payments, and expense vouchers in one ledger.' },
+  'Venue Info': { title: 'Venue information', subtitle: 'Official name, contact details, and plan for your organization.' },
+  Notifications: { title: 'Notifications', subtitle: 'In-app alerts and customer SMS / WhatsApp preferences.' },
+  Security: { title: 'Security', subtitle: 'Password, last login, and account status.' },
+  System: { title: 'System', subtitle: 'Theme, language, and timezone preferences.' },
 };
 
 const parseApiError = (err) => {
@@ -63,8 +99,11 @@ const TAB_FROM_PARAM = {
 
 const Settings = () => {
   const { theme, setThemeMode } = useTheme();
+  const { refreshUser: syncAuthUser } = useAuth();
   const { isMarriageHall, isGuestHouse } = useAppType();
   const { isAdmin } = usePermissions();
+  const avatarInputRef = useRef(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const { isPageVisible } = useGhPageVisibility();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
@@ -177,9 +216,31 @@ const Settings = () => {
     else setSearchParams({});
   };
 
-  const refreshUser = async () => {
+  const reloadUserData = async () => {
     const userRes = await client.get('/auth/me/');
     setUserData(userRes.data);
+    return userRes.data;
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image must be smaller than 2MB.');
+      return;
+    }
+    setAvatarUploading(true);
+    try {
+      await uploadAvatar(file);
+      const updated = await syncAuthUser();
+      setUserData(updated);
+      toast.success('Profile photo updated.');
+    } catch {
+      toast.error('Failed to upload photo.');
+    } finally {
+      setAvatarUploading(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
   };
 
   const handleChangePassword = async () => {
@@ -203,7 +264,7 @@ const Settings = () => {
       await changePassword({ current_password, new_password, confirm_password });
       toast.success('Password updated successfully.');
       setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
-      await refreshUser();
+      await reloadUserData();
     } catch (err) {
       toast.error(parseApiError(err));
     } finally {
@@ -212,10 +273,15 @@ const Settings = () => {
   };
 
   const handleSaveProfile = async () => {
+    if (!profileForm.first_name?.trim() || !profileForm.last_name?.trim()) {
+      toast.error('First name and last name are required.');
+      return;
+    }
     setIsSaving(true);
     try {
       const updated = await updateMe(profileForm);
       setUserData(updated);
+      await syncAuthUser();
       toast.success('Profile updated.');
     } catch (err) {
       toast.error(parseApiError(err));
@@ -277,7 +343,7 @@ const Settings = () => {
     { name: 'Profile', icon: User },
     ...(isMarriageHall ? [{ name: 'Halls', icon: LayoutGrid }] : []),
     ...(isGuestHouse && isPageVisible(GH_PAGE_KEYS.ROOMS) ? [{ name: 'Rooms', icon: BedDouble }] : []),
-    ...(isGuestHouse ? [{ name: 'Add-on Services', icon: Snowflake }] : []),
+    ...(isGuestHouse && isPageVisible(GH_PAGE_KEYS.SERVICES) ? [{ name: 'Add-on Services', icon: Snowflake }] : []),
     ...(isGuestHouse && isPageVisible(GH_PAGE_KEYS.RECORDS) ? [{ name: 'All Records', icon: Archive }] : []),
     ...(isAdmin && (!isGuestHouse || isPageVisible(GH_PAGE_KEYS.STAFF)) ? [{ name: 'Staff', icon: BadgeCheck }] : []),
     { name: 'Venue Info', icon: Building2 },
@@ -286,13 +352,15 @@ const Settings = () => {
     { name: 'System', icon: Globe },
   ];
 
-  const InputGroup = ({ label, children, description }) => (
-    <div style={{ marginBottom: '24px' }}>
-      <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>{label}</label>
-      {children}
-      {description && <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>{description}</p>}
+  const InputGroup = ({ label, children, description, readOnly = false }) => (
+    <div className={`settings-field${readOnly ? ' settings-field--readonly' : ''}`}>
+      <label className="settings-field__label">{label}</label>
+      <div className="settings-field__control">{children}</div>
+      {description && <p className="settings-field__hint">{description}</p>}
     </div>
   );
+
+  const panelHeading = TAB_HEADINGS[activeTab] || { title: `${activeTab} settings`, subtitle: '' };
 
   const Toggle = ({ active, onClick }) => (
     <div 
@@ -332,51 +400,27 @@ const Settings = () => {
 
       <div className="settings-layout">
         {/* Navigation Sidebar */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {tabs.map(tab => (
+        <nav className="settings-nav" aria-label="Settings sections">
+          {tabs.map((tab) => (
             <button
               key={tab.name}
+              type="button"
               onClick={() => handleTabChange(tab.name)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px 16px',
-                borderRadius: 'var(--radius-md)',
-                backgroundColor: activeTab === tab.name ? 'var(--primary-light)' : 'transparent',
-                color: activeTab === tab.name ? 'var(--primary)' : 'var(--text-muted)',
-                fontWeight: activeTab === tab.name ? '700' : '500',
-                fontSize: '14px',
-                textAlign: 'left'
-              }}
+              className={`settings-nav-item${activeTab === tab.name ? ' settings-nav-item--active' : ''}`}
             >
-              <tab.icon size={18} />
+              <tab.icon size={18} aria-hidden />
               {tab.name}
             </button>
           ))}
-        </div>
+        </nav>
 
         {/* Content Area */}
-        <div className={`card settings-panel-card${['Halls', 'Rooms', 'Add-on Services', 'Staff', 'All Records'].includes(activeTab) ? ' settings-panel-card--wide' : ''}`}>
+        <div className={`card settings-panel-card${['Halls', 'Rooms', 'Add-on Services', 'Staff', 'All Records'].includes(activeTab) ? ' settings-panel-card--wide' : ''}${activeTab === 'Profile' ? ' settings-panel-card--profile' : ''}`}>
           <div className="settings-panel-card__head">
             <div style={{ minWidth: 0 }}>
-              <h3 className="settings-panel-card__title">
-                {activeTab === 'Halls' ? 'Hall Management'
-                  : activeTab === 'Rooms' ? 'Room Management'
-                  : activeTab === 'Add-on Services' ? 'Add-on Services'
-                  : activeTab === 'Staff' ? 'Staff Management'
-                  : activeTab === 'All Records' ? 'All Records'
-                  : `${activeTab} Settings`}
-              </h3>
-              {activeTab === 'Add-on Services' && (
-                <p className="settings-panel-card__subtitle">
-                  AC, breakfast, laundry, and other extras available when booking stays.
-                </p>
-              )}
-              {activeTab === 'All Records' && (
-                <p className="settings-panel-card__subtitle">
-                  Reservations, payments, and expense vouchers in one searchable ledger.
-                </p>
+              <h3 className="settings-panel-card__title">{panelHeading.title}</h3>
+              {panelHeading.subtitle && (
+                <p className="settings-panel-card__subtitle">{panelHeading.subtitle}</p>
               )}
             </div>
             {showSaveButton && (
@@ -414,47 +458,110 @@ const Settings = () => {
             )}
 
             {activeTab === 'Profile' && (
-              <div className="animate-fade-in">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginBottom: '32px', padding: '24px', backgroundColor: 'var(--background)', borderRadius: '16px' }}>
-                  <div style={{ position: 'relative' }}>
-                    <div style={{ width: '100px', height: '100px', borderRadius: '24px', backgroundColor: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <User size={48} color="var(--primary)" />
-                    </div>
-                  </div>
-                  <div>
-                    <h4 style={{ fontSize: '18px', fontWeight: '700' }}>{userData?.first_name} {userData?.last_name}</h4>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>{userData?.role} at {tenantData?.name}</p>
-                    <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
-                      <span style={{ fontSize: '12px', padding: '2px 8px', backgroundColor: 'var(--surface)', borderRadius: '4px', border: '1px solid var(--border)' }}>{userData?.role}</span>
-                      <span style={{ fontSize: '12px', padding: '2px 8px', backgroundColor: 'var(--surface)', borderRadius: '4px', border: '1px solid var(--border)' }}>Active</span>
+              <div className="settings-profile animate-fade-in">
+                <div className="settings-profile-card">
+                  <div className="settings-profile-card__banner" aria-hidden />
+                  <div className="settings-profile-card__body">
+                    <button
+                      type="button"
+                      className="settings-profile-card__avatar"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={avatarUploading}
+                      aria-label="Change profile photo"
+                    >
+                      {userData?.avatar ? (
+                        <img
+                          src={resolveMediaUrl(userData.avatar)}
+                          alt=""
+                          className="settings-profile-card__photo"
+                        />
+                      ) : (
+                        <span className="settings-profile-card__initials">{profileInitials(userData)}</span>
+                      )}
+                      <span className="settings-profile-card__avatar-edit" aria-hidden>
+                        <Camera size={16} />
+                      </span>
+                    </button>
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      hidden
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                    />
+
+                    <div className="settings-profile-card__identity">
+                      <h4 className="settings-profile-card__name">
+                        {[userData?.first_name, userData?.last_name].filter(Boolean).join(' ') || userData?.username || 'Your account'}
+                      </h4>
+                      <p className="settings-profile-card__email">
+                        <Mail size={14} aria-hidden />
+                        {userData?.email || 'No email on file'}
+                      </p>
+                      <p className="settings-profile-card__org">
+                        <Building2 size={14} aria-hidden />
+                        {tenantData?.name || 'Your organization'}
+                      </p>
+                      <div className="settings-profile-card__badges">
+                        <span className="settings-profile-card__role">
+                          <Shield size={12} aria-hidden />
+                          {formatRole(userData?.role)}
+                        </span>
+                        <StatusBadge
+                          status={userData?.is_active ? 'ACTIVE' : 'INACTIVE'}
+                          label={userData?.is_active ? 'Active' : 'Inactive'}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <InputGroup label="Username">
-                  <input type="text" value={userData?.username || ''} style={{ width: '100%' }} readOnly />
-                </InputGroup>
-                <div className="form-grid-2" style={{ gap: '20px' }}>
-                  <InputGroup label="First Name">
-                    <input
-                      type="text"
-                      value={profileForm.first_name}
-                      onChange={(e) => setProfileForm({ ...profileForm, first_name: e.target.value })}
-                      style={{ width: '100%' }}
-                    />
-                  </InputGroup>
-                  <InputGroup label="Last Name">
-                    <input
-                      type="text"
-                      value={profileForm.last_name}
-                      onChange={(e) => setProfileForm({ ...profileForm, last_name: e.target.value })}
-                      style={{ width: '100%' }}
-                    />
-                  </InputGroup>
-                </div>
-                <InputGroup label="Email Address">
-                  <input type="email" value={userData?.email || ''} style={{ width: '100%' }} readOnly />
-                </InputGroup>
+                <section className="settings-form-section">
+                  <div className="settings-form-section__head">
+                    <h4 className="settings-form-section__title">Personal information</h4>
+                    <p className="settings-form-section__desc">
+                      Username and email are managed by your administrator. You can update your display name below.
+                    </p>
+                  </div>
+
+                  <div className="settings-form-grid">
+                    <InputGroup label="Username" readOnly description="Sign-in username cannot be changed here.">
+                      <AtSign size={16} className="settings-field__icon" aria-hidden />
+                      <input type="text" className="settings-input" value={userData?.username || ''} readOnly />
+                      <Lock size={14} className="settings-field__lock" aria-hidden />
+                    </InputGroup>
+
+                    <InputGroup label="Email address" readOnly description="Contact your admin to change your email.">
+                      <Mail size={16} className="settings-field__icon" aria-hidden />
+                      <input type="email" className="settings-input" value={userData?.email || ''} readOnly />
+                      <Lock size={14} className="settings-field__lock" aria-hidden />
+                    </InputGroup>
+
+                    <InputGroup label="First name">
+                      <User size={16} className="settings-field__icon" aria-hidden />
+                      <input
+                        type="text"
+                        className="settings-input"
+                        value={profileForm.first_name}
+                        onChange={(e) => setProfileForm({ ...profileForm, first_name: e.target.value })}
+                        placeholder="First name"
+                        autoComplete="given-name"
+                      />
+                    </InputGroup>
+
+                    <InputGroup label="Last name">
+                      <User size={16} className="settings-field__icon" aria-hidden />
+                      <input
+                        type="text"
+                        className="settings-input"
+                        value={profileForm.last_name}
+                        onChange={(e) => setProfileForm({ ...profileForm, last_name: e.target.value })}
+                        placeholder="Last name"
+                        autoComplete="family-name"
+                      />
+                    </InputGroup>
+                  </div>
+                </section>
               </div>
             )}
 

@@ -449,11 +449,20 @@ class StayBookingViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelV
         'charges', 'charges__service',
     ).all()
     serializer_class = StayBookingSerializer
-    permission_classes = [IsGuestHouseApp, IsAdminOrManagerOrReadOnly, IsTenantOwner]
+    permission_classes = [IsGuestHouseApp, IsGhStaffOrAbove, IsTenantOwner]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'payment_status', 'room', 'customer']
     search_fields = ['booking_ref', 'customer__full_name', 'room__room_number', 'customer__phone']
     ordering_fields = ['check_in', 'check_out', 'created_at']
+
+    def destroy(self, request, *args, **kwargs):
+        role = getattr(request.user, 'role', None)
+        if not request.user.is_superuser and role not in ('ADMIN', 'MANAGER'):
+            return Response(
+                {'detail': 'Only managers can delete stays. Use cancel instead.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().destroy(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -602,7 +611,7 @@ class StayBookingViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelV
 class StayPaymentViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewSet):
     queryset = StayPayment.objects.select_related('stay', 'stay__customer', 'stay__room').all()
     serializer_class = StayPaymentSerializer
-    permission_classes = [IsGuestHouseApp, IsAdminOrManager, IsTenantOwner]
+    permission_classes = [IsGuestHouseApp, IsGhStaffOrAbove, IsTenantOwner]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['status', 'payment_method', 'stay']
     ordering_fields = ['payment_date', 'amount']
@@ -613,6 +622,15 @@ class StayPaymentViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelV
         if user.tenant_id:
             extra['tenant'] = user.tenant
         serializer.save(**extra)
+
+    def destroy(self, request, *args, **kwargs):
+        role = getattr(request.user, 'role', None)
+        if not request.user.is_superuser and role not in ('ADMIN', 'MANAGER'):
+            return Response(
+                {'detail': 'Only managers can delete payment records.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().destroy(request, *args, **kwargs)
 
 
 class GhExpenseViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewSet):

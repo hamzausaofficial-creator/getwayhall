@@ -36,7 +36,7 @@ const METHOD_LABELS = {
 export default function GuestHousePayments() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { canManage } = usePermissions();
+  const { canOperate, canManage } = usePermissions();
 
   const [payments, setPayments] = useState([]);
   const [stays, setStays] = useState([]);
@@ -105,7 +105,7 @@ export default function GuestHousePayments() {
   }, [payments, searchQuery, filterMethod, filterStatus, dateFilter, filterDate]);
 
   const openRecord = () => {
-    if (!canManage) {
+    if (!canOperate) {
       toast.error('You do not have permission to record payments.');
       return;
     }
@@ -137,7 +137,7 @@ export default function GuestHousePayments() {
             Record guest deposits, track collections, and monitor outstanding balances.
           </p>
         </div>
-        {canManage && (
+        {canOperate && (
           <button
             type="button"
             className="btn-primary"

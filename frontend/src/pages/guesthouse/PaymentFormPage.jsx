@@ -51,7 +51,7 @@ export default function PaymentFormPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { canManage } = usePermissions();
+  const { canOperate } = usePermissions();
   const isEdit = Boolean(paymentId);
 
   const preselectedStay =
@@ -64,11 +64,11 @@ export default function PaymentFormPage() {
   const [formError, setFormError] = useState('');
 
   useEffect(() => {
-    if (!canManage) {
+    if (!canOperate) {
       toast.error('You do not have permission to record payments.');
       navigate('/gh/payments');
     }
-  }, [canManage, navigate]);
+  }, [canOperate, navigate]);
 
   useEffect(() => {
     const load = async () => {
