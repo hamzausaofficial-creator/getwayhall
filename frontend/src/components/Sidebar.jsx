@@ -95,7 +95,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
       onClick={handleNavClick}
       className={({ isActive }) => navLinkClass(isActive)}
     >
-      <item.icon size={20} className="app-sidebar__nav-icon" aria-hidden />
+      <item.icon size={24} className="app-sidebar__nav-icon" aria-hidden />
       {(!isCollapsed || isMobile) && (
         <span className="app-sidebar__nav-label">{item.name}</span>
       )}
