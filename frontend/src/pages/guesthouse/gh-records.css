@@ -188,9 +188,9 @@
 }
 
 .gh-records-table td {
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--border);
-  vertical-align: middle;
+  vertical-align: top;
 }
 
 .gh-records-table tbody tr {
@@ -228,16 +228,82 @@
   color: #92400e;
 }
 
+.gh-records-table__details {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
 .gh-records-table__title {
+  display: block;
   margin: 0;
   font-weight: 700;
   color: var(--text-main);
+  font-size: 13px;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .gh-records-table__sub {
-  margin: 2px 0 0;
+  display: block;
+  margin: 0;
   font-size: 11px;
   color: var(--text-muted);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.gh-records-table__cell--details {
+  min-width: 140px;
+}
+
+.gh-records-table__cell--amount {
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  text-align: right;
+  vertical-align: top;
+}
+
+.gh-records-table th:nth-child(4) {
+  text-align: right;
+}
+
+.gh-records-page--embedded .gh-records-table {
+  table-layout: fixed;
+}
+
+.gh-records-page--embedded .gh-records-table th:nth-child(1),
+.gh-records-page--embedded .gh-records-table td:nth-child(1) {
+  width: 108px;
+}
+
+.gh-records-page--embedded .gh-records-table th:nth-child(2),
+.gh-records-page--embedded .gh-records-table td:nth-child(2) {
+  width: 88px;
+}
+
+.gh-records-page--embedded .gh-records-table th:nth-child(4),
+.gh-records-page--embedded .gh-records-table td:nth-child(4) {
+  width: 92px;
+}
+
+.gh-records-page--embedded .gh-records-table th:nth-child(5),
+.gh-records-page--embedded .gh-records-table td:nth-child(5) {
+  width: 96px;
+}
+
+.gh-records-page--embedded .gh-records-table th:nth-child(6),
+.gh-records-page--embedded .gh-records-table td:nth-child(6) {
+  width: 118px;
+}
+
+.gh-records-page--embedded .gh-records-table th:nth-child(7),
+.gh-records-page--embedded .gh-records-table td:nth-child(7) {
+  width: 28px;
+  padding-left: 4px;
+  padding-right: 8px;
 }
 
 .gh-daily-section {

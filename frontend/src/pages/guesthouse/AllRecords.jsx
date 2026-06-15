@@ -36,6 +36,21 @@ function formatRecordDate(iso) {
   }
 }
 
+function RecordDetails({ title, subtitle }) {
+  const subLines = subtitle
+    ? subtitle.split(' · ').map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  return (
+    <div className="gh-records-table__details">
+      <span className="gh-records-table__title">{title}</span>
+      {subLines.map((line) => (
+        <span key={line} className="gh-records-table__sub">{line}</span>
+      ))}
+    </div>
+  );
+}
+
 export default function AllRecords({ embedded = false }) {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(todayISO());
@@ -214,11 +229,10 @@ export default function AllRecords({ embedded = false }) {
                       </span>
                     </td>
                     <td><strong>{row.ref}</strong></td>
-                    <td>
-                      <p className="gh-records-table__title">{row.title}</p>
-                      <p className="gh-records-table__sub">{row.subtitle}</p>
+                    <td className="gh-records-table__cell--details">
+                      <RecordDetails title={row.title} subtitle={row.subtitle} />
                     </td>
-                    <td><strong>{formatRs(row.amount)}</strong></td>
+                    <td className="gh-records-table__cell--amount">{formatRs(row.amount)}</td>
                     <td><StatusBadge status={row.status} /></td>
                     <td style={{ fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {formatRecordDate(row.date)}
