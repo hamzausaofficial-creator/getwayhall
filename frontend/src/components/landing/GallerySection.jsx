@@ -117,6 +117,8 @@ export default function GallerySection({ images = [] }) {
                     className="gallery-lightbox__image"
                     src={resolveGallerySrc(lightboxItem)}
                     alt={lightboxItem.title}
+                    loading="eager"
+                    decoding="async"
                   />
                 </div>
                 <div className="gallery-lightbox__caption">
