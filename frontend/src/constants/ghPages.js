@@ -17,6 +17,15 @@ export const GH_PAGE_KEYS = {
   SETTINGS: 'settings',
 };
 
+/** In-app modules (not sidebar routes) — toggled from Django admin alongside pages. */
+export const GH_MODULE_KEYS = {
+  ID_SCANNER: 'id_scanner',
+};
+
+export const GH_MODULE_ORDER = [
+  GH_MODULE_KEYS.ID_SCANNER,
+];
+
 /** Default route when a page is hidden. */
 export const GH_PAGE_PATHS = {
   [GH_PAGE_KEYS.BOOK]: '/gh/book',

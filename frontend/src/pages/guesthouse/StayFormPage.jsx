@@ -13,6 +13,8 @@ import client from '../../api/client';
 import toast from 'react-hot-toast';
 import AppLoader from '../../components/AppLoader';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useGhPageVisibility } from '../../context/GhPageVisibilityContext';
+import { GH_MODULE_KEYS } from '../../constants/ghPages';
 import { customerDisplayName } from '../../utils/customer';
 import {
   resolveGuestFromIdScan,
@@ -65,6 +67,8 @@ export default function StayFormPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { canOperate } = usePermissions();
+  const { isModuleVisible } = useGhPageVisibility();
+  const showIdScanner = isModuleVisible(GH_MODULE_KEYS.ID_SCANNER);
   const isEdit = Boolean(stayId);
 
   const prefillCheckIn = location.state?.check_in || searchParams.get('check_in') || '';
@@ -426,7 +430,7 @@ export default function StayFormPage() {
 
         <div className="booking-layout">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-            {!isEdit && (
+            {!isEdit && showIdScanner && (
               <section style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {sectionTitle('ID card scan')}
                 <div className="premium-card" style={{ padding: '20px' }}>

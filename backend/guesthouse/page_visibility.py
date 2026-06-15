@@ -1,4 +1,4 @@
-"""Default Guest House pages and tenant seeding helpers."""
+"""Default Guest House pages, in-app modules, and tenant seeding helpers."""
 
 DEFAULT_GH_PAGES = (
     ('book', 'Book Stay', 10),
@@ -18,14 +18,26 @@ DEFAULT_GH_PAGES = (
     ('settings', 'Settings', 130),
 )
 
+# In-app feature blocks (not sidebar routes) — toggled from the same Django admin screen.
+DEFAULT_GH_MODULES = (
+    (
+        'id_scanner',
+        'ID Card Scanner (Guest details)',
+        5,
+    ),
+)
+
+GH_MODULE_KEYS = frozenset(key for key, _label, _order in DEFAULT_GH_MODULES)
+GH_PAGE_KEYS = frozenset(key for key, _label, _order in DEFAULT_GH_PAGES)
+
 
 def ensure_tenant_gh_pages(tenant):
-    """Create missing page visibility rows for a tenant (all visible by default)."""
+    """Create missing page and module visibility rows for a tenant (all visible by default)."""
     from .models import GuestHousePageVisibility
 
     if not tenant:
         return
-    for page_key, label, sort_order in DEFAULT_GH_PAGES:
+    for page_key, label, sort_order in (*DEFAULT_GH_PAGES, *DEFAULT_GH_MODULES):
         GuestHousePageVisibility.objects.get_or_create(
             tenant=tenant,
             page_key=page_key,

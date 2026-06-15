@@ -21,7 +21,7 @@ from core.permissions import (
     IsGuestHouseApp,
 )
 from .models import Room, StayBooking, StayPayment, StayCharge, GhExpense, GuestHousePageVisibility, GuestHouseService
-from .page_visibility import ensure_tenant_gh_pages
+from .page_visibility import ensure_tenant_gh_pages, GH_MODULE_KEYS, GH_PAGE_KEYS
 from .services_catalog import ensure_tenant_gh_services
 from .serializers import (
     RoomSerializer,
@@ -824,14 +824,17 @@ class GuestHousePageVisibilityView(APIView):
             return Response({'detail': 'No tenant.'}, status=status.HTTP_400_BAD_REQUEST)
 
         ensure_tenant_gh_pages(tenant)
-        pages = GuestHousePageVisibility.objects.filter(tenant=tenant).order_by('sort_order', 'page_key')
-        return Response({
-            'pages': [
-                {
-                    'key': p.page_key,
-                    'label': p.label,
-                    'is_visible': p.is_visible,
-                }
-                for p in pages
-            ],
-        })
+        rows = GuestHousePageVisibility.objects.filter(tenant=tenant).order_by('sort_order', 'page_key')
+        pages = []
+        modules = []
+        for row in rows:
+            item = {
+                'key': row.page_key,
+                'label': row.label,
+                'is_visible': row.is_visible,
+            }
+            if row.page_key in GH_MODULE_KEYS:
+                modules.append(item)
+            elif row.page_key in GH_PAGE_KEYS:
+                pages.append(item)
+        return Response({'pages': pages, 'modules': modules})

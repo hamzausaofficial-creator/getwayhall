@@ -284,15 +284,15 @@ class GuestHousePageVisibility(models.Model):
     label = models.CharField(max_length=64)
     is_visible = models.BooleanField(
         default=True,
-        help_text='Uncheck to hide this page from the Guest House app sidebar and block direct access.',
+        help_text='Uncheck to hide this page or in-app module from the Guest House app.',
     )
     sort_order = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         ordering = ['sort_order', 'page_key']
         unique_together = [('tenant', 'page_key')]
-        verbose_name = 'GH page hide/show'
-        verbose_name_plural = 'GH pages hide/show'
+        verbose_name = 'GH page / module hide/show'
+        verbose_name_plural = 'GH pages & modules hide/show'
 
     def __str__(self):
         status = 'Visible' if self.is_visible else 'Hidden'

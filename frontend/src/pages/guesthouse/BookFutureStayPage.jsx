@@ -13,6 +13,8 @@ import client from '../../api/client';
 import toast from 'react-hot-toast';
 import AppLoader from '../../components/AppLoader';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useGhPageVisibility } from '../../context/GhPageVisibilityContext';
+import { GH_MODULE_KEYS } from '../../constants/ghPages';
 import CustomerSearchSelect from '../../components/CustomerSearchSelect';
 import CnicScannerPanel from '../../components/guesthouse/CnicScannerPanel';
 import ScannedGuestPanel from '../../components/guesthouse/ScannedGuestPanel';
@@ -62,6 +64,8 @@ export default function BookFutureStayPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { canOperate } = usePermissions();
+  const { isModuleVisible } = useGhPageVisibility();
+  const showIdScanner = isModuleVisible(GH_MODULE_KEYS.ID_SCANNER);
 
   const prefillCheckIn = location.state?.check_in || searchParams.get('check_in') || '';
   const prefillCheckOut = location.state?.check_out || searchParams.get('check_out') || '';
@@ -447,17 +451,25 @@ export default function BookFutureStayPage() {
 
             {/* Guest */}
             <div className="premium-card" style={{ padding: '28px' }}>
-              <SectionHeader icon={User} title="Guest details" subtitle="Scan ID card or search guest for this reservation" />
-              <CnicScannerPanel onScan={handleIdScan} disabled={loading || submitting || creatingGuest} />
-              <ScannedGuestPanel
-                draft={scannedGuest}
-                loading={creatingGuest && !scannedGuest}
-                saving={creatingGuest}
-                onChange={handleScannedGuestChange}
-                onPhoneChange={handleScannedPhoneChange}
-                onSave={handleCreateGuestFromScan}
-                onCancel={() => setScannedGuest(null)}
+              <SectionHeader
+                icon={User}
+                title="Guest details"
+                subtitle={showIdScanner ? 'Scan ID card or search guest for this reservation' : 'Search guest for this reservation'}
               />
+              {showIdScanner && (
+                <>
+                  <CnicScannerPanel onScan={handleIdScan} disabled={loading || submitting || creatingGuest} />
+                  <ScannedGuestPanel
+                    draft={scannedGuest}
+                    loading={creatingGuest && !scannedGuest}
+                    saving={creatingGuest}
+                    onChange={handleScannedGuestChange}
+                    onPhoneChange={handleScannedPhoneChange}
+                    onSave={handleCreateGuestFromScan}
+                    onCancel={() => setScannedGuest(null)}
+                  />
+                </>
+              )}
 
               <div className="input-group" style={{ marginTop: '16px' }}>
                 <label>Guest / Customer</label>

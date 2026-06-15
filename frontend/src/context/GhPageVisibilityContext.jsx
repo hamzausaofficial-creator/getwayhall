@@ -6,7 +6,9 @@ import { GH_PAGE_ORDER, GH_PAGE_PATHS } from '../constants/ghPages';
 const GhPageVisibilityContext = createContext({
   loading: true,
   visibility: null,
+  moduleVisibility: null,
   isPageVisible: () => true,
+  isModuleVisible: () => true,
   firstVisiblePath: '/gh/stays',
   reload: () => {},
 });
@@ -14,6 +16,7 @@ const GhPageVisibilityContext = createContext({
 export function GhPageVisibilityProvider({ enabled = true, children }) {
   const [loading, setLoading] = useState(enabled);
   const [visibility, setVisibility] = useState(null);
+  const [moduleVisibility, setModuleVisibility] = useState(null);
   const [tick, setTick] = useState(0);
 
   const reload = () => setTick((t) => t + 1);
@@ -22,6 +25,7 @@ export function GhPageVisibilityProvider({ enabled = true, children }) {
     if (!enabled) {
       setLoading(false);
       setVisibility(null);
+      setModuleVisibility(null);
       return undefined;
     }
 
@@ -31,16 +35,20 @@ export function GhPageVisibilityProvider({ enabled = true, children }) {
       .then((data) => {
         if (!active) return;
         const map = {};
+        const moduleMap = {};
         (data?.pages || []).forEach((page) => {
-          // explicit boolean - never leave key missing
           map[page.key] = page.is_visible === true;
         });
+        (data?.modules || []).forEach((mod) => {
+          moduleMap[mod.key] = mod.is_visible === true;
+        });
         setVisibility(map);
+        setModuleVisibility(moduleMap);
       })
       .catch(() => {
         if (!active) return;
-        // on error treat all pages as visible so app still works
         setVisibility(null);
+        setModuleVisibility(null);
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -52,8 +60,12 @@ export function GhPageVisibilityProvider({ enabled = true, children }) {
     // null visibility = not loaded / error → show everything (safe fallback)
     const isPageVisible = (pageKey) => {
       if (visibility === null) return true;
-      // if key somehow missing, default visible
       return visibility[pageKey] !== false;
+    };
+
+    const isModuleVisible = (moduleKey) => {
+      if (moduleVisibility === null) return true;
+      return moduleVisibility[moduleKey] !== false;
     };
 
     const firstVisiblePath = GH_PAGE_ORDER
@@ -63,11 +75,13 @@ export function GhPageVisibilityProvider({ enabled = true, children }) {
     return {
       loading,
       visibility,
+      moduleVisibility,
       isPageVisible,
+      isModuleVisible,
       firstVisiblePath,
       reload,
     };
-  }, [loading, visibility, reload]);
+  }, [loading, visibility, moduleVisibility, reload]);
 
   return (
     <GhPageVisibilityContext.Provider value={value}>

@@ -14,6 +14,8 @@ import AppLoader from '../../components/AppLoader';
 import { customerDisplayName, customerInitials, buildCustomerPayload, validateGhCustomerForm } from '../../utils/customer';
 import { formatRs, formatCollectDuePKR, hasCollectDue } from '../../utils/currency';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useGhPageVisibility } from '../../context/GhPageVisibilityContext';
+import { GH_MODULE_KEYS } from '../../constants/ghPages';
 import SearchInput from '../../components/SearchInput';
 import StatCard from '../../components/ui/StatCard';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -43,6 +45,8 @@ const emptyCustomer = {
 
 export default function GhCustomers() {
   const { canOperate, canManage, canAccessPayments, canCancelStay } = usePermissions();
+  const { isModuleVisible } = useGhPageVisibility();
+  const showIdScanner = isModuleVisible(GH_MODULE_KEYS.ID_SCANNER);
   const [cancelTarget, setCancelTarget] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -655,7 +659,7 @@ export default function GhCustomers() {
               </button>
             </div>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }} noValidate>
-              {!isEditing && (
+              {!isEditing && showIdScanner && (
                 <CnicScannerPanel onScan={handleIdScan} disabled={scanProcessing} />
               )}
               <div className="form-grid-2">

@@ -17,7 +17,7 @@ from .models import (
     GhExpense,
     GuestHousePageVisibility,
 )
-from .page_visibility import ensure_tenant_gh_pages
+from .page_visibility import ensure_tenant_gh_pages, GH_MODULE_KEYS
 
 
 @admin.register(Room)
@@ -134,7 +134,7 @@ class GuestHousePageInline(admin.TabularInline):
     ordering = ('sort_order',)
     can_delete = False
     verbose_name = 'Page'
-    verbose_name_plural = 'Guest House pages - tick Is visible to show, untick to hide'
+    verbose_name_plural = 'Guest House pages & modules - tick Is visible to show, untick to hide'
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -147,7 +147,7 @@ class GuestHousePageInline(admin.TabularInline):
 class GuestHousePageVisibilityAdmin(AdminOnlyAdminMixin, admin.ModelAdmin):
     """Tick/untick Is visible checkboxes, then click Save at the bottom."""
 
-    list_display = ('label', 'page_key', 'tenant', 'visibility_badge', 'is_visible')
+    list_display = ('label', 'page_key', 'entry_kind', 'tenant', 'visibility_badge', 'is_visible')
     list_display_links = ('label',)
     list_editable = ('is_visible',)
     list_filter = ('tenant', 'is_visible')
@@ -161,10 +161,17 @@ class GuestHousePageVisibilityAdmin(AdminOnlyAdminMixin, admin.ModelAdmin):
         (None, {
             'fields': ('tenant', 'label', 'page_key', 'is_visible', 'sort_order'),
             'description': (
-                'Uncheck <strong>Is visible</strong> to hide this page from the Guest House app sidebar.'
+                'Uncheck <strong>Is visible</strong> to hide a sidebar page or an in-app module '
+                '(e.g. ID card scanner on Book Stay / Guest forms).'
             ),
         }),
     )
+
+    @admin.display(description='Type')
+    def entry_kind(self, obj):
+        if obj.page_key in GH_MODULE_KEYS:
+            return mark_safe('<span style="color:#7c3aed;font-weight:600;">Module</span>')
+        return mark_safe('<span style="color:#0369a1;font-weight:600;">Page</span>')
 
     @admin.display(description='Status')
     def visibility_badge(self, obj):
@@ -182,9 +189,10 @@ class GuestHousePageVisibilityAdmin(AdminOnlyAdminMixin, admin.ModelAdmin):
         for tenant in Tenant.objects.all():
             ensure_tenant_gh_pages(tenant)
         extra_context = extra_context or {}
-        extra_context['title'] = 'Guest House - Hide / Show Pages'
+        extra_context['title'] = 'Guest House - Hide / Show Pages & Modules'
         extra_context['subtitle'] = (
-            'Tick or untick the <strong>Is visible</strong> checkboxes below, '
-            'then press <strong>Save</strong> at the bottom of the page.'
+            'Tick or untick <strong>Is visible</strong> for sidebar pages and in-app modules '
+            '(e.g. <strong>ID Card Scanner</strong> on Book Stay). '
+            'Then press <strong>Save</strong> at the bottom of the page.'
         )
         return super().changelist_view(request, extra_context=extra_context)
