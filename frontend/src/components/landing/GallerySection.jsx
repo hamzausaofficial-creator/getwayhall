@@ -106,22 +106,25 @@ export default function GallerySection({ images = [] }) {
                   </button>
                 </>
               )}
-              <motion.img
-                key={lightbox}
-                initial={{ scale: 0.94, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.94, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="gallery-lightbox__image"
-                src={resolveGallerySrc(lightboxItem)}
-                alt={lightboxItem.title}
-                onClick={(e) => e.stopPropagation()}
-              />
-              <div className="gallery-lightbox__caption" onClick={(e) => e.stopPropagation()}>
-                <p className="landing-kicker">
-                  {lightboxItem.category_label || lightboxItem.category}
-                </p>
-                <p className="gallery-lightbox__caption-title">{lightboxItem.title}</p>
+              <div className="gallery-lightbox__stage" onClick={(e) => e.stopPropagation()}>
+                <div className="gallery-lightbox__image-frame">
+                  <motion.img
+                    key={lightbox}
+                    initial={{ scale: 0.98, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.98, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="gallery-lightbox__image"
+                    src={resolveGallerySrc(lightboxItem)}
+                    alt={lightboxItem.title}
+                  />
+                </div>
+                <div className="gallery-lightbox__caption">
+                  <p className="gallery-lightbox__caption-kicker">
+                    {lightboxItem.category_label || lightboxItem.category}
+                  </p>
+                  <p className="gallery-lightbox__caption-title">{lightboxItem.title}</p>
+                </div>
               </div>
             </motion.div>
           )}
