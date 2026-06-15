@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import {
-  Calendar, Home, Clock, Users, Receipt, UserCog, Wallet,
+  Calendar, Home, Clock, Users, UserCog, Wallet,
   BarChart3, Shield,
 } from 'lucide-react';
 import DisplayCards from '../ui/display-cards';
@@ -12,7 +12,7 @@ const FEATURES = [
   { icon: BarChart3, title: 'Reports & Analytics', desc: 'Revenue, occupancy, and performance insights.' },
   { icon: Users, title: 'Customer Records', desc: 'CNIC, contacts, history, and guest profiles unified.' },
   { icon: Clock, title: 'Event Scheduling', desc: 'Calendar views for halls and guest house occupancy.' },
-  { icon: Receipt, title: 'Expense Tracking', desc: 'Vouchers, operating costs, and financial visibility.' },
+  { icon: Wallet, title: 'Expense Tracking', desc: 'Vouchers, operating costs, and financial visibility.' },
   { icon: UserCog, title: 'Staff Management', desc: 'Roles, permissions, and team coordination.' },
   { icon: Shield, title: 'Multi User Access', desc: 'Admin, manager, and staff roles with secure access.' },
 ];

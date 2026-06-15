@@ -5,7 +5,6 @@ import {
   Plus, 
   TrendingUp, 
   Calendar as CalendarIcon, 
-  Receipt, 
   ArrowUpRight,
   ChevronRight,
   Trash2,
@@ -292,7 +291,7 @@ const Expenses = () => {
                 <td style={{ padding: '20px 24px' }}>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                     <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
-                      <Receipt size={16} />
+                      <FileText size={16} />
                     </div>
                     <div>
                       <p style={{ fontWeight: '700', fontSize: '14px', color: 'var(--secondary)' }}>{expense.title}</p>
@@ -347,7 +346,7 @@ const Expenses = () => {
         </table>
         {filteredExpenses.length === 0 && !isLoading && (
           <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <Receipt size={36} style={{ margin: '0 auto 12px', opacity: 0.3, display: 'block' }} />
+            <FileText size={36} style={{ margin: '0 auto 12px', opacity: 0.3, display: 'block' }} />
             <p style={{ fontSize: '15px', fontWeight: '500' }}>No payment vouchers matching your criteria.</p>
           </div>
         )}
@@ -362,7 +361,7 @@ const Expenses = () => {
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', borderBottom: '1px solid var(--border)', paddingBottom: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Receipt size={22} color="var(--primary)" />
+              <FileText size={22} color="var(--primary)" />
               <h3 style={{ fontSize: '20px', fontWeight: '800', color: 'var(--secondary)' }}>
                 {editingExpenseId ? 'Edit Payment Voucher' : 'Record Payment Receipt'}
               </h3>

@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import {
   UserPlus, Mail, Phone, Edit2, Trash2, X, Calendar, MapPin,
-  ChevronRight, Wallet, BedDouble, Users, CreditCard, FileText, XCircle,
+  ChevronRight, Wallet, BedDouble, Users, FileText, XCircle,
 } from 'lucide-react';
 import CancelStayModal from '../../components/guesthouse/CancelStayModal';
 import { canCancelGhStay } from '../../utils/ghStay';
@@ -309,7 +309,7 @@ export default function GhCustomers() {
               <StatCard
                 label="Outstanding total"
                 value={metrics.totalDue}
-                icon={CreditCard}
+                icon={Wallet}
                 isCurrency
                 showZeroAs00
                 variant={metrics.totalDue > 0 ? 'danger' : 'success'}

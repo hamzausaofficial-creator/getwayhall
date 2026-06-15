@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import {
-  Archive, CalendarCheck, CreditCard, Receipt, ChevronRight,
+  Archive, CalendarCheck, FileText, Wallet, ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AppLoader from '../../components/AppLoader';
@@ -24,8 +24,8 @@ const TYPE_TABS = [
 
 const TYPE_META = {
   stay: { label: 'Reservation', icon: CalendarCheck, className: 'gh-record-type--stay' },
-  payment: { label: 'Payment', icon: CreditCard, className: 'gh-record-type--payment' },
-  expense: { label: 'Voucher', icon: Receipt, className: 'gh-record-type--expense' },
+  payment: { label: 'Payment', icon: Wallet, className: 'gh-record-type--payment' },
+  expense: { label: 'Voucher', icon: FileText, className: 'gh-record-type--expense' },
 };
 
 function formatRecordDate(iso) {
@@ -86,8 +86,8 @@ export default function AllRecords({ embedded = false }) {
   const statItems = [
     { label: 'Total', value: counts.total, icon: Archive, tone: 'primary' },
     { label: 'Reservations', value: counts.stay, icon: CalendarCheck, tone: 'stay' },
-    { label: 'Payments', value: counts.payment, icon: CreditCard, tone: 'payment' },
-    { label: 'Vouchers', value: counts.expense, icon: Receipt, tone: 'expense' },
+    { label: 'Payments', value: counts.payment, icon: Wallet, tone: 'payment' },
+    { label: 'Vouchers', value: counts.expense, icon: FileText, tone: 'expense' },
   ];
 
   return (
@@ -124,8 +124,8 @@ export default function AllRecords({ embedded = false }) {
         <section className="dash-kpi-grid" style={{ marginBottom: '24px' }}>
           <StatCard label="Total records" value={counts.total} icon={Archive} variant="primary" />
           <StatCard label="Reservations" value={counts.stay} icon={CalendarCheck} variant="info" />
-          <StatCard label="Payments" value={counts.payment} icon={CreditCard} variant="success" />
-          <StatCard label="Vouchers" value={counts.expense} icon={Receipt} variant="warning" />
+          <StatCard label="Payments" value={counts.payment} icon={Wallet} variant="success" />
+          <StatCard label="Vouchers" value={counts.expense} icon={FileText} variant="warning" />
         </section>
       )}
 

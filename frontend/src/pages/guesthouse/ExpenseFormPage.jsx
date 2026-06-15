@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, Receipt, CheckCircle, X, HelpCircle, Copy } from 'lucide-react';
+import { ChevronLeft, FileText, CheckCircle, X, HelpCircle, Copy } from 'lucide-react';
 import { createGhExpense, updateGhExpense, getGhExpense, listGhExpenses } from '../../api/guesthouse';
 import toast from 'react-hot-toast';
 import AppLoader from '../../components/AppLoader';
@@ -344,7 +344,7 @@ export default function ExpenseFormPage() {
           <div style={{ position: 'sticky', top: '100px' }}>
             <div className="premium-card" style={{ padding: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-                <Receipt size={22} color="var(--primary)" />
+                <FileText size={22} color="var(--primary)" />
                 <h3 style={{ fontSize: '16px', fontWeight: '800', margin: 0 }}>Voucher preview</h3>
               </div>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 8px 0' }}>{categoryLabel}</p>

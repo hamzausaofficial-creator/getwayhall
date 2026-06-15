@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Plus, Trash2, Edit2, Receipt, Printer, ChevronRight, X, Calendar,
-  Briefcase, Zap, Wrench, Copy, ExternalLink,
+  Plus, Trash2, Edit2, FileText, Printer, ChevronRight, X, Calendar,
+  Briefcase, Zap, Wallet, Wrench, Copy, ExternalLink,
 } from 'lucide-react';
 import { listGhExpenses, deleteGhExpense } from '../../api/guesthouse';
 import toast from 'react-hot-toast';
@@ -146,7 +146,7 @@ export default function GuestHouseExpenses() {
       </div>
 
       <section className="dash-kpi-grid" style={{ marginBottom: '32px' }}>
-        <StatCard label="Total expenses" value={metrics.total} icon={Receipt} variant="warning" isCurrency />
+        <StatCard label="Total expenses" value={metrics.total} icon={Wallet} variant="warning" isCurrency />
         <StatCard label="This month" value={metrics.monthTotal} icon={Calendar} variant="primary" isCurrency />
         <StatCard label="Salary" value={metrics.salary} icon={Briefcase} variant="info" isCurrency />
         <StatCard label="Utilities" value={metrics.utilities} icon={Zap} variant="warning" isCurrency />
@@ -232,7 +232,7 @@ export default function GuestHouseExpenses() {
                 {filtered.length === 0 ? (
                   <tr>
                     <td colSpan={5} style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      <Receipt size={32} style={{ opacity: 0.3, marginBottom: '8px' }} />
+                      <FileText size={32} style={{ opacity: 0.3, marginBottom: '8px' }} />
                       <p>No expenses match your filters.</p>
                     </td>
                   </tr>
@@ -252,7 +252,7 @@ export default function GuestHouseExpenses() {
                       <td style={{ padding: '16px' }}>
                         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                           <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
-                            <Receipt size={16} />
+                            <FileText size={16} />
                           </div>
                           <div>
                             <p style={{ fontWeight: '700', margin: 0 }}>{exp.title}</p>

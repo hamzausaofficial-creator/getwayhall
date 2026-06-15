@@ -8,7 +8,6 @@ import {
   Users,
   Plus,
   UserPlus,
-  CreditCard,
   ChevronRight,
   DoorOpen,
   LogIn,
@@ -286,7 +285,7 @@ export default function GuestHouseOverview() {
         )}
         {canAccessPayments && (
           <button type="button" className="dash-btn dash-btn--secondary" onClick={() => navigate('/gh/payments/new')}>
-            <CreditCard size={16} /> Record payment
+            <Wallet size={16} /> Record payment
           </button>
         )}
         <button type="button" className="dash-btn dash-btn--secondary" onClick={() => navigate('/gh/calendar')}>
@@ -403,7 +402,7 @@ export default function GuestHouseOverview() {
               </button>
             </header>
             {stats.recent_payments.length === 0 ? (
-              <EmptyState icon={CreditCard} title="No payments yet" description="Recorded payments appear here." />
+              <EmptyState icon={Wallet} title="No payments yet" description="Recorded payments appear here." />
             ) : (
               <div className="dash-payment-list">
                 {stats.recent_payments.map((p) => (

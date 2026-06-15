@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, Receipt, Calendar, Printer, Edit2, Trash2, FileText, Copy, Briefcase,
+  ArrowLeft, FileText, Calendar, Printer, Edit2, Trash2, Copy, Briefcase,
 } from 'lucide-react';
 import { getGhExpense, deleteGhExpense } from '../../api/guesthouse';
 import toast from 'react-hot-toast';
@@ -197,7 +197,7 @@ export default function GhExpenseDetail() {
       )}
 
       <div className="premium-card" style={{ padding: '24px', textAlign: 'center' }}>
-        <Receipt size={40} style={{ opacity: 0.25, marginBottom: '12px' }} />
+        <FileText size={40} style={{ opacity: 0.25, marginBottom: '12px' }} />
         <p style={{ fontWeight: '700', margin: '0 0 8px 0' }}>Need the same voucher again?</p>
         <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: '0 0 16px 0' }}>
           Use again copies title and category - enter new amount and date.

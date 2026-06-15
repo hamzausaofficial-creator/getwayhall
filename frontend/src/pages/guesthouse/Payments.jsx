@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  CreditCard,
+  Wallet,
   Plus,
   Trash2,
   Edit2,
@@ -150,8 +150,8 @@ export default function GuestHousePayments() {
       </div>
 
       <section className="dash-kpi-grid" style={{ marginBottom: '32px' }}>
-        <StatCard label="Collected" value={metrics.totalCollected} icon={CreditCard} variant="success" isCurrency />
-        <StatCard label="Pending payments" value={metrics.pendingAmount} icon={CreditCard} variant="warning" isCurrency />
+        <StatCard label="Collected" value={metrics.totalCollected} icon={Wallet} variant="success" isCurrency />
+        <StatCard label="Pending payments" value={metrics.pendingAmount} icon={Wallet} variant="warning" isCurrency />
         <StatCard label="Total billed (stays)" value={metrics.totalBilled} icon={BedDouble} variant="primary" isCurrency />
         <StatCard
           label="Outstanding (due)"
