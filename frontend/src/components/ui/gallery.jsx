@@ -186,9 +186,9 @@ export function Photo({
       role={onClick ? 'button' : undefined}
       aria-label={onClick ? `View ${alt}` : undefined}
     >
-      <div className="relative h-full w-full overflow-hidden rounded-3xl shadow-[0_20px_50px_rgba(15,23,42,0.18)] ring-1 ring-slate-200/80">
+      <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-3xl bg-slate-50 shadow-[0_20px_50px_rgba(15,23,42,0.18)] ring-1 ring-slate-200/80">
         <MotionImg
-          className="h-full w-full rounded-3xl object-cover pointer-events-none"
+          className="h-full w-full rounded-3xl object-contain pointer-events-none"
           src={src}
           alt={alt}
           draggable={false}

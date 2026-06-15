@@ -2675,20 +2675,24 @@ html[data-page='landing'] body {
 }
 
 .gallery-lightbox__image-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  height: clamp(260px, 68vh, 640px);
+  max-height: min(78vh, 720px);
   border-radius: 0.875rem;
   overflow: hidden;
   border: 1px solid rgba(226, 232, 240, 0.9);
   box-shadow: 0 16px 40px rgba(15, 23, 42, 0.1);
-  background: #f1f5f9;
+  background: #ffffff;
 }
 
 .gallery-lightbox__image {
   display: block;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
+  max-height: min(78vh, 720px);
+  object-fit: contain;
   object-position: center;
 }
 
