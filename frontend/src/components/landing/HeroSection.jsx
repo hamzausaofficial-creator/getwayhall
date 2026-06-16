@@ -5,7 +5,11 @@ import { AnimatedMarqueeHero } from '../ui/hero-3';
 import { HERO_MARQUEE_STOCK_IMAGES } from '../../utils/galleryPlaceholders';
 import AnimatedCounter from './AnimatedCounter';
 
-const DEFAULT_TAGLINE = 'Trusted by venue owners across Pakistan';
+const DEFAULT_TAGLINE_TEXTS = [
+  'Trusted by venue owners across Pakistan',
+  'Manage halls & guest houses with ease',
+  'Built for Pakistani venues',
+];
 
 export default function HeroSection({ slides = [], heroStats = [] }) {
   const navigate = useNavigate();
@@ -60,7 +64,7 @@ export default function HeroSection({ slides = [], heroStats = [] }) {
           className="landing-hero__marquee-wrap"
         >
           <AnimatedMarqueeHero
-            tagline={DEFAULT_TAGLINE}
+            taglineTexts={DEFAULT_TAGLINE_TEXTS}
             title={titleNode}
             description={current.subtitle}
             ctaText={current.button_text || 'Get Started'}

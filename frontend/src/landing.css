@@ -372,6 +372,17 @@ html[data-page='landing'] body {
   flex-shrink: 0;
 }
 
+.landing-marquee-hero__tagline-vapor {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 1.125rem;
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .landing-marquee-hero__title {
   margin: 0;
   padding: 0;
@@ -2786,6 +2797,11 @@ html[data-page='landing'] body {
     padding: 0.4rem 0.75rem;
     text-align: center;
     max-width: 100%;
+  }
+
+  .landing-marquee-hero__tagline-vapor {
+    min-width: 200px;
+    height: 1rem;
   }
 
   .landing-marquee-hero__actions {

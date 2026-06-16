@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { VaporHeroTagline } from './vapour-text-effect';
 
 const FADE_IN = {
   hidden: { opacity: 0, y: 10 },
@@ -73,6 +74,7 @@ function AnimatedTitle({ title }) {
 
 export function AnimatedMarqueeHero({
   tagline = 'Premium Venue Management',
+  taglineTexts,
   title,
   description,
   ctaText = 'Get Started',
@@ -93,6 +95,7 @@ export function AnimatedMarqueeHero({
   ];
 
   const loop = [...marqueeImages, ...marqueeImages];
+  const vaporTexts = taglineTexts ?? [tagline];
 
   return (
     <section className={cn('landing-marquee-hero', className)}>
@@ -107,7 +110,9 @@ export function AnimatedMarqueeHero({
           className="landing-marquee-hero__tagline"
         >
           <Sparkles size={14} aria-hidden />
-          {tagline}
+          <div className="landing-marquee-hero__tagline-vapor">
+            <VaporHeroTagline texts={vaporTexts} />
+          </div>
         </motion.div>
 
         <AnimatedTitle title={title} />
