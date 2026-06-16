@@ -12,6 +12,7 @@ import {
   Pencil,
   ChevronRight,
   TrendingUp,
+  BarChart3,
 } from 'lucide-react';
 
 import '../../styles/dashboard.css';
@@ -76,7 +77,7 @@ const normalizeDashboardStats = (data) => ({
 export default function Overview() {
   const navigate = useNavigate();
   const { user, loading: authLoading, isAuthenticated } = useAuth();
-  const { canAccessPayments } = usePermissions();
+  const { canAccessPayments, canAccessReports } = usePermissions();
   const [stats, setStats] = useState(EMPTY_STATS);
   const [venues, setVenues] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -347,6 +348,15 @@ export default function Overview() {
             onClick={() => navigate('/payments', { state: { autoOpenRecord: true } })}
           >
             <CreditCard size={16} /> Record payment
+          </button>
+        )}
+        {canAccessReports && (
+          <button
+            type="button"
+            className="dash-btn dash-btn--secondary"
+            onClick={() => navigate('/reports')}
+          >
+            <BarChart3 size={16} /> Reports
           </button>
         )}
       </div>

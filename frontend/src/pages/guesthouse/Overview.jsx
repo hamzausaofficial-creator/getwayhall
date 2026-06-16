@@ -11,6 +11,7 @@ import {
   ChevronRight,
   DoorOpen,
   LogIn,
+  BarChart3,
 } from 'lucide-react';
 import '../../styles/dashboard.css';
 import { getGuestHouseStats, getGuestHouseAlerts } from '../../api/guesthouse';
@@ -32,6 +33,8 @@ import { getGreeting, revenueTrendPercent } from '../../utils/dashboard';
 import { formatRs } from '../../utils/currency';
 import EmptyState from '../../components/ui/EmptyState';
 import toast from 'react-hot-toast';
+import { useGhPageVisibility } from '../../context/GhPageVisibilityContext';
+import { GH_PAGE_KEYS } from '../../constants/ghPages';
 
 const DASHBOARD_POLL_MS = 5000;
 
@@ -87,7 +90,9 @@ const normalizeStats = (data) => ({
 export default function GuestHouseOverview() {
   const navigate = useNavigate();
   const { user, loading: authLoading, isAuthenticated } = useAuth();
-  const { canOperate, canAccessPayments } = usePermissions();
+  const { canOperate, canAccessPayments, canAccessReports } = usePermissions();
+  const { isPageVisible } = useGhPageVisibility();
+  const showReports = canAccessReports && isPageVisible(GH_PAGE_KEYS.REPORTS);
   const [stats, setStats] = useState(EMPTY_STATS);
   const [alerts, setAlerts] = useState({ upcoming_checkins: [], payment_due: [] });
   const [isLoading, setIsLoading] = useState(true);
@@ -291,6 +296,11 @@ export default function GuestHouseOverview() {
         <button type="button" className="dash-btn dash-btn--secondary" onClick={() => navigate('/gh/calendar')}>
           <CalendarCheck size={16} /> Calendar
         </button>
+        {showReports && (
+          <button type="button" className="dash-btn dash-btn--secondary" onClick={() => navigate('/gh/reports')}>
+            <BarChart3 size={16} /> Reports
+          </button>
+        )}
       </div>
 
       <section className="dash-kpi-grid" aria-label="Key metrics">

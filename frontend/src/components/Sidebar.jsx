@@ -43,7 +43,6 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
     ...(canAccessExpenses ? [{ name: 'Expenses', icon: Wallet, path: '/expenses' }] : []),
     { name: 'Inventory', icon: Package, path: '/inventory' },
     { name: 'Decorations', icon: Sparkles, path: '/decoration-packages' },
-    ...(canAccessReports ? [{ name: 'Reports', icon: BarChart3, path: '/reports' }] : []),
     ...(canAccessNotifications ? [{ name: 'Notifications', icon: Bell, path: '/notifications' }] : []),
   ];
 
@@ -54,15 +53,22 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
     { name: 'Guests', icon: Users, path: '/gh/customers', pageKey: GH_PAGE_KEYS.CUSTOMERS },
     { name: 'Add-on Services', icon: Snowflake, path: '/gh/services', pageKey: GH_PAGE_KEYS.SERVICES },
     ...(canAccessExpenses ? [{ name: 'Expenses', icon: Wallet, path: '/gh/expenses', pageKey: GH_PAGE_KEYS.EXPENSES }] : []),
-    ...(canAccessReports ? [{ name: 'Reports', icon: BarChart3, path: '/gh/reports', pageKey: GH_PAGE_KEYS.REPORTS }] : []),
     ...(canAccessNotifications ? [{ name: 'Notifications', icon: Bell, path: '/gh/notifications', pageKey: GH_PAGE_KEYS.NOTIFICATIONS }] : []),
   ].filter((item) => !item.pageKey || isPageVisible(item.pageKey));
 
-  const mainNavItems = isGuestHouse ? guestHouseNavItems : hallNavItems;
-  const accountantNavItem = isGuestHouse
-    ? { name: 'Dashboard', icon: Calculator, path: '/gh/dashboard', pageKey: GH_PAGE_KEYS.DASHBOARD }
-    : { name: 'Accountant', icon: Calculator, path: '/dashboard' };
+  const dashboardNavItems = (isGuestHouse
+    ? [
+        ...(canAccessDashboard ? [{ name: 'Dashboard', icon: Calculator, path: '/gh/dashboard', pageKey: GH_PAGE_KEYS.DASHBOARD }] : []),
+        ...(canAccessReports ? [{ name: 'Reports', icon: BarChart3, path: '/gh/reports', pageKey: GH_PAGE_KEYS.REPORTS }] : []),
+      ]
+    : [
+        ...(canAccessDashboard ? [{ name: 'Accountant', icon: Calculator, path: '/dashboard' }] : []),
+        ...(canAccessReports ? [{ name: 'Reports', icon: BarChart3, path: '/reports' }] : []),
+      ]
+  ).filter((item) => !item.pageKey || isPageVisible(item.pageKey));
   const brandSubtitle = isGuestHouse ? 'Guest House Management' : 'Marriage Hall Management';
+
+  const mainNavItems = isGuestHouse ? guestHouseNavItems : hallNavItems;
 
   if (loading || !user) {
     return (
@@ -152,11 +158,14 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
               {renderNavLink(item)}
             </li>
           ))}
-          {canAccessDashboard && (!isGuestHouse || isPageVisible(accountantNavItem.pageKey)) && (
-            <li className="app-sidebar__nav-item app-sidebar__nav-item--divider">
-              {renderNavLink(accountantNavItem)}
+          {dashboardNavItems.map((item, index) => (
+            <li
+              key={item.name}
+              className={`app-sidebar__nav-item${index === 0 ? ' app-sidebar__nav-item--divider' : ''}`}
+            >
+              {renderNavLink(item)}
             </li>
-          )}
+          ))}
         </ul>
       </nav>
     </aside>
