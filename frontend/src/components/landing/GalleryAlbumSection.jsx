@@ -4,16 +4,7 @@ import { ImageTrail } from '../ui/image-trail';
 import { resolveMediaUrl } from '../../utils/media';
 import { getGalleryStockImage } from '../../utils/galleryPlaceholders';
 
-const ALBUM_STOCK_IMAGES = [
-  'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1426604966848-d7adac402bff?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=300&q=80',
-];
+import { GALLERY_AI_IMAGE_LIST } from '../../constants/galleryImages';
 
 function resolveAlbumSrc(img) {
   if (img?.image_url) return resolveMediaUrl(img.image_url);
@@ -34,7 +25,7 @@ export default function GalleryAlbumSection({ images = [] }) {
 
     const merged = fromGallery.length >= 4
       ? fromGallery.map((item) => item.url)
-      : [...fromGallery.map((item) => item.url), ...ALBUM_STOCK_IMAGES];
+      : [...fromGallery.map((item) => item.url), ...GALLERY_AI_IMAGE_LIST];
 
     const unique = [...new Set(merged)];
     return unique.slice(0, 10);

@@ -38,10 +38,8 @@ class GalleryImageAdmin(admin.ModelAdmin):
             'fields': ('title', 'category', 'image', 'image_preview', 'is_active', 'sort_order'),
             'description': (
                 'Upload a photo for the <strong>Gallery section</strong> on the landing page. '
-                'Hero marquee images stay fixed and are not changed from here. '
-                'On Railway production, uploads are lost on redeploy unless you set '
-                '<code>CLOUDINARY_URL</code> or attach a volume at '
-                '<code>/app/backend/media</code>, then re-upload images here.'
+                'Default AI images are shown until you upload your own here. '
+                'On Railway, set <code>CLOUDINARY_URL</code> or attach a volume so custom uploads persist.'
             ),
         }),
     )

@@ -65,13 +65,9 @@ function useGalleryBreakpoint() {
   return bp;
 }
 
-const DEFAULT_STOCK = [
-  'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=640&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1519741497674-611481863552?w=640&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=640&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=640&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=640&q=80&auto=format&fit=crop',
-];
+import { GALLERY_AI_IMAGE_LIST } from '../../constants/galleryImages';
+
+const DEFAULT_STOCK = GALLERY_AI_IMAGE_LIST;
 
 const containerVariants = {
   hidden: { opacity: 1 },

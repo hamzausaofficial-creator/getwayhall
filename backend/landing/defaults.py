@@ -1,5 +1,7 @@
 """Fallback landing content when Django admin has no entries yet."""
 
+from .gallery_seed import DEFAULT_GALLERY_URLS
+
 
 def get_default_landing_payload(request=None):
     return {
@@ -18,12 +20,12 @@ def get_default_landing_payload(request=None):
             },
         ],
         'gallery': [
-            {'id': 0, 'title': 'Grand Marriage Hall', 'category': 'MARRIAGE_HALL', 'category_label': 'Marriage Hall', 'image_url': None, 'sort_order': 0},
-            {'id': 1, 'title': 'Royal Wedding Stage', 'category': 'WEDDING_STAGE', 'category_label': 'Wedding Stage', 'image_url': None, 'sort_order': 1},
-            {'id': 2, 'title': 'Deluxe Guest Room', 'category': 'GUEST_ROOM', 'category_label': 'Guest Room', 'image_url': None, 'sort_order': 2},
-            {'id': 3, 'title': 'Fine Dining Area', 'category': 'DINING', 'category_label': 'Dining Area', 'image_url': None, 'sort_order': 3},
-            {'id': 4, 'title': 'Elegant Reception', 'category': 'RECEPTION', 'category_label': 'Reception Area', 'image_url': None, 'sort_order': 4},
-            {'id': 5, 'title': 'Outdoor Event Lawn', 'category': 'OUTDOOR', 'category_label': 'Outdoor Event Area', 'image_url': None, 'sort_order': 5},
+            {'id': 0, 'title': 'Grand Marriage Hall', 'category': 'MARRIAGE_HALL', 'category_label': 'Marriage Hall', 'image_url': DEFAULT_GALLERY_URLS['MARRIAGE_HALL'], 'sort_order': 0},
+            {'id': 1, 'title': 'Royal Wedding Stage', 'category': 'WEDDING_STAGE', 'category_label': 'Wedding Stage', 'image_url': DEFAULT_GALLERY_URLS['WEDDING_STAGE'], 'sort_order': 1},
+            {'id': 2, 'title': 'Deluxe Guest Room', 'category': 'GUEST_ROOM', 'category_label': 'Guest Room', 'image_url': DEFAULT_GALLERY_URLS['GUEST_ROOM'], 'sort_order': 2},
+            {'id': 3, 'title': 'Fine Dining Area', 'category': 'DINING', 'category_label': 'Dining Area', 'image_url': DEFAULT_GALLERY_URLS['DINING'], 'sort_order': 3},
+            {'id': 4, 'title': 'Elegant Reception', 'category': 'RECEPTION', 'category_label': 'Reception Area', 'image_url': DEFAULT_GALLERY_URLS['RECEPTION'], 'sort_order': 4},
+            {'id': 5, 'title': 'Outdoor Event Lawn', 'category': 'OUTDOOR', 'category_label': 'Outdoor Event Area', 'image_url': DEFAULT_GALLERY_URLS['OUTDOOR'], 'sort_order': 5},
         ],
         'testimonials': [
             {

@@ -3,6 +3,7 @@ from rest_framework import serializers
 from core.media_urls import get_media_file_url
 
 from .models import HeroSlide, GalleryImage, Testimonial, LandingStatistic, LandingFAQ
+from .gallery_seed import default_gallery_image_url, gallery_item_needs_seed_image
 
 
 class HeroSlideSerializer(serializers.ModelSerializer):
@@ -29,12 +30,9 @@ class GalleryImageSerializer(serializers.ModelSerializer):
 
     def get_image_url(self, obj):
         if not obj.image or not obj.image.name:
-            return None
-        try:
-            if not obj.image.storage.exists(obj.image.name):
-                return None
-        except Exception:
-            return None
+            return default_gallery_image_url(obj.category)
+        if gallery_item_needs_seed_image(obj.image):
+            return default_gallery_image_url(obj.category)
         return get_media_file_url(self.context.get('request'), obj.image)
 
 

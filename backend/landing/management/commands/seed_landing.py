@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 
 from landing.models import HeroSlide, GalleryImage, Testimonial, LandingStatistic, LandingFAQ
+from landing.gallery_seed import attach_missing_gallery_images
 
 
 class Command(BaseCommand):
@@ -32,6 +33,10 @@ class Command(BaseCommand):
             ]):
                 GalleryImage.objects.create(title=title, category=cat, sort_order=i)
             self.stdout.write(self.style.SUCCESS('Gallery placeholders seeded.'))
+
+        attached = attach_missing_gallery_images()
+        if attached:
+            self.stdout.write(self.style.SUCCESS(f'Attached {attached} default gallery image(s).'))
 
         if Testimonial.objects.exists():
             self.stdout.write('Testimonials already exist - skipping testimonial seed.')
@@ -93,4 +98,4 @@ class Command(BaseCommand):
                 LandingFAQ.objects.create(question=q, answer=a, sort_order=i)
             self.stdout.write(self.style.SUCCESS('FAQs seeded.'))
 
-        self.stdout.write(self.style.SUCCESS('Landing seed complete. Upload custom images in Django admin.'))
+        self.stdout.write(self.style.SUCCESS('Landing seed complete. Upload custom images in Django admin to replace defaults.'))
