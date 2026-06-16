@@ -42,11 +42,12 @@ export default function VaporizeTextCycle({
   const transformedDensity = transformValue(density, [0, 10], [0.3, 1], true);
 
   const globalDpr = useMemo(() => {
-    if (typeof window !== 'undefined') {
-      return window.devicePixelRatio * 1.5 || 1;
-    }
-    return 1;
-  }, []);
+    if (typeof window === 'undefined') return 1;
+    const fontSize = parseFontSize(font.fontSize || '50px');
+    const base = window.devicePixelRatio || 1;
+    if (fontSize <= 16) return Math.min(base, 1.75);
+    return base * 1.5;
+  }, [font.fontSize]);
 
   const wrapperStyle = useMemo(() => ({
     width: '100%',
@@ -511,8 +512,18 @@ function calculateVaporizeSpread(fontSize) {
 }
 
 function parseColor(color) {
-  const rgbMatch = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-  const rgbaMatch = color.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+  const hexMatch = color?.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (hexMatch) {
+    let hex = hexMatch[1];
+    if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, 1)`;
+  }
+
+  const rgbMatch = color?.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+  const rgbaMatch = color?.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
   if (rgbaMatch) {
     const [, r, g, b, a] = rgbaMatch;
     return `rgba(${r}, ${g}, ${b}, ${a})`;
@@ -521,7 +532,7 @@ function parseColor(color) {
     const [, r, g, b] = rgbMatch;
     return `rgba(${r}, ${g}, ${b}, 1)`;
   }
-  return 'rgba(0, 0, 0, 1)';
+  return 'rgba(29, 107, 5, 1)';
 }
 
 function parseFontSize(size) {
@@ -566,27 +577,29 @@ function useIsInView(ref) {
 
 export function VaporHeroTagline({ texts, className = '' }) {
   const hostRef = useRef(null);
-  const [font, setFont] = useState({
+  const [theme, setTheme] = useState({
     fontFamily: 'system-ui, sans-serif',
     fontSize: '0.8125rem',
-    fontWeight: 700,
+    fontWeight: 600,
+    color: '#1d6b05',
   });
 
   useEffect(() => {
     const tagline = hostRef.current?.closest('.landing-marquee-hero__tagline');
     if (!tagline) return undefined;
 
-    const syncFont = () => {
+    const syncTheme = () => {
       const styles = getComputedStyle(tagline);
-      setFont({
+      setTheme({
         fontFamily: styles.fontFamily,
         fontSize: styles.fontSize,
-        fontWeight: parseInt(styles.fontWeight, 10) || 700,
+        fontWeight: 600,
+        color: styles.color || '#1d6b05',
       });
     };
 
-    syncFont();
-    const observer = new ResizeObserver(syncFont);
+    syncTheme();
+    const observer = new ResizeObserver(syncTheme);
     observer.observe(tagline);
     return () => observer.disconnect();
   }, []);
@@ -596,10 +609,14 @@ export function VaporHeroTagline({ texts, className = '' }) {
       <VaporizeTextCycle
         className={className}
         texts={texts}
-        font={font}
-      color="rgb(29, 107, 5)"
-      spread={4}
-      density={6}
+        font={{
+          fontFamily: theme.fontFamily,
+          fontSize: theme.fontSize,
+          fontWeight: theme.fontWeight,
+        }}
+        color={theme.color}
+      spread={3}
+      density={5}
       animation={{
         vaporizeDuration: 1.6,
         fadeInDuration: 0.9,
