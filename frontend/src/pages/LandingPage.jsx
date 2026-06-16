@@ -3,6 +3,7 @@ import LandingNav from '../components/landing/LandingNav';
 import HeroSection from '../components/landing/HeroSection';
 import TrustSection from '../components/landing/TrustSection';
 import GallerySection from '../components/landing/GallerySection';
+import GalleryAlbumSection from '../components/landing/GalleryAlbumSection';
 import FeaturesSection from '../components/landing/FeaturesSection';
 import WhyChooseSection from '../components/landing/WhyChooseSection';
 import HowItWorksSection from '../components/landing/HowItWorksSection';
@@ -52,6 +53,7 @@ export default function LandingPage() {
           />
           <TrustSection stats={trustStats} />
           <GallerySection images={data.gallery} />
+          <GalleryAlbumSection images={data.gallery} />
           <FeaturesSection />
           <WhyChooseSection badges={whyBadges} />
           <HowItWorksSection />

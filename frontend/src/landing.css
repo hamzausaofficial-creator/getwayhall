@@ -1239,6 +1239,107 @@ html[data-page='landing'] body {
 }
 
 /* ============================================================
+   Gallery album - image trail below fan gallery
+   ============================================================ */
+.landing-gallery-album {
+  padding: 0 0 4.5rem;
+  background: #fff;
+}
+
+.landing-gallery-album__wrap {
+  width: 100%;
+}
+
+.landing-gallery-album__stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22rem;
+  height: clamp(22rem, 52vw, 32rem);
+  overflow: hidden;
+  border-radius: 1.75rem;
+  border: 1px solid rgba(91, 213, 30, 0.18);
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(91, 213, 30, 0.12), transparent 70%),
+    linear-gradient(180deg, #f8fdf4 0%, #ffffff 55%, #f4f8f2 100%);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+}
+
+.landing-gallery-album__trail-host {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.landing-gallery-album__copy {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 1.5rem;
+  pointer-events: none;
+  user-select: none;
+}
+
+.landing-gallery-album__kicker {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #1d6b05;
+}
+
+.landing-gallery-album__title {
+  margin: 0;
+  font-size: clamp(2.5rem, 9vw, 5.5rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  color: #191c1e;
+}
+
+.landing-gallery-album__title-accent {
+  background: linear-gradient(135deg, #1d6b05 0%, #5bd51e 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.landing-gallery-album__hint {
+  margin: 0.85rem auto 0;
+  max-width: 22rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.landing-gallery-album__thumb {
+  position: relative;
+  overflow: hidden;
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: 0.85rem;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.2);
+  background: #f8fafc;
+}
+
+.landing-gallery-album__thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (min-width: 768px) {
+  .landing-gallery-album__thumb {
+    width: 6.5rem;
+    height: 6.5rem;
+    border-radius: 1rem;
+  }
+}
+
+/* ============================================================
    How it works - Simple Process cards
    ============================================================ */
 .landing-steps-wrap {
