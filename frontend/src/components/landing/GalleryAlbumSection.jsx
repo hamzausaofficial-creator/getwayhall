@@ -84,7 +84,7 @@ export default function GalleryAlbumSection({ images = [] }) {
                 Gateway <span className="landing-gallery-album__title-accent">Moments</span>
               </h3>
               <p className="landing-gallery-album__hint">
-                Glide your cursor and watch beautiful marriage hall &amp; guest house moments from Gateway come alive.
+                Gateway Marriage Hall Album
               </p>
             </div>
           </div>
