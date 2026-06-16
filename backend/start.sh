@@ -10,7 +10,7 @@ python seed_production_users.py
 echo "Ensuring landing page content exists..."
 python manage.py seed_landing
 
-echo "Ensuring media upload directory exists..."
+echo "Ensuring media upload directory exists at ${MEDIA_ROOT:-media}..."
 mkdir -p "${MEDIA_ROOT:-media}"
 
 echo "Starting Gunicorn..."

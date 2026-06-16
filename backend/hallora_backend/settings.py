@@ -139,8 +139,19 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.environ.get('MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
+_volume_mount = os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', '').strip()
+MEDIA_ROOT = _volume_mount or os.environ.get('MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
 os.makedirs(MEDIA_ROOT, exist_ok=True)
+
+# Public API base for absolute media URLs when request is unavailable (e.g. scripts)
+PUBLIC_API_BASE_URL = os.environ.get('PUBLIC_API_BASE_URL', '').rstrip('/')
+if not PUBLIC_API_BASE_URL:
+    _railway_public = os.environ.get('RAILWAY_PUBLIC_DOMAIN', '').strip()
+    if _railway_public:
+        PUBLIC_API_BASE_URL = (
+            _railway_public if _railway_public.startswith('http')
+            else f'https://{_railway_public}'
+        ).rstrip('/')
 
 # Optional Cloudinary for persistent uploads on Railway (set CLOUDINARY_URL in env)
 if os.environ.get('CLOUDINARY_URL'):
@@ -159,6 +170,9 @@ if os.environ.get('CLOUDINARY_URL'):
         },
     }
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    CLOUDINARY_STORAGE = {
+        'PREFIX': 'gateway/',
+    }
 
 # React build is served via /assets/ in urls.py (not collected to STATIC_ROOT).
 STATICFILES_DIRS = []

@@ -12,16 +12,18 @@ export function resolveMediaUrl(url) {
   if (url.startsWith('blob:')) return url;
 
   if (url.startsWith('http://') || url.startsWith('https://')) {
-    // Dev only: proxy /media through Vite to Django
-    if (import.meta.env.DEV) {
-      try {
-        const { pathname } = new URL(url);
-        if (pathname.startsWith('/media/')) return pathname;
-      } catch {
-        /* keep original */
+    try {
+      const parsed = new URL(url);
+      if (parsed.pathname.startsWith('/media/')) {
+        if (import.meta.env.DEV) return parsed.pathname;
+        const apiBase = getMediaBaseUrl();
+        if (apiBase && parsed.host === new URL(apiBase).host) {
+          return parsed.pathname;
+        }
       }
+    } catch {
+      /* keep original */
     }
-    // Production: keep full backend URL (Vercel + Railway split deploy)
     return url;
   }
 

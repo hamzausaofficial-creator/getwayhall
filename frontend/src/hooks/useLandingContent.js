@@ -23,7 +23,7 @@ export function useLandingContent() {
         setData({
           ...EMPTY,
           ...payload,
-          gallery: (payload.gallery || []).filter((item) => item?.image_url),
+          gallery: payload.gallery || [],
           testimonials: pickList(payload.testimonials, EMPTY.testimonials, 3),
           faqs: pickList(payload.faqs, EMPTY.faqs, 6),
           statistics: { ...EMPTY.statistics, ...payload.statistics },

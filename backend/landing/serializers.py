@@ -28,6 +28,13 @@ class GalleryImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'category', 'category_label', 'image_url', 'sort_order']
 
     def get_image_url(self, obj):
+        if not obj.image or not obj.image.name:
+            return None
+        try:
+            if not obj.image.storage.exists(obj.image.name):
+                return None
+        except Exception:
+            return None
         return get_media_file_url(self.context.get('request'), obj.image)
 
 

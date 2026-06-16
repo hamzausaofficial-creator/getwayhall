@@ -27,7 +27,7 @@ class HeroSlideAdmin(admin.ModelAdmin):
 
 @admin.register(GalleryImage)
 class GalleryImageAdmin(admin.ModelAdmin):
-    list_display = ('title', 'category', 'has_image', 'is_active', 'sort_order', 'created_at')
+    list_display = ('title', 'category', 'has_image', 'file_on_storage', 'is_active', 'sort_order', 'created_at')
     list_editable = ('is_active', 'sort_order')
     list_filter = ('category', 'is_active')
     search_fields = ('title',)
@@ -39,7 +39,9 @@ class GalleryImageAdmin(admin.ModelAdmin):
             'description': (
                 'Upload a photo for the <strong>Gallery section</strong> on the landing page. '
                 'Hero marquee images stay fixed and are not changed from here. '
-                'On Railway production, set <code>CLOUDINARY_URL</code> in env so uploads persist after deploy.'
+                'On Railway production, uploads are lost on redeploy unless you set '
+                '<code>CLOUDINARY_URL</code> or attach a volume at '
+                '<code>/app/backend/media</code>, then re-upload images here.'
             ),
         }),
     )
@@ -48,10 +50,21 @@ class GalleryImageAdmin(admin.ModelAdmin):
     def has_image(self, obj):
         return bool(obj.image)
 
+    @admin.display(boolean=True, description='Stored')
+    def file_on_storage(self, obj):
+        if not obj.image or not obj.image.name:
+            return False
+        try:
+            return obj.image.storage.exists(obj.image.name)
+        except Exception:
+            return False
+
     @admin.display(description='Preview')
     def image_preview(self, obj):
         if not obj.image:
             return '—'
+        if not self.file_on_storage(obj):
+            return 'File missing on server — re-upload after setting CLOUDINARY_URL or a Railway volume.'
         from django.utils.html import format_html
         return format_html('<img src="{}" style="max-height:120px;border-radius:8px;" alt="" />', obj.image.url)
 

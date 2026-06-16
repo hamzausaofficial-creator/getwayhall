@@ -13,17 +13,42 @@ function resolveGallerySrc(img) {
   return getGalleryStockImage(img?.category || 'OTHER');
 }
 
+function LightboxImage({ item }) {
+  const primarySrc = resolveGallerySrc(item);
+  const fallbackSrc = getGalleryStockImage(item?.category || 'OTHER');
+  const [src, setSrc] = useState(primarySrc);
+
+  useEffect(() => {
+    setSrc(primarySrc);
+  }, [primarySrc]);
+
+  return (
+    <motion.img
+      initial={{ scale: 0.98, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      exit={{ scale: 0.98, opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="gallery-lightbox__image"
+      src={src}
+      alt={item.title}
+      loading="eager"
+      decoding="async"
+      onError={() => {
+        if (src !== fallbackSrc) setSrc(fallbackSrc);
+      }}
+    />
+  );
+}
+
 export default function GallerySection({ images = [] }) {
   const [lightbox, setLightbox] = useState(null);
-  const items = useMemo(
-    () => (images || []).filter((img) => img?.image_url),
-    [images],
-  );
+  const items = useMemo(() => (images || []), [images]);
 
   const galleryPhotos = useMemo(
     () => items.map((img, index) => ({
       id: img.id ?? index,
       src: resolveGallerySrc(img),
+      fallbackSrc: getGalleryStockImage(img?.category || 'OTHER'),
       alt: img.title,
       title: img.title,
       category: img.category_label || img.category,
@@ -48,7 +73,8 @@ export default function GallerySection({ images = [] }) {
           <ImageIcon size={40} style={{ margin: '0 auto 1rem', color: '#cbd5e1' }} />
           <p className="landing-text-muted" style={{ maxWidth: '28rem', margin: '0 auto' }}>
             No gallery photos yet. Upload images in Django Admin → Gallery images.
-            On Railway, set CLOUDINARY_URL so uploads stay after deploy.
+            On Railway, attach a volume at <code>/app/backend/media</code> or set{' '}
+            <code>CLOUDINARY_URL</code> so uploads persist after deploy.
           </p>
         </div>
       </section>
@@ -119,18 +145,7 @@ export default function GallerySection({ images = [] }) {
                 </>
               )}
               <div className="gallery-lightbox__stage" onClick={(e) => e.stopPropagation()}>
-                <motion.img
-                  key={lightbox}
-                  initial={{ scale: 0.98, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.98, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="gallery-lightbox__image"
-                  src={resolveGallerySrc(lightboxItem)}
-                  alt={lightboxItem.title}
-                  loading="eager"
-                  decoding="async"
-                />
+                <LightboxImage key={lightbox} item={lightboxItem} />
                 <div className="gallery-lightbox__caption">
                   <p className="gallery-lightbox__caption-kicker">
                     {lightboxItem.category_label || lightboxItem.category}

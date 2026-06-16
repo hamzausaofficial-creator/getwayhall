@@ -118,6 +118,7 @@ const MotionImg = motion(
 
 export function Photo({
   src,
+  fallbackSrc,
   alt,
   className,
   direction = 'right',
@@ -126,13 +127,24 @@ export function Photo({
   onClick,
 }) {
   const [rotation, setRotation] = useState(0);
+  const [displaySrc, setDisplaySrc] = useState(src);
   const x = useMotionValue(200);
   const y = useMotionValue(200);
+
+  useEffect(() => {
+    setDisplaySrc(src);
+  }, [src]);
 
   useEffect(() => {
     const randomRotation = getRandomNumberInRange(1, 4) * (direction === 'left' ? -1 : 1);
     setRotation(randomRotation);
   }, [direction]);
+
+  const handleImageError = () => {
+    if (fallbackSrc && displaySrc !== fallbackSrc) {
+      setDisplaySrc(fallbackSrc);
+    }
+  };
 
   function handleMouse(event) {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -188,11 +200,12 @@ export function Photo({
     >
       <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-3xl bg-slate-50 shadow-[0_20px_50px_rgba(15,23,42,0.18)] ring-1 ring-slate-200/80">
         <MotionImg
-          className="h-full w-full rounded-3xl object-contain pointer-events-none"
-          src={src}
+          className="h-full w-full rounded-3xl object-cover pointer-events-none"
+          src={displaySrc}
           alt={alt}
           draggable={false}
           loading="lazy"
+          onError={handleImageError}
         />
       </div>
     </motion.div>
@@ -233,6 +246,7 @@ export function PhotoGallery({
         zIndex: layout.zIndex,
         direction: layout.direction,
         src: item.src,
+        fallbackSrc: item.fallbackSrc,
         alt: item.alt || item.title || 'Venue photo',
         index,
       };
@@ -310,6 +324,7 @@ export function PhotoGallery({
                     width={photoSize}
                     height={photoSize}
                     src={photo.src}
+                    fallbackSrc={photo.fallbackSrc}
                     alt={photo.alt}
                     direction={photo.direction}
                     onClick={onPhotoClick ? () => onPhotoClick(photo.index) : undefined}
