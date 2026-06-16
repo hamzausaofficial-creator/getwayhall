@@ -7,7 +7,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Wallet,
-  BarChart3,
   Package,
   Sparkles,
   CalendarDays,
@@ -30,7 +29,6 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
     user,
     loading,
     canAccessExpenses,
-    canAccessReports,
     canAccessNotifications,
     canAccessDashboard,
   } = usePermissions();
@@ -56,16 +54,9 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
     ...(canAccessNotifications ? [{ name: 'Notifications', icon: Bell, path: '/gh/notifications', pageKey: GH_PAGE_KEYS.NOTIFICATIONS }] : []),
   ].filter((item) => !item.pageKey || isPageVisible(item.pageKey));
 
-  const dashboardNavItems = (isGuestHouse
-    ? [
-        ...(canAccessDashboard ? [{ name: 'Dashboard', icon: Calculator, path: '/gh/dashboard', pageKey: GH_PAGE_KEYS.DASHBOARD }] : []),
-        ...(canAccessReports ? [{ name: 'Reports', icon: BarChart3, path: '/gh/reports', pageKey: GH_PAGE_KEYS.REPORTS }] : []),
-      ]
-    : [
-        ...(canAccessDashboard ? [{ name: 'Accountant', icon: Calculator, path: '/dashboard' }] : []),
-        ...(canAccessReports ? [{ name: 'Reports', icon: BarChart3, path: '/reports' }] : []),
-      ]
-  ).filter((item) => !item.pageKey || isPageVisible(item.pageKey));
+  const dashboardNavItem = isGuestHouse
+    ? { name: 'Dashboard', icon: Calculator, path: '/gh/dashboard', pageKey: GH_PAGE_KEYS.DASHBOARD }
+    : { name: 'Accountant', icon: Calculator, path: '/dashboard' };
   const brandSubtitle = isGuestHouse ? 'Guest House Management' : 'Marriage Hall Management';
 
   const mainNavItems = isGuestHouse ? guestHouseNavItems : hallNavItems;
@@ -158,14 +149,11 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
               {renderNavLink(item)}
             </li>
           ))}
-          {dashboardNavItems.map((item, index) => (
-            <li
-              key={item.name}
-              className={`app-sidebar__nav-item${index === 0 ? ' app-sidebar__nav-item--divider' : ''}`}
-            >
-              {renderNavLink(item)}
+          {canAccessDashboard && (!isGuestHouse || isPageVisible(dashboardNavItem.pageKey)) && (
+            <li className="app-sidebar__nav-item app-sidebar__nav-item--divider">
+              {renderNavLink(dashboardNavItem)}
             </li>
-          ))}
+          )}
         </ul>
       </nav>
     </aside>
