@@ -372,13 +372,14 @@ html[data-page='landing'] body {
   flex-shrink: 0;
 }
 
-.landing-marquee-hero__tagline-vapor {
+.landing-marquee-hero__tagline-vapor,
+.landing-marquee-hero__tagline-vapor-host {
   position: relative;
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
-  height: 1.125rem;
-  min-height: 20px;
-  display: flex;
+  height: 1.25em;
+  min-height: 1.25em;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
 }
@@ -2799,9 +2800,11 @@ html[data-page='landing'] body {
     max-width: 100%;
   }
 
-  .landing-marquee-hero__tagline-vapor {
+  .landing-marquee-hero__tagline-vapor,
+  .landing-marquee-hero__tagline-vapor-host {
     min-width: 200px;
-    height: 1rem;
+    height: 1.25em;
+    min-height: 1.25em;
   }
 
   .landing-marquee-hero__actions {

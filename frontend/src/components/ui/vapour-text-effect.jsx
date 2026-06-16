@@ -67,7 +67,7 @@ export default function VaporizeTextCycle({
   }), [animation.vaporizeDuration, animation.fadeInDuration, animation.waitDuration]);
 
   const fontConfig = useMemo(() => {
-    const fontSize = parseInt(font.fontSize?.replace('px', '') || '50', 10);
+    const fontSize = parseFontSize(font.fontSize || '50px');
     const VAPORIZE_SPREAD = calculateVaporizeSpread(fontSize);
     const MULTIPLIED_VAPORIZE_SPREAD = VAPORIZE_SPREAD * spread;
     return {
@@ -340,7 +340,7 @@ function renderCanvas({
   canvas.width = Math.floor(width * globalDpr);
   canvas.height = Math.floor(height * globalDpr);
 
-  const fontSize = parseInt(framerProps.font?.fontSize?.replace('px', '') || '50', 10);
+  const fontSize = parseFontSize(framerProps.font?.fontSize || '50px');
   const fontStr = `${framerProps.font?.fontWeight ?? 400} ${fontSize * globalDpr}px ${framerProps.font?.fontFamily ?? 'sans-serif'}`;
   const color = parseColor(framerProps.color ?? 'rgb(153, 153, 153)');
 
@@ -524,6 +524,18 @@ function parseColor(color) {
   return 'rgba(0, 0, 0, 1)';
 }
 
+function parseFontSize(size) {
+  if (!size) return 50;
+  if (typeof size === 'number') return size;
+  const value = parseFloat(size);
+  if (Number.isNaN(value)) return 50;
+  if (size.endsWith('rem') && typeof document !== 'undefined') {
+    const root = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    return value * root;
+  }
+  return value;
+}
+
 function transformValue(input, inputRange, outputRange, clamp = false) {
   const [inputMin, inputMax] = inputRange;
   const [outputMin, outputMax] = outputRange;
@@ -553,15 +565,38 @@ function useIsInView(ref) {
 }
 
 export function VaporHeroTagline({ texts, className = '' }) {
+  const hostRef = useRef(null);
+  const [font, setFont] = useState({
+    fontFamily: 'system-ui, sans-serif',
+    fontSize: '0.8125rem',
+    fontWeight: 700,
+  });
+
+  useEffect(() => {
+    const tagline = hostRef.current?.closest('.landing-marquee-hero__tagline');
+    if (!tagline) return undefined;
+
+    const syncFont = () => {
+      const styles = getComputedStyle(tagline);
+      setFont({
+        fontFamily: styles.fontFamily,
+        fontSize: styles.fontSize,
+        fontWeight: parseInt(styles.fontWeight, 10) || 700,
+      });
+    };
+
+    syncFont();
+    const observer = new ResizeObserver(syncFont);
+    observer.observe(tagline);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <VaporizeTextCycle
-      className={className}
-      texts={texts}
-      font={{
-        fontFamily: 'inherit, system-ui, sans-serif',
-        fontSize: '13px',
-        fontWeight: 700,
-      }}
+    <div ref={hostRef} className="landing-marquee-hero__tagline-vapor-host">
+      <VaporizeTextCycle
+        className={className}
+        texts={texts}
+        font={font}
       color="rgb(29, 107, 5)"
       spread={4}
       density={6}
@@ -573,6 +608,7 @@ export function VaporHeroTagline({ texts, className = '' }) {
       direction="left-to-right"
       alignment="center"
       tag={Tag.P}
-    />
+      />
+    </div>
   );
 }
