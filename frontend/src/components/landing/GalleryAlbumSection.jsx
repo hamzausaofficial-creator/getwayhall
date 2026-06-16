@@ -79,9 +79,8 @@ export default function GalleryAlbumSection({ images = [] }) {
             </div>
 
             <div className="landing-gallery-album__copy">
-              <p className="landing-gallery-album__kicker">Gateway Marriage Hall</p>
-              <h3 className="landing-gallery-album__title">
-                Gateway <span className="landing-gallery-album__title-accent">Moments</span>
+              <h3 className="landing-gallery-album__title landing-gallery-album__title--albums">
+                ALBUMS
               </h3>
               <p className="landing-gallery-album__hint">
                 Gateway Marriage Hall Album

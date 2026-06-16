@@ -1299,6 +1299,13 @@ html[data-page='landing'] body {
   color: #191c1e;
 }
 
+.landing-gallery-album__title--albums {
+  background: linear-gradient(to right, #0a0a0a 0%, #737373 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 .landing-gallery-album__title-accent {
   background: linear-gradient(135deg, #1d6b05 0%, #5bd51e 100%);
   -webkit-background-clip: text;
