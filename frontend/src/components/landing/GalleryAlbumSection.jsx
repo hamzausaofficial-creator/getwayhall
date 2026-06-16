@@ -79,12 +79,12 @@ export default function GalleryAlbumSection({ images = [] }) {
             </div>
 
             <div className="landing-gallery-album__copy">
-              <p className="landing-gallery-album__kicker">Interactive album</p>
+              <p className="landing-gallery-album__kicker">Gateway Marriage Hall</p>
               <h3 className="landing-gallery-album__title">
-                Venue <span className="landing-gallery-album__title-accent">Album</span>
+                Gateway <span className="landing-gallery-album__title-accent">Moments</span>
               </h3>
               <p className="landing-gallery-album__hint">
-                Move your cursor across the canvas to paint the trail with venue moments.
+                Glide your cursor and watch beautiful marriage hall &amp; guest house moments from Gateway come alive.
               </p>
             </div>
           </div>
