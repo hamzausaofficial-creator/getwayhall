@@ -13,9 +13,18 @@ function resolveGallerySrc(img) {
   return getGalleryStockImage(img?.category || 'OTHER');
 }
 
+function gallerySrcKey(src) {
+  if (!src) return '';
+  try {
+    const path = src.startsWith('http') ? new URL(src).pathname : src;
+    return path.split('/').pop()?.toLowerCase() || src;
+  } catch {
+    return src;
+  }
+}
+
 function LightboxImage({ item }) {
   const primarySrc = resolveGallerySrc(item);
-  const fallbackSrc = getGalleryStockImage(item?.category || 'OTHER');
   const [src, setSrc] = useState(primarySrc);
 
   useEffect(() => {
@@ -34,7 +43,8 @@ function LightboxImage({ item }) {
       loading="eager"
       decoding="async"
       onError={() => {
-        if (src !== fallbackSrc) setSrc(fallbackSrc);
+        const fallback = getGalleryStockImage(item?.category || 'OTHER');
+        if (src !== fallback) setSrc(fallback);
       }}
     />
   );
@@ -42,7 +52,18 @@ function LightboxImage({ item }) {
 
 export default function GallerySection({ images = [] }) {
   const [lightbox, setLightbox] = useState(null);
-  const items = useMemo(() => (images || []), [images]);
+
+  const items = useMemo(() => {
+    const seen = new Set();
+    return (images || []).reduce((acc, img) => {
+      const src = resolveGallerySrc(img);
+      const key = gallerySrcKey(src);
+      if (seen.has(key)) return acc;
+      seen.add(key);
+      acc.push(img);
+      return acc;
+    }, []);
+  }, [images]);
 
   const galleryPhotos = useMemo(
     () => items.map((img, index) => ({

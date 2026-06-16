@@ -53,7 +53,7 @@ export default function LandingPage() {
           />
           <TrustSection stats={trustStats} />
           <GallerySection images={data.gallery} />
-          <GalleryAlbumSection images={data.gallery} />
+          <GalleryAlbumSection />
           <FeaturesSection />
           <WhyChooseSection badges={whyBadges} />
           <HowItWorksSection />

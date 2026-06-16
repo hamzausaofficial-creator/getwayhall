@@ -14,6 +14,8 @@ GALLERY_SEED_FILES = {
     'OTHER': 'marriage-hall.jpg',
 }
 
+BUNDLED_GALLERY_FILENAMES = set(GALLERY_SEED_FILES.values())
+
 DEFAULT_GALLERY_URLS = {
     'MARRIAGE_HALL': '/gallery/marriage-hall.jpg',
     'WEDDING_STAGE': '/gallery/wedding-stage.jpg',
@@ -39,6 +41,12 @@ def get_gallery_seed_dir():
 
 def default_gallery_image_url(category):
     return DEFAULT_GALLERY_URLS.get(category, DEFAULT_GALLERY_URLS['MARRIAGE_HALL'])
+
+
+def is_bundled_gallery_file(image_field):
+    if not image_field or not image_field.name:
+        return False
+    return os.path.basename(image_field.name) in BUNDLED_GALLERY_FILENAMES
 
 
 def gallery_item_needs_seed_image(image_field):

@@ -3,7 +3,7 @@ from rest_framework import serializers
 from core.media_urls import get_media_file_url
 
 from .models import HeroSlide, GalleryImage, Testimonial, LandingStatistic, LandingFAQ
-from .gallery_seed import default_gallery_image_url, gallery_item_needs_seed_image
+from .gallery_seed import default_gallery_image_url, gallery_item_needs_seed_image, is_bundled_gallery_file
 
 
 class HeroSlideSerializer(serializers.ModelSerializer):
@@ -29,11 +29,10 @@ class GalleryImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'category', 'category_label', 'image_url', 'sort_order']
 
     def get_image_url(self, obj):
-        if not obj.image or not obj.image.name:
-            return default_gallery_image_url(obj.category)
-        if gallery_item_needs_seed_image(obj.image):
-            return default_gallery_image_url(obj.category)
-        return get_media_file_url(self.context.get('request'), obj.image)
+        if obj.image and obj.image.name and not is_bundled_gallery_file(obj.image):
+            if not gallery_item_needs_seed_image(obj.image):
+                return get_media_file_url(self.context.get('request'), obj.image)
+        return default_gallery_image_url(obj.category)
 
 
 class TestimonialSerializer(serializers.ModelSerializer):

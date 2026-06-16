@@ -1,7 +1,7 @@
 import {
   Building2, Sparkles, BedDouble, UtensilsCrossed, DoorOpen, Trees,
 } from 'lucide-react';
-import { getGalleryAiImage, GALLERY_AI_IMAGE_LIST } from '../constants/galleryImages';
+import { getGalleryAiImage } from '../constants/galleryImages';
 
 /** Premium placeholders when no custom admin upload is available. */
 export const GALLERY_PLACEHOLDERS = {
@@ -49,8 +49,16 @@ export const GALLERY_PLACEHOLDERS = {
   },
 };
 
-/** Stock photos for hero marquee — separate from admin gallery uploads. */
-export const HERO_MARQUEE_STOCK_IMAGES = GALLERY_AI_IMAGE_LIST;
+/** Stock photos for hero marquee — kept separate from gallery AI images. */
+export const HERO_MARQUEE_STOCK_IMAGES = [
+  'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=640&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1519741497674-611481863552?w=640&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=640&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=640&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=640&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=640&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=640&q=80&auto=format&fit=crop',
+];
 
 export function isGenericHeroImage(url) {
   if (!url) return true;
