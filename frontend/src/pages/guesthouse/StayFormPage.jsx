@@ -4,8 +4,9 @@ import {
   ChevronLeft, Sparkles, BedDouble, FileText, CheckCircle, X, HelpCircle,
 } from 'lucide-react';
 import { createStay, updateStay, getStay, listRooms, getAvailableRooms, listGhServices } from '../../api/guesthouse';
-import { computeStayBilling } from '../../utils/ghBilling';
+import useLiveStayBill, { getBookingNights } from '../../hooks/useLiveStayBill';
 import { StayAddonsPicker, StayBillingBreakdown, GuestsCountHint } from '../../components/guesthouse/StayAddonsSection';
+import LiveBookingEstimate from '../../components/guesthouse/LiveBookingEstimate';
 import StayGuestRoster, {
   buildGuestRosterPayload,
   deriveGuestsCount,
@@ -303,22 +304,17 @@ export default function StayFormPage() {
     return Math.max((Number(selectedRoom.beds) || 1) - 1, 0);
   }, [selectedRoom]);
 
-  const stayEstimate = useMemo(() => {
-    if (!form.check_in || !form.check_out || !selectedRoom) return null;
-    const nights = Math.round(
-      (new Date(form.check_out) - new Date(form.check_in)) / (1000 * 60 * 60 * 24),
-    );
-    if (nights <= 0) return { error: 'Check-out must be after check-in.' };
-    const billing = computeStayBilling({
-      room: selectedRoom,
-      guestsCount: effectiveGuestsCount,
-      nights,
-      services,
-      selectedServiceIds: selectedAddonIds,
-    });
-    const advance = Number(form.advance_paid) || 0;
-    return { ...billing, due: Math.max(0, billing.total - advance) };
-  }, [form.check_in, form.check_out, form.advance_paid, selectedRoom, services, selectedAddonIds, effectiveGuestsCount]);
+  const stayEstimate = useLiveStayBill({
+    checkIn: form.check_in,
+    checkOut: form.check_out,
+    room: selectedRoom,
+    guestsCount: effectiveGuestsCount,
+    services,
+    selectedAddonIds,
+    advancePaid: isEdit ? 0 : form.advance_paid,
+  });
+
+  const bookingNights = stayEstimate.nights || getBookingNights(form.check_in, form.check_out);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -333,6 +329,10 @@ export default function StayFormPage() {
     }
     if (stayEstimate?.error) {
       setFormError(stayEstimate.error);
+      return;
+    }
+    if (!isEdit && stayEstimate?.advanceExceedsTotal) {
+      setFormError(`Advance cannot exceed stay total (${formatRs(stayEstimate.total)}).`);
       return;
     }
     const rosterError = validateGuestRoster(form.customer, primaryCustomer, companions);
@@ -588,8 +588,15 @@ export default function StayFormPage() {
               services={services}
               selectedIds={selectedAddonIds}
               onToggle={toggleAddon}
-              nights={stayEstimate?.nights || 0}
+              nights={bookingNights}
               guestsCount={effectiveGuestsCount}
+            />
+
+            <LiveBookingEstimate
+              bill={stayEstimate}
+              advance={isEdit ? undefined : Number(form.advance_paid) || 0}
+              showAdvance={!isEdit}
+              title="Current bill (updates live)"
             />
 
             <section style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -642,7 +649,7 @@ export default function StayFormPage() {
                   <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>Select a room to see pricing.</p>
                 )}
 
-                {stayEstimate && !stayEstimate.error ? (
+                {stayEstimate?.ready ? (
                   <>
                     <StayBillingBreakdown
                       billing={stayEstimate}
@@ -695,7 +702,7 @@ export default function StayFormPage() {
                   </>
                 ) : (
                   <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
-                    Enter check-in and check-out dates to calculate the bill.
+                    {stayEstimate?.hint || 'Enter check-in, check-out, and room to calculate the bill.'}
                   </p>
                 )}
 

@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { format, addDays, parseISO, differenceInCalendarDays } from 'date-fns';
+import { format, addDays, parseISO } from 'date-fns';
 import {
   ChevronLeft, Calendar, User, BedDouble, Wallet, FileText,
   CheckCircle, X, HelpCircle, Sparkles, Users,
@@ -8,7 +8,9 @@ import {
 } from 'lucide-react';
 import { createStay, getAvailableRooms, listGhServices } from '../../api/guesthouse';
 import { computeStayBilling } from '../../utils/ghBilling';
+import useLiveStayBill, { getBookingNights } from '../../hooks/useLiveStayBill';
 import { StayAddonsPicker, StayBillingBreakdown, GuestsCountHint } from '../../components/guesthouse/StayAddonsSection';
+import LiveBookingEstimate from '../../components/guesthouse/LiveBookingEstimate';
 import client from '../../api/client';
 import toast from 'react-hot-toast';
 import AppLoader from '../../components/AppLoader';
@@ -188,25 +190,17 @@ export default function BookFutureStayPage() {
     return Math.max((Number(selectedRoom.beds) || 1) - 1, 0);
   }, [selectedRoom]);
 
-  const stayEstimate = useMemo(() => {
-    if (!form.check_in || !form.check_out || !selectedRoom) return null;
-    const nights = differenceInCalendarDays(parseISO(form.check_out), parseISO(form.check_in));
-    if (nights <= 0) return { error: 'Check-out must be after check-in.' };
-    const billing = computeStayBilling({
-      room: selectedRoom,
-      guestsCount: effectiveGuestsCount,
-      nights,
-      services,
-      selectedServiceIds: selectedAddonIds,
-    });
-    const advance = Number(form.advance_paid) || 0;
-    return {
-      ...billing,
-      nightly: billing.nightly,
-      due: Math.max(0, billing.total - advance),
-      error: null,
-    };
-  }, [form.check_in, form.check_out, form.advance_paid, selectedRoom, services, selectedAddonIds, effectiveGuestsCount]);
+  const stayEstimate = useLiveStayBill({
+    checkIn: form.check_in,
+    checkOut: form.check_out,
+    room: selectedRoom,
+    guestsCount: effectiveGuestsCount,
+    services,
+    selectedAddonIds,
+    advancePaid: form.advance_paid,
+  });
+
+  const bookingNights = stayEstimate.nights || getBookingNights(form.check_in, form.check_out);
 
   const formattedDates = useMemo(() => {
     if (!form.check_in || !form.check_out) return null;
@@ -369,6 +363,10 @@ export default function BookFutureStayPage() {
       setFormError(stayEstimate.error);
       return;
     }
+    if (stayEstimate?.advanceExceedsTotal) {
+      setFormError(`Advance cannot exceed stay total (${formatRs(stayEstimate.total)}).`);
+      return;
+    }
     if (!form.customer || !form.room) {
       setFormError('Please select a guest and room.');
       return;
@@ -488,9 +486,14 @@ export default function BookFutureStayPage() {
               <span style={{ fontWeight: '700' }}>{formattedDates.checkIn}</span>
               <span style={{ color: 'var(--text-muted)', margin: '0 8px' }}>→</span>
               <span style={{ fontWeight: '700' }}>{formattedDates.checkOut}</span>
-              {stayEstimate?.nights && (
+              {stayEstimate?.nights > 0 && (
                 <span style={{ marginLeft: '10px', color: 'var(--primary)', fontWeight: '700', fontSize: '12px' }}>
                   {stayEstimate.nights} night{stayEstimate.nights !== 1 ? 's' : ''}
+                </span>
+              )}
+              {stayEstimate?.ready && (
+                <span style={{ marginLeft: '10px', color: 'var(--secondary)', fontWeight: '800', fontSize: '12px' }}>
+                  · {formatRs(stayEstimate.total)}
                 </span>
               )}
             </div>
@@ -519,40 +522,9 @@ export default function BookFutureStayPage() {
         <div className="booking-layout">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
 
-            {/* Guest */}
+            {/* Dates first — billing starts here */}
             <div className="premium-card" style={{ padding: '28px' }}>
-              <SectionHeader
-                icon={User}
-                title="Guests on this stay"
-                subtitle="Primary booker on top, then everyone staying in the room with CNIC / ID"
-              />
-              <StayGuestRoster
-                customers={customers}
-                primaryCustomerId={form.customer}
-                maxAdditionalGuests={maxAdditionalGuests}
-                onPrimaryCustomerChange={(customerId) => {
-                  setForm({ ...form, customer: customerId });
-                  if (customerId) setScannedGuest(null);
-                }}
-                companions={companions}
-                onCompanionsChange={setCompanions}
-                showIdScanner={showIdScanner}
-                onIdScanPrimary={handleIdScan}
-                onIdScanCompanion={handleCompanionIdScan}
-                scanProcessing={creatingGuest}
-                scannedGuest={scannedGuest}
-                onScannedGuestChange={handleScannedGuestChange}
-                onScannedPhoneChange={handleScannedPhoneChange}
-                onSaveScannedGuest={handleCreateGuestFromScan}
-                onCancelScannedGuest={() => setScannedGuest(null)}
-                savingScannedGuest={creatingGuest}
-                disabled={loading || submitting}
-              />
-            </div>
-
-            {/* Dates */}
-            <div className="premium-card" style={{ padding: '28px' }}>
-              <SectionHeader icon={Calendar} title="Stay period" subtitle="Check-in and check-out dates" />
+              <SectionHeader icon={Calendar} title="Stay period" subtitle="Check-in and check-out — nights calculate instantly" />
               <div className="form-grid-2 form-grid-2--gap-24">
                 <div className="input-group">
                   <label>Check-in date</label>
@@ -584,23 +556,14 @@ export default function BookFutureStayPage() {
                     style={{ padding: '12px 14px', borderRadius: '10px' }}
                   />
                 </div>
-                <div className="input-group">
-                  <label>Guests on stay</label>
-                  <div
-                    style={{
-                      padding: '12px 14px',
-                      borderRadius: '10px',
-                      border: '1px solid var(--border)',
-                      background: 'var(--background)',
-                      fontSize: '14px',
-                      fontWeight: '700',
-                    }}
-                  >
-                    {effectiveGuestsCount} guest{effectiveGuestsCount !== 1 ? 's' : ''}
-                    {primaryCustomer ? ` — booked by ${customerDisplayName(primaryCustomer)}` : ''}
+                {bookingNights > 0 && (
+                  <div className="input-group">
+                    <label>Nights</label>
+                    <div style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border)', fontWeight: '800', background: 'var(--primary-light)', color: 'var(--primary)' }}>
+                      {bookingNights} night{bookingNights !== 1 ? 's' : ''}
+                    </div>
                   </div>
-                  <GuestsCountHint room={selectedRoom} guestsCount={effectiveGuestsCount} />
-                </div>
+                )}
                 <div className="input-group">
                   <label>Booking status</label>
                   <select
@@ -615,9 +578,9 @@ export default function BookFutureStayPage() {
               </div>
             </div>
 
-            {/* Room selection cards */}
+            {/* Room selection */}
             <div className="premium-card" style={{ padding: '28px' }}>
-              <SectionHeader icon={BedDouble} title="Select room" subtitle="All rooms are shown - booked rooms cannot be selected" />
+              <SectionHeader icon={BedDouble} title="Select room" subtitle="Total for your guests shows on each room card" />
               {availabilityLoading ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Checking availability…</p>
               ) : !form.check_in || !form.check_out ? (
@@ -642,6 +605,15 @@ export default function BookFutureStayPage() {
                   {rooms.map((r) => {
                     const selected = String(form.room) === String(r.id);
                     const isBooked = bookedRoomIds.includes(String(r.id)) || r.is_available === false;
+                    const preview = bookingNights > 0 && !isBooked
+                      ? computeStayBilling({
+                        room: r,
+                        guestsCount: effectiveGuestsCount,
+                        nights: bookingNights,
+                        services,
+                        selectedServiceIds: selectedAddonIds,
+                      })
+                      : null;
                     return (
                       <button
                         key={r.id}
@@ -686,8 +658,13 @@ export default function BookFutureStayPage() {
                         </p>
                         <p style={{ fontSize: '15px', fontWeight: '800', margin: 0, color: isBooked ? 'var(--text-muted)' : 'var(--secondary)' }}>
                           {formatRs(r.price_per_night)}
-                          <span style={{ fontSize: '11px', fontWeight: '500', color: 'var(--text-muted)' }}> / night</span>
+                          <span style={{ fontSize: '11px', fontWeight: '500', color: 'var(--text-muted)' }}> / guest / night</span>
                         </p>
+                        {preview && (
+                          <p style={{ fontSize: '13px', fontWeight: '800', margin: '8px 0 0', color: 'var(--primary)' }}>
+                            Stay total: {formatRs(preview.total)}
+                          </p>
+                        )}
                         </div>
                       </button>
                     );
@@ -697,11 +674,53 @@ export default function BookFutureStayPage() {
               )}
             </div>
 
+            {/* Guests */}
+            <div className="premium-card" style={{ padding: '28px' }}>
+              <SectionHeader
+                icon={User}
+                title="Guests on this stay"
+                subtitle="Add guests — bill updates instantly for room, add-ons & balance"
+              />
+              <StayGuestRoster
+                customers={customers}
+                primaryCustomerId={form.customer}
+                maxAdditionalGuests={maxAdditionalGuests}
+                onPrimaryCustomerChange={(customerId) => {
+                  setForm({ ...form, customer: customerId });
+                  if (customerId) setScannedGuest(null);
+                }}
+                companions={companions}
+                onCompanionsChange={setCompanions}
+                showIdScanner={showIdScanner}
+                onIdScanPrimary={handleIdScan}
+                onIdScanCompanion={handleCompanionIdScan}
+                scanProcessing={creatingGuest}
+                scannedGuest={scannedGuest}
+                onScannedGuestChange={handleScannedGuestChange}
+                onScannedPhoneChange={handleScannedPhoneChange}
+                onSaveScannedGuest={handleCreateGuestFromScan}
+                onCancelScannedGuest={() => setScannedGuest(null)}
+                savingScannedGuest={creatingGuest}
+                disabled={loading || submitting}
+              />
+              {selectedRoom && (
+                <div style={{ marginTop: '16px' }}>
+                  <GuestsCountHint room={selectedRoom} guestsCount={effectiveGuestsCount} />
+                </div>
+              )}
+            </div>
+
+            <LiveBookingEstimate
+              bill={stayEstimate}
+              advance={Number(form.advance_paid) || 0}
+              title="Current bill (updates live)"
+            />
+
             <StayAddonsPicker
               services={services}
               selectedIds={selectedAddonIds}
               onToggle={toggleAddon}
-              nights={stayEstimate?.nights || 0}
+              nights={bookingNights}
               guestsCount={effectiveGuestsCount}
             />
 
@@ -714,7 +733,16 @@ export default function BookFutureStayPage() {
                 border: '1px solid rgba(91, 213, 30, 0.25)',
               }}
             >
-              <SectionHeader icon={Wallet} title="Advance payment" subtitle="Collect deposit to secure the booking (optional)" />
+              <SectionHeader icon={Wallet} title="Advance payment" subtitle="Deposit now — balance due updates live below" />
+              {stayEstimate?.ready && (
+                <div style={{ marginBottom: '20px' }}>
+                  <LiveBookingEstimate
+                    bill={stayEstimate}
+                    advance={Number(form.advance_paid) || 0}
+                    title="Payment summary"
+                  />
+                </div>
+              )}
               <div className="form-grid-2 form-grid-2--gap-24">
                 <div className="input-group">
                   <label>Advance amount (Rs)</label>
@@ -816,7 +844,7 @@ export default function BookFutureStayPage() {
                   Booking summary
                 </p>
                 <p style={{ fontSize: '22px', fontWeight: '900', margin: 0 }}>
-                  {stayEstimate && !stayEstimate.error ? formatRs(stayEstimate.total) : '-'}
+                  {stayEstimate?.ready ? formatRs(stayEstimate.total) : '—'}
                 </p>
               </div>
 
@@ -853,17 +881,21 @@ export default function BookFutureStayPage() {
                   </p>
                 )}
 
-                {stayEstimate && !stayEstimate.error ? (
+                {stayEstimate?.ready ? (
                   <>
                     <StayBillingBreakdown
                       billing={stayEstimate}
                       advance={Number(form.advance_paid) || 0}
                       compact
                     />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 14, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+                      <span>Balance due now</span>
+                      <span style={{ color: stayEstimate.due > 0 ? 'var(--error)' : 'var(--primary)' }}>{formatRs(stayEstimate.due)}</span>
+                    </div>
                   </>
                 ) : (
                   <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
-                    Enter dates and select a room.
+                    {stayEstimate?.hint || 'Select dates and a room to see the full bill.'}
                   </p>
                 )}
 
@@ -916,6 +948,25 @@ export default function BookFutureStayPage() {
               </p>
             </div>
           </div>
+        </div>
+
+        <div className="booking-mobile-bar" aria-live="polite">
+          <div className="booking-mobile-bar__total">
+            <p className="booking-mobile-bar__label">Total</p>
+            <p className="booking-mobile-bar__amount">
+              {stayEstimate?.ready ? formatRs(stayEstimate.total) : '—'}
+            </p>
+            {stayEstimate?.ready && (
+              <p className="booking-mobile-bar__due">Due: {formatRs(stayEstimate.due)}</p>
+            )}
+          </div>
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={submitting || !form.room || !form.customer}
+          >
+            {submitting ? 'Booking…' : 'Book stay'}
+          </button>
         </div>
       </form>
     </div>
