@@ -2,11 +2,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import {
-  Archive, CalendarCheck, FileText, Wallet, ChevronRight,
+  Archive, CalendarCheck, FileText, Wallet, ChevronRight, Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AppLoader from '../../components/AppLoader';
-import { getGuestHouseRecords } from '../../api/guesthouse';
+import {
+  getGuestHouseRecords, deleteStay, deleteGhPayment, deleteGhExpense,
+} from '../../api/guesthouse';
+import { usePermissions } from '../../hooks/usePermissions';
 import SearchInput from '../../components/SearchInput';
 import StatCard from '../../components/ui/StatCard';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -26,6 +29,12 @@ const TYPE_META = {
   stay: { label: 'Reservation', icon: CalendarCheck, className: 'gh-record-type--stay' },
   payment: { label: 'Payment', icon: Wallet, className: 'gh-record-type--payment' },
   expense: { label: 'Voucher', icon: FileText, className: 'gh-record-type--expense' },
+};
+
+const DELETE_PROMPTS = {
+  stay: 'Delete this reservation? Payments and guest data linked to this stay will also be removed.',
+  payment: 'Delete this payment? The stay balance will be updated.',
+  expense: 'Delete this expense voucher?',
 };
 
 function formatRecordDate(iso) {
@@ -55,9 +64,33 @@ function RecordDetails({ title, subtitle, ref, date, compact = false }) {
   );
 }
 
-function RecordRow({ row, embedded, onOpen }) {
+function RecordRow({ row, embedded, onOpen, canManage, onDelete, deletingId }) {
   const meta = TYPE_META[row.record_type] || TYPE_META.stay;
   const Icon = meta.icon;
+  const rowKey = `${row.record_type}-${row.id}`;
+  const isDeleting = deletingId === rowKey;
+
+  const actionCell = (
+    <td className="gh-records-table__cell--action">
+      <div className="gh-records-table__actions">
+        {canManage && (
+          <button
+            type="button"
+            className="gh-records-table__delete"
+            title="Delete record"
+            disabled={isDeleting}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(row);
+            }}
+          >
+            <Trash2 size={15} />
+          </button>
+        )}
+        <ChevronRight size={16} color="var(--text-muted)" aria-hidden />
+      </div>
+    </td>
+  );
 
   if (embedded) {
     return (
@@ -81,9 +114,7 @@ function RecordRow({ row, embedded, onOpen }) {
         <td className="gh-records-table__cell--status">
           <StatusBadge status={row.status} />
         </td>
-        <td className="gh-records-table__cell--action" aria-label="Open record">
-          <ChevronRight size={16} color="var(--text-muted)" />
-        </td>
+        {actionCell}
       </tr>
     );
   }
@@ -107,15 +138,14 @@ function RecordRow({ row, embedded, onOpen }) {
       <td className="gh-records-table__cell--date">
         {formatRecordDate(row.date)}
       </td>
-      <td className="gh-records-table__cell--action" aria-label="Open record">
-        <ChevronRight size={16} color="var(--text-muted)" />
-      </td>
+      {actionCell}
     </tr>
   );
 }
 
 export default function AllRecords({ embedded = false }) {
   const navigate = useNavigate();
+  const { canManage } = usePermissions();
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [filterAllTime, setFilterAllTime] = useState(false);
   const [typeFilter, setTypeFilter] = useState('all');
@@ -123,19 +153,20 @@ export default function AllRecords({ embedded = false }) {
   const [records, setRecords] = useState([]);
   const [counts, setCounts] = useState({ stay: 0, payment: 0, expense: 0, total: 0 });
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const loadRecords = async () => {
+    const params = { type: typeFilter };
+    if (!filterAllTime && selectedDate) params.date = selectedDate;
+    const data = await getGuestHouseRecords(params);
+    setRecords(data.records || []);
+    setCounts(data.counts || { stay: 0, payment: 0, expense: 0, total: 0 });
+  };
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    const params = { type: typeFilter };
-    if (!filterAllTime && selectedDate) params.date = selectedDate;
-
-    getGuestHouseRecords(params)
-      .then((data) => {
-        if (!active) return;
-        setRecords(data.records || []);
-        setCounts(data.counts || { stay: 0, payment: 0, expense: 0, total: 0 });
-      })
+    loadRecords()
       .catch(() => {
         if (active) toast.error('Failed to load records');
       })
@@ -159,6 +190,35 @@ export default function AllRecords({ embedded = false }) {
 
   const openRecord = (row) => {
     if (row.link_path) navigate(row.link_path);
+  };
+
+  const handleDelete = async (row) => {
+    if (!canManage) return;
+    const prompt = DELETE_PROMPTS[row.record_type] || 'Delete this record?';
+    if (!window.confirm(prompt)) return;
+
+    const rowKey = `${row.record_type}-${row.id}`;
+    setDeletingId(rowKey);
+    try {
+      if (row.record_type === 'stay') {
+        await deleteStay(row.id);
+        toast.success('Reservation deleted');
+      } else if (row.record_type === 'payment') {
+        await deleteGhPayment(row.id);
+        toast.success('Payment deleted');
+      } else if (row.record_type === 'expense') {
+        await deleteGhExpense(row.id);
+        toast.success('Voucher deleted');
+      } else {
+        toast.error('Cannot delete this record type');
+        return;
+      }
+      await loadRecords();
+    } catch {
+      toast.error('Failed to delete record');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const statItems = [
@@ -273,7 +333,7 @@ export default function AllRecords({ embedded = false }) {
                     <th>Record</th>
                     <th>Amount</th>
                     <th>Status</th>
-                    <th aria-label="Open" />
+                    <th aria-label={canManage ? 'Actions' : 'Open'} />
                   </>
                 ) : (
                   <>
@@ -282,7 +342,7 @@ export default function AllRecords({ embedded = false }) {
                     <th>Amount</th>
                     <th>Status</th>
                     <th>Date</th>
-                    <th aria-label="Open" />
+                    <th aria-label={canManage ? 'Actions' : 'Open'} />
                   </>
                 )}
               </tr>
@@ -294,6 +354,9 @@ export default function AllRecords({ embedded = false }) {
                   row={row}
                   embedded={embedded}
                   onOpen={openRecord}
+                  canManage={canManage}
+                  onDelete={handleDelete}
+                  deletingId={deletingId}
                 />
               ))}
             </tbody>

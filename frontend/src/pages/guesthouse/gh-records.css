@@ -349,11 +349,44 @@
 }
 
 .gh-records-table__cell--action {
-  width: 32px;
+  width: 56px;
   padding-left: 4px;
   padding-right: 10px;
   text-align: center;
   vertical-align: middle;
+}
+
+.gh-records-table__actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.gh-records-table__delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: transparent;
+  color: #ef4444;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.gh-records-table__delete:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+.gh-records-table__delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .gh-records-table:not(.gh-records-table--embedded) th:nth-child(4) {
@@ -387,7 +420,7 @@
 
 .gh-records-table--embedded th:nth-child(5),
 .gh-records-table--embedded td.gh-records-table__cell--action {
-  width: 32px;
+  width: 56px;
 }
 
 .gh-daily-section {
