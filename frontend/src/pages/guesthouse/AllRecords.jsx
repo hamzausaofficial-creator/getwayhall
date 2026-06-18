@@ -88,24 +88,16 @@ function RecordRow({ row, embedded, onOpen, canManage, onDelete, deletingId }) {
   const meta = TYPE_META[row.record_type] || TYPE_META.stay;
   const Icon = meta.icon;
 
-  const actionCell = (
-    <td className="gh-records-table__cell--action">
-      <div className="gh-records-table__actions">
-        {canManage && (
-          <RecordDeleteButton row={row} onDelete={onDelete} deletingId={deletingId} />
-        )}
-        <ChevronRight size={16} color="var(--text-muted)" aria-hidden />
-      </div>
-    </td>
-  );
-
   if (embedded) {
     return (
-      <tr onClick={() => onOpen(row)}>
+      <tr className="gh-records-table__row" onClick={() => onOpen(row)}>
         <td className="gh-records-table__cell--type">
-          <span className={`gh-record-type gh-record-type--compact ${meta.className}`} title={row.record_type_label || meta.label}>
+          <span
+            className={`gh-record-type gh-record-type--compact ${meta.className}`}
+            title={row.record_type_label || meta.label}
+          >
             <Icon size={14} aria-hidden />
-            <span>{meta.label}</span>
+            <span className="gh-record-type__label">{meta.label}</span>
           </span>
         </td>
         <td className="gh-records-table__cell--details">
@@ -118,14 +110,16 @@ function RecordRow({ row, embedded, onOpen, canManage, onDelete, deletingId }) {
           />
         </td>
         <td className="gh-records-table__cell--amount">{formatRs(row.amount)}</td>
-        <td className="gh-records-table__cell--status gh-records-table__cell--status-embedded">
-          <div className="gh-records-table__status-actions">
+        <td className="gh-records-table__cell--status-embedded">
+          <div className="gh-records-table__meta-row">
             <StatusBadge status={row.status} />
-            <div className="gh-records-table__actions gh-records-table__actions--embedded">
+            <div className="gh-records-table__row-actions">
               {canManage && (
                 <RecordDeleteButton row={row} onDelete={onDelete} deletingId={deletingId} />
               )}
-              <ChevronRight size={16} color="var(--text-muted)" aria-hidden />
+              <span className="gh-records-table__open" aria-hidden>
+                <ChevronRight size={16} />
+              </span>
             </div>
           </div>
         </td>
@@ -134,7 +128,7 @@ function RecordRow({ row, embedded, onOpen, canManage, onDelete, deletingId }) {
   }
 
   return (
-    <tr onClick={() => onOpen(row)}>
+    <tr className="gh-records-table__row" onClick={() => onOpen(row)}>
       <td className="gh-records-table__cell--type">
         <span className={`gh-record-type ${meta.className}`}>
           <Icon size={14} aria-hidden />
@@ -152,7 +146,16 @@ function RecordRow({ row, embedded, onOpen, canManage, onDelete, deletingId }) {
       <td className="gh-records-table__cell--date">
         {formatRecordDate(row.date)}
       </td>
-      {actionCell}
+      <td className="gh-records-table__cell--action">
+        <div className="gh-records-table__row-actions">
+          {canManage && (
+            <RecordDeleteButton row={row} onDelete={onDelete} deletingId={deletingId} />
+          )}
+          <span className="gh-records-table__open" aria-hidden>
+            <ChevronRight size={16} />
+          </span>
+        </div>
+      </td>
     </tr>
   );
 }
@@ -339,23 +342,43 @@ export default function AllRecords({ embedded = false }) {
           </p>
         ) : (
           <table className={`gh-records-table${embedded ? ' gh-records-table--embedded' : ''}`}>
+            <colgroup>
+              {embedded ? (
+                <>
+                  <col className="gh-records-col gh-records-col--type" />
+                  <col className="gh-records-col gh-records-col--details" />
+                  <col className="gh-records-col gh-records-col--amount" />
+                  <col className="gh-records-col gh-records-col--status" />
+                </>
+              ) : (
+                <>
+                  <col className="gh-records-col gh-records-col--type" />
+                  <col className="gh-records-col gh-records-col--ref" />
+                  <col className="gh-records-col gh-records-col--details" />
+                  <col className="gh-records-col gh-records-col--amount" />
+                  <col className="gh-records-col gh-records-col--status" />
+                  <col className="gh-records-col gh-records-col--date" />
+                  <col className="gh-records-col gh-records-col--action" />
+                </>
+              )}
+            </colgroup>
             <thead>
               <tr>
                 <th>Type</th>
                 {embedded ? (
                   <>
                     <th>Record</th>
-                    <th>Amount</th>
-                    <th>{canManage ? 'Status / Actions' : 'Status'}</th>
+                    <th className="gh-records-table__th--amount">Amount</th>
+                    <th className="gh-records-table__th--status">Status</th>
                   </>
                 ) : (
                   <>
                     <th>Reference</th>
                     <th>Details</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                    <th aria-label={canManage ? 'Actions' : 'Open'} />
+                    <th className="gh-records-table__th--amount">Amount</th>
+                    <th className="gh-records-table__th--status">Status</th>
+                    <th className="gh-records-table__th--date">Date</th>
+                    <th className="gh-records-table__th--action" aria-label={canManage ? 'Actions' : 'Open'} />
                   </>
                 )}
               </tr>
