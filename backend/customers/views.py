@@ -22,6 +22,31 @@ class CustomerViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelView
     search_fields = ['full_name', 'first_name', 'last_name', 'cnic', 'email', 'phone']
     ordering_fields = ['created_at', 'last_name']
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.action != 'list':
+            return qs
+        primary_only = self.request.query_params.get('primary_only', '').lower() in ('1', 'true', 'yes')
+        if not primary_only:
+            return qs
+        tenant_id = getattr(self.request.user, 'tenant_id', None)
+        if not tenant_id:
+            return qs
+        from guesthouse.models import StayBooking, StayGuest
+
+        primary_ids = StayBooking.objects.filter(tenant_id=tenant_id).values_list('customer_id', flat=True)
+        companion_only_ids = (
+            StayGuest.objects.filter(
+                is_primary=False,
+                customer_id__isnull=False,
+                stay__tenant_id=tenant_id,
+            )
+            .exclude(customer_id__in=primary_ids)
+            .values_list('customer_id', flat=True)
+            .distinct()
+        )
+        return qs.exclude(id__in=companion_only_ids)
+
     @action(detail=True, methods=['get'], url_path='summary')
     def summary(self, request, pk=None):
         """Customer profile with bookings/stays and outstanding balance."""

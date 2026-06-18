@@ -72,7 +72,7 @@ export default function GhCustomers() {
   const fetchCustomers = async () => {
     setIsLoading(true);
     try {
-      const response = await client.get('/customers/');
+      const response = await client.get('/customers/', { params: { primary_only: '1' } });
       setCustomers(response.data.results || response.data || []);
     } catch {
       toast.error('Failed to load customers');
@@ -281,7 +281,7 @@ export default function GhCustomers() {
         <div className="page-header">
           <div style={{ minWidth: 0 }}>
             <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0 }}>
-              Manage guests, daily reservations, stay history, and balance due.
+              Primary bookers only — companions appear inside each primary guest&apos;s profile.
             </p>
           </div>
           {canOperate && (
@@ -428,7 +428,9 @@ export default function GhCustomers() {
               />
             ) : (
               <>
-                <p className="gh-cust-count">{filteredCustomers.length} guest{filteredCustomers.length !== 1 ? 's' : ''}</p>
+                <p className="gh-cust-count">
+                  {filteredCustomers.length} primary booker{filteredCustomers.length !== 1 ? 's' : ''}
+                </p>
                 <div className="gh-cust-list">
                   {filteredCustomers.map((customer) => {
                     const active = selectedId === customer.id;
