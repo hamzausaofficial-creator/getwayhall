@@ -1,0 +1,214 @@
+.stay-quick-modal {
+  width: 100%;
+  max-width: 440px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.28);
+}
+
+.stay-quick-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.stay-quick-modal__ref {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary);
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.04em;
+  margin: 0 0 6px;
+}
+
+.stay-quick-modal__name {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 10px;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.stay-quick-modal__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.stay-quick-modal__close:hover {
+  color: var(--text-main);
+  border-color: var(--primary);
+  background: var(--background);
+}
+
+.stay-quick-modal__body {
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stay-quick-modal__meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stay-quick-modal__meta-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--background);
+  border: 1px solid var(--border);
+}
+
+.stay-quick-modal__meta-item svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--text-muted);
+}
+
+.stay-quick-modal__meta-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.stay-quick-modal__meta-value {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.35;
+}
+
+.stay-quick-modal__payments {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.stay-quick-modal__pay-cell {
+  padding: 12px 10px;
+  border-radius: 12px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.stay-quick-modal__pay-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.stay-quick-modal__pay-value {
+  display: block;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.stay-quick-modal__pay-cell--due .stay-quick-modal__pay-value {
+  color: #b91c1c;
+}
+
+.stay-quick-modal__pay-cell--due.is-clear .stay-quick-modal__pay-value {
+  color: var(--primary);
+}
+
+.stay-quick-modal__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stay-quick-modal__actions-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.stay-quick-modal__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.stay-quick-modal__btn--primary {
+  border: none;
+}
+
+.stay-quick-modal__btn--secondary {
+  background: var(--surface);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+}
+
+.stay-quick-modal__btn--secondary:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.stay-quick-modal__btn--danger {
+  background: transparent;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.stay-quick-modal__btn--danger:hover {
+  background: #fef2f2;
+}
+
+.stay-quick-modal__actions-row--single {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 480px) {
+  .stay-quick-modal__meta {
+    grid-template-columns: 1fr;
+  }
+
+  .stay-quick-modal__payments {
+    grid-template-columns: 1fr;
+  }
+
+  .stay-quick-modal__actions-row {
+    grid-template-columns: 1fr;
+  }
+}

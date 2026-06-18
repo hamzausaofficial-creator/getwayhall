@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon,
-  ChevronRight as ChevronRightIcon, X, User, BedDouble, CreditCard, Printer, Edit2, XCircle,
+  ChevronRight as ChevronRightIcon, BedDouble,
 } from 'lucide-react';
 import {
   format, addMonths, subMonths, addDays, startOfMonth, endOfMonth,
@@ -13,9 +13,9 @@ import toast from 'react-hot-toast';
 import AppLoader from '../../components/AppLoader';
 import { formatCollectDue, hasCollectDue } from '../../utils/currency';
 import { usePermissions } from '../../hooks/usePermissions';
-import { canCancelGhStay } from '../../utils/ghStay';
 import StatusBadge from '../../components/ui/StatusBadge';
 import CancelStayModal from '../../components/guesthouse/CancelStayModal';
+import StayQuickViewModal from '../../components/guesthouse/StayQuickViewModal';
 
 const STATUS_COLORS = {
   PENDING: '#fbbf24',
@@ -23,10 +23,6 @@ const STATUS_COLORS = {
   CHECKED_IN: '#3b82f6',
   CHECKED_OUT: '#94a3b8',
   CANCELLED: '#ef4444',
-};
-
-const openStay = (navigate, stay) => {
-  navigate(`/gh/stays/${stay.id}`, { state: { from: '/gh/calendar', fromLabel: 'Back to calendar' } });
 };
 
 export default function StayCalendar() {
@@ -244,91 +240,16 @@ export default function StayCalendar() {
         </div>
       </div>
 
-      {selectedStay && (
-        <div className="modal-overlay" onClick={() => setSelectedStay(null)}>
-          <div
-            className="card animate-fade-in"
-            style={{ width: '100%', maxWidth: '520px', padding: '28px', maxHeight: '90vh', overflowY: 'auto' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', gap: '12px' }}>
-              <div>
-                <p style={{ fontSize: '11px', fontWeight: '700', color: 'var(--primary)', fontFamily: 'monospace', marginBottom: '4px' }}>
-                  {selectedStay.booking_ref}
-                </p>
-                <h3 style={{ fontSize: '22px', fontWeight: '800', margin: 0 }}>{selectedStay.customer_name}</h3>
-                <div style={{ marginTop: '8px' }}><StatusBadge status={selectedStay.status} /></div>
-              </div>
-              <button type="button" onClick={() => setSelectedStay(null)} style={{ background: 'transparent', color: 'var(--text-muted)', padding: '4px' }}>
-                <X size={24} />
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px', fontSize: '14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <BedDouble size={16} color="var(--text-muted)" />
-                <span><strong>Room:</strong> {selectedStay.room_number}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <CalendarIcon size={16} color="var(--text-muted)" />
-                <span><strong>Stay:</strong> {selectedStay.check_in} → {selectedStay.check_out}</span>
-              </div>
-              <div style={{ padding: '14px', backgroundColor: 'var(--background)', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                <p style={{ fontSize: '13px', marginBottom: '6px' }}><strong>Total:</strong> Rs {Number(selectedStay.total_amount || 0).toLocaleString()}</p>
-                <p style={{ fontSize: '13px', marginBottom: '6px' }}><strong>Paid:</strong> Rs {Number(selectedStay.advance_paid || 0).toLocaleString()}</p>
-                <p style={{ fontSize: '13px', color: hasCollectDue(stayDue(selectedStay)) ? '#b91c1c' : 'var(--text-dim)', fontWeight: '700' }}>
-                  <strong>Due:</strong> {formatCollectDue(stayDue(selectedStay))}
-                </p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => openStay(navigate, selectedStay)}
-                style={{ width: '100%', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-              >
-                <Edit2 size={18} /> View stay details
-              </button>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => navigate(
-                  selectedStay.status === 'CANCELLED'
-                    ? `/gh/print/${selectedStay.id}?doc=cancellation`
-                    : `/gh/print/${selectedStay.id}`,
-                )}
-                style={{ width: '100%', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-              >
-                <Printer size={18} /> Print documents
-              </button>
-              {canAccessPayments && hasCollectDue(stayDue(selectedStay)) && selectedStay.status !== 'CANCELLED' && (
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => navigate('/gh/payments/new', { state: { preselectedStayId: selectedStay.id } })}
-                  style={{ width: '100%', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                >
-                  <CreditCard size={18} /> Record payment
-                </button>
-              )}
-              {canCancelStay && canCancelGhStay(selectedStay) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCancelTarget(selectedStay);
-                    setSelectedStay(null);
-                  }}
-                  style={{ width: '100%', padding: '12px', background: 'transparent', color: '#b91c1c', fontWeight: '600', border: '1px solid #fecaca', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                >
-                  <XCircle size={18} /> Cancel stay
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <StayQuickViewModal
+        stay={selectedStay}
+        onClose={() => setSelectedStay(null)}
+        onCancel={(stay) => {
+          setCancelTarget(stay);
+          setSelectedStay(null);
+        }}
+        canAccessPayments={canAccessPayments}
+        canCancelStay={canCancelStay}
+      />
 
       <CancelStayModal
         stay={cancelTarget}
