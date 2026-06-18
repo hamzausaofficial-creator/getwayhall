@@ -17,12 +17,10 @@ export function isMarriageHallApp(appType) {
 /** Default landing route after login */
 export function getDefaultHomePath(user) {
   const appType = normalizeAppType(user?.app_type);
-  const role = String(user?.role || '').toUpperCase();
   if (appType === APP_GUEST_HOUSE) {
-    return role === 'STAFF' ? '/gh/stays' : '/gh/dashboard';
+    return '/gh/calendar';
   }
-  if (role === 'ADMIN' || role === 'MANAGER') return '/dashboard';
-  return '/bookings';
+  return '/calendar';
 }
 
 export function getAppLoginPortal(pathname = '') {
