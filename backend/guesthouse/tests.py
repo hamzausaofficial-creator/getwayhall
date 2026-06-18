@@ -63,6 +63,45 @@ class GuestHouseStayTests(TestCase):
         response = client.post('/api/guesthouse/stays/', self._stay_payload(), format='json')
         self.assertEqual(response.status_code, 201)
 
+    def test_stay_total_charges_each_guest_at_room_rate(self):
+        client = APIClient()
+        client.force_authenticate(user=self.staff)
+        check_in = self.check_in + timedelta(days=50)
+        check_out = check_in + timedelta(days=2)
+        response = client.post('/api/guesthouse/stays/', {
+            **self._stay_payload(check_in=check_in, check_out=check_out),
+            'guests_count': 3,
+            'guest_roster': [
+                {
+                    'customer': self.customer.id,
+                    'full_name': self.customer.full_name,
+                    'cnic': self.customer.cnic,
+                    'phone': self.customer.phone,
+                    'is_primary': True,
+                },
+                {
+                    'full_name': 'Guest Two',
+                    'cnic': '35202-2222222-2',
+                    'phone': '03001112222',
+                    'is_primary': False,
+                },
+                {
+                    'full_name': 'Guest Three',
+                    'cnic': '35202-3333333-3',
+                    'phone': '03003334444',
+                    'is_primary': False,
+                },
+            ],
+        }, format='json')
+        self.assertEqual(response.status_code, 201)
+        expected_room = Decimal('3000') * 3 * 2
+        self.assertEqual(Decimal(str(response.data['total_amount'])), expected_room)
+
+        client = APIClient()
+        client.force_authenticate(user=self.staff)
+        response = client.post('/api/guesthouse/stays/', self._stay_payload(), format='json')
+        self.assertEqual(response.status_code, 201)
+
     def test_staff_can_create_stay_with_guest_roster(self):
         client = APIClient()
         client.force_authenticate(user=self.staff)

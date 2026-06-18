@@ -6,7 +6,7 @@ import datetime
 import random
 from decimal import Decimal
 
-from .billing import get_included_guests
+from .billing import get_included_guests, compute_room_charges
 
 
 class Room(models.Model):
@@ -139,19 +139,14 @@ class StayBooking(models.Model):
             return
         room = self.room
         nights = max((self.check_out - self.check_in).days, 1)
-        room_base = Decimal(str(room.price_per_night)) * nights
-
-        included = room.get_included_guests()
-        extra_guests = max(int(self.guests_count or 1) - included, 0)
-        extra_guest_total = (
-            Decimal(str(room.extra_guest_fee_per_night)) * extra_guests * nights
-        )
+        room_charges = compute_room_charges(room, nights, self.guests_count)
+        room_guest_total = room_charges['room_total']
 
         charges_total = Decimal('0')
         if self.pk:
             charges_total = self.charges.aggregate(t=models.Sum('amount'))['t'] or Decimal('0')
 
-        self.total_amount = room_base + extra_guest_total + charges_total
+        self.total_amount = room_guest_total + charges_total
 
     def sync_payment_status(self):
         total = Decimal(str(self.total_amount))

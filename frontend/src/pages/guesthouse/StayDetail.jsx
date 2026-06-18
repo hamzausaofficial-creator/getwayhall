@@ -461,18 +461,14 @@ export default function StayDetail() {
                 <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text-muted)' }}>
-                      Room ({stay.billing_breakdown.nights} night{stay.billing_breakdown.nights !== 1 ? 's' : ''})
+                      {stay.billing_breakdown.guests
+                        ? `Room (${stay.billing_breakdown.guests} guest${stay.billing_breakdown.guests !== 1 ? 's' : ''} × ${formatRs(stay.billing_breakdown.price_per_guest_per_night || stay.price_per_night)}/guest/night × ${stay.billing_breakdown.nights} night${stay.billing_breakdown.nights !== 1 ? 's' : ''})`
+                        : `Room (${stay.billing_breakdown.nights} night${stay.billing_breakdown.nights !== 1 ? 's' : ''})`}
                     </span>
-                    <span style={{ fontWeight: 700 }}>{formatRs(stay.billing_breakdown.room_base)}</span>
+                    <span style={{ fontWeight: 700 }}>
+                      {formatRs(stay.billing_breakdown.room_guest_total ?? stay.billing_breakdown.room_base)}
+                    </span>
                   </div>
-                  {stay.billing_breakdown.extra_guests > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>
-                        Extra guests ({stay.billing_breakdown.extra_guests})
-                      </span>
-                      <span style={{ fontWeight: 700 }}>{formatRs(stay.billing_breakdown.extra_guest_total)}</span>
-                    </div>
-                  )}
                   {(stay.billing_breakdown.service_charges || []).map((line) => (
                     <div key={line.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--text-muted)' }}>{line.description}</span>

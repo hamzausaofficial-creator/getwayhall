@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Snowflake, Plus } from 'lucide-react';
 import { formatRs } from '../../utils/currency';
-import { computeServiceAmount, getIncludedGuests, getServicePriceLabel } from '../../utils/ghBilling';
+import { computeServiceAmount, getServicePriceLabel, formatRoomGuestChargeLabel } from '../../utils/ghBilling';
 
 const PRICING_HINT = {
   PER_NIGHT: 'Charged per night',
@@ -100,21 +100,8 @@ export function StayBillingBreakdown({ billing, advance = 0, compact = false }) 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '8px' : '10px' }}>
       <div style={rowStyle}>
-        <span style={{ color: 'var(--text-muted)' }}>Room ({billing.nights} night{billing.nights !== 1 ? 's' : ''})</span>
-        <span style={{ fontWeight: '700' }}>{formatRs(billing.roomBase)}</span>
-      </div>
-      {billing.extraGuests > 0 && (
-        <div style={rowStyle}>
-          <span style={{ color: 'var(--text-muted)' }}>
-            Extra guests ({billing.extraGuests} × {formatRs(billing.extraFee)}/night × {billing.nights} night{billing.nights !== 1 ? 's' : ''})
-          </span>
-          <span style={{ fontWeight: '700' }}>{formatRs(billing.extraGuestTotal)}</span>
-        </div>
-      )}
-      <div style={{ ...rowStyle, fontSize: compact ? '11px' : '12px' }}>
-        <span style={{ color: 'var(--text-muted)' }}>
-          {billing.guests} guest{billing.guests !== 1 ? 's' : ''} total ({billing.included} included in room rate)
-        </span>
+        <span style={{ color: 'var(--text-muted)' }}>{formatRoomGuestChargeLabel(billing)}</span>
+        <span style={{ fontWeight: '700' }}>{formatRs(billing.roomGuestTotal ?? billing.roomBase)}</span>
       </div>
       {billing.serviceLines.map((line) => (
         <div key={line.id} style={rowStyle}>
@@ -138,19 +125,14 @@ export function StayBillingBreakdown({ billing, advance = 0, compact = false }) 
 
 export function GuestsCountHint({ room, guestsCount }) {
   if (!room) return null;
-  const included = getIncludedGuests(room);
-  const guests = Number(guestsCount) || 1;
-  const extra = Math.max(guests - included, 0);
-  const extraFee = Number(room.extra_guest_fee_per_night) || 0;
+  const guests = Math.max(Number(guestsCount) || 1, 1);
+  const nightly = Number(room.price_per_night) || 0;
 
   return (
     <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '6px 0 0 0' }}>
-      Room includes {included} guest{included !== 1 ? 's' : ''}.
-      {extra > 0 && extraFee > 0
-        ? ` ${extra} extra guest${extra !== 1 ? 's' : ''} - ${formatRs(extraFee)} / guest / night.`
-        : extra > 0
-          ? ` ${extra} extra guest${extra !== 1 ? 's' : ''} (no extra fee set for this room).`
-          : ' No extra guest charge.'}
+      Har guest ko primary jaisa room rate lagta hai: {nightly.toLocaleString()} / guest / night.
+      {' '}
+      {guests} guest{guests !== 1 ? 's' : ''} = {(nightly * guests).toLocaleString()} / night.
     </p>
   );
 }

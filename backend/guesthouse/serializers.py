@@ -3,7 +3,7 @@ from decimal import Decimal
 from rest_framework import serializers
 from django.db.models import Q, Sum
 from .models import Room, StayBooking, StayPayment, GhExpense, GuestHouseService, StayCharge, StayGuest
-from .billing import compute_service_amount, get_included_guests
+from .billing import compute_service_amount, get_included_guests, compute_room_charges
 from .guest_roster import sync_stay_guests, ensure_primary_guest_row, _guest_entry_filled, _enrich_guest_entry
 
 
@@ -218,10 +218,10 @@ class StayBookingSerializer(serializers.ModelSerializer):
             return None
         room = obj.room
         nights = obj.nights
-        included = get_included_guests(room)
-        extra_guests = max(int(obj.guests_count or 1) - included, 0)
-        room_base = Decimal(str(room.price_per_night)) * nights
-        extra_guest_total = Decimal(str(room.extra_guest_fee_per_night)) * extra_guests * nights
+        guests = max(int(obj.guests_count or 1), 1)
+        room_charges = compute_room_charges(room, nights, guests)
+        room_guest_total = room_charges['room_total']
+        nightly = room_charges['price_per_guest_per_night']
 
         service_lines = []
         custom_lines = []
@@ -246,11 +246,14 @@ class StayBookingSerializer(serializers.ModelSerializer):
 
         return {
             'nights': nights,
-            'included_guests': included,
-            'extra_guests': extra_guests,
-            'extra_guest_fee_per_night': float(room.extra_guest_fee_per_night),
-            'room_base': float(room_base),
-            'extra_guest_total': float(extra_guest_total),
+            'guests': guests,
+            'price_per_guest_per_night': float(nightly),
+            'room_guest_total': float(room_guest_total),
+            'included_guests': 1,
+            'extra_guests': max(guests - 1, 0),
+            'extra_guest_fee_per_night': float(nightly),
+            'room_base': float(room_guest_total),
+            'extra_guest_total': 0.0,
             'service_charges': service_lines,
             'service_total': float(service_total),
             'custom_charges': custom_lines,
@@ -290,10 +293,7 @@ class StayBookingSerializer(serializers.ModelSerializer):
 
     def _estimate_total(self, room, check_in, check_out, guests_count, addon_ids=None):
         nights = max((check_out - check_in).days, 1)
-        included = get_included_guests(room)
-        extra_guests = max(int(guests_count or 1) - included, 0)
-        room_base = Decimal(str(room.price_per_night)) * nights
-        extra_total = Decimal(str(room.extra_guest_fee_per_night)) * extra_guests * nights
+        room_charges = compute_room_charges(room, nights, guests_count)
         service_total = Decimal('0')
         if addon_ids:
             tenant_id = room.tenant_id
@@ -301,7 +301,7 @@ class StayBookingSerializer(serializers.ModelSerializer):
                 tenant_id=tenant_id, id__in=addon_ids, is_active=True,
             ):
                 service_total += compute_service_amount(svc, nights, guests_count)
-        return room_base + extra_total + service_total
+        return room_charges['room_total'] + service_total
 
     def _parse_guest_roster(self):
         if 'guest_roster' not in self.initial_data:

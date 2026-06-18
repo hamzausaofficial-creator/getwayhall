@@ -253,15 +253,13 @@ export default function GhPrintStay() {
             {stay.billing_breakdown ? (
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
-                  <span>Room ({stay.billing_breakdown.nights} night{stay.billing_breakdown.nights !== 1 ? 's' : ''})</span>
-                  <strong>{formatRs(stay.billing_breakdown.room_base)}</strong>
+                  <span>
+                    {stay.billing_breakdown.guests
+                      ? `Room (${stay.billing_breakdown.guests} guests × ${formatRs(stay.billing_breakdown.price_per_guest_per_night || stay.price_per_night)}/guest/night × ${stay.billing_breakdown.nights} nights)`
+                      : `Room (${stay.billing_breakdown.nights} night${stay.billing_breakdown.nights !== 1 ? 's' : ''})`}
+                  </span>
+                  <strong>{formatRs(stay.billing_breakdown.room_guest_total ?? stay.billing_breakdown.room_base)}</strong>
                 </div>
-                {stay.billing_breakdown.extra_guests > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
-                    <span>Extra guests ({stay.billing_breakdown.extra_guests})</span>
-                    <strong>{formatRs(stay.billing_breakdown.extra_guest_total)}</strong>
-                  </div>
-                )}
                 {(stay.billing_breakdown.service_charges || []).map((line) => (
                   <div key={line.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
                     <span>{line.description}</span>

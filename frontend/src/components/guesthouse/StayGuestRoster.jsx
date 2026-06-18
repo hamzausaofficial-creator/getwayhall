@@ -216,7 +216,7 @@ export default function StayGuestRoster({
             <strong>{totalGuests}</strong> guest{totalGuests !== 1 ? 's' : ''} on this stay
           </span>
         </div>
-        <span className="stay-guest-roster__total-bar-hint">Total updates payment automatically</span>
+        <span className="stay-guest-roster__total-bar-hint">Har guest par primary jaisa room charge</span>
       </div>
 
       {companions.length > 0 && (

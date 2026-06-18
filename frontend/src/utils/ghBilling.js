@@ -26,17 +26,19 @@ export function computeServiceAmount(service, nights, guestsCount) {
   return price;
 }
 
+/** Each guest pays the same nightly room rate as the primary guest. */
+export function computeRoomGuestCharges(room, nights, guestsCount) {
+  const n = Math.max(Number(nights) || 0, 1);
+  const guests = Math.max(Number(guestsCount) || 1, 1);
+  const nightly = Number(room?.price_per_night) || 0;
+  const roomGuestTotal = nightly * guests * n;
+  return { nights: n, guests, nightly, roomGuestTotal };
+}
+
 export function computeStayBilling({ room, guestsCount, nights, services = [], selectedServiceIds = [] }) {
   if (!room || !nights || nights <= 0) return null;
 
-  const included = getIncludedGuests(room);
-  const guests = Math.max(Number(guestsCount) || 1, 1);
-  const extraGuests = Math.max(guests - included, 0);
-  const nightly = Number(room.price_per_night) || 0;
-  const extraFee = Number(room.extra_guest_fee_per_night) || 0;
-
-  const roomBase = nightly * nights;
-  const extraGuestTotal = extraFee * extraGuests * nights;
+  const { guests, nightly, roomGuestTotal } = computeRoomGuestCharges(room, nights, guestsCount);
 
   const selected = services.filter((s) => selectedServiceIds.includes(s.id));
   const serviceLines = selected.map((svc) => ({
@@ -46,19 +48,26 @@ export function computeStayBilling({ room, guestsCount, nights, services = [], s
     pricing_unit: svc.pricing_unit,
   }));
   const serviceTotal = serviceLines.reduce((sum, line) => sum + line.amount, 0);
-  const total = roomBase + extraGuestTotal + serviceTotal;
+  const total = roomGuestTotal + serviceTotal;
 
   return {
     nights,
-    included,
     guests,
-    extraGuests,
     nightly,
-    extraFee,
-    roomBase,
-    extraGuestTotal,
+    roomGuestTotal,
+    roomBase: roomGuestTotal,
+    extraGuests: Math.max(guests - 1, 0),
+    extraFee: nightly,
+    extraGuestTotal: 0,
+    included: 1,
     serviceLines,
     serviceTotal,
     total,
   };
+}
+
+export function formatRoomGuestChargeLabel(billing) {
+  if (!billing) return '';
+  const { guests, nightly, nights } = billing;
+  return `Room (${guests} guest${guests !== 1 ? 's' : ''} × ${Number(nightly).toLocaleString()}/guest/night × ${nights} night${nights !== 1 ? 's' : ''})`;
 }
