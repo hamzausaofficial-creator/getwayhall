@@ -15,6 +15,7 @@ import AppLoader from '../../components/AppLoader';
 import toast from 'react-hot-toast';
 import { usePermissions } from '../../hooks/usePermissions';
 import { usePageTitle } from '../../context/PageTitleContext';
+import StayGuestRosterDetail from '../../components/guesthouse/StayGuestRosterDetail';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { formatRs, formatCollectDuePKR, hasCollectDue } from '../../utils/currency';
 import { canCancelGhStay } from '../../utils/ghStay';
@@ -356,7 +357,12 @@ export default function StayDetail() {
       <div className="booking-layout">
         <div>
           <div className="premium-card sd-section" style={{ padding: '22px' }}>
-            <h3 className="sd-section-title"><User size={18} /> Guest & room</h3>
+            <h3 className="sd-section-title"><User size={18} /> Guests on this stay</h3>
+            <StayGuestRosterDetail guests={stay.guests} charges={stay.charges} />
+          </div>
+
+          <div className="premium-card sd-section" style={{ padding: '22px' }}>
+            <h3 className="sd-section-title"><BedDouble size={18} /> Room</h3>
             <div className="sd-room-badge">
               <span className="sd-room-badge__num">{stay.room_number}</span>
               <div>
@@ -364,19 +370,6 @@ export default function StayDetail() {
                 <p className="sd-room-badge__meta">{formatRs(stay.price_per_night)} / night</p>
               </div>
             </div>
-            <div className="sd-grid-2">
-              <div>
-                <p className="sd-field__label">Guest name</p>
-                <p className="sd-field__value">{stay.customer_name}</p>
-              </div>
-              <div>
-                <p className="sd-field__label">Phone</p>
-                <p className="sd-field__value">{stay.customer_phone || '-'}</p>
-              </div>
-            </div>
-            <Link to={`/gh/customers/${stay.customer}`} className="sd-link">
-              View customer profile →
-            </Link>
           </div>
 
           <div className="premium-card sd-section" style={{ padding: '22px' }}>

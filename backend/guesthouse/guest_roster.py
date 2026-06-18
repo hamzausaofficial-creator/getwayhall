@@ -1,0 +1,115 @@
+from customers.models import Customer
+from .models import StayGuest
+
+
+def _find_customer_by_cnic(tenant, cnic):
+    cnic = (cnic or '').strip()
+    if not cnic or not tenant:
+        return None
+    return Customer.objects.filter(tenant=tenant, cnic=cnic).first()
+
+
+def _resolve_customer(tenant, entry, *, is_primary=False, fallback_customer=None):
+    customer_id = entry.get('customer') or entry.get('customer_id')
+    if customer_id and tenant:
+        customer = Customer.objects.filter(pk=customer_id, tenant=tenant).first()
+        if customer:
+            return customer
+
+    cnic = (entry.get('cnic') or '').strip()
+    if cnic and tenant:
+        existing = _find_customer_by_cnic(tenant, cnic)
+        if existing:
+            return existing
+
+    if is_primary and fallback_customer:
+        return fallback_customer
+
+    full_name = (entry.get('full_name') or '').strip()
+    phone = (entry.get('phone') or '').strip()
+    if not full_name or not phone or not tenant:
+        return None
+
+    return Customer.objects.create(
+        tenant=tenant,
+        full_name=full_name,
+        first_name=full_name,
+        last_name='',
+        cnic=cnic,
+        phone=phone,
+    )
+
+
+def ensure_primary_guest_row(stay):
+    if stay.guest_roster.exists() or not stay.customer_id:
+        return
+    customer = stay.customer
+    StayGuest.objects.create(
+        stay=stay,
+        customer=customer,
+        full_name=customer.display_name,
+        cnic=customer.cnic or '',
+        phone=customer.phone or '',
+        is_primary=True,
+        sort_order=0,
+    )
+
+
+def sync_stay_guests(stay, guests_data):
+    tenant = stay.tenant
+    if not guests_data:
+        ensure_primary_guest_row(stay)
+        return
+
+    for index, raw in enumerate(guests_data):
+        entry = dict(raw)
+        if 'is_primary' not in entry:
+            entry['is_primary'] = index == 0
+        normalized.append(entry)
+
+    if not any(g['is_primary'] for g in normalized):
+        normalized[0]['is_primary'] = True
+
+    normalized.sort(key=lambda g: (0 if g.get('is_primary') else 1))
+
+    primary_customer = None
+    stay.guest_roster.all().delete()
+
+    for sort_order, entry in enumerate(normalized):
+        is_primary = bool(entry.get('is_primary'))
+        customer = _resolve_customer(
+            tenant,
+            entry,
+            is_primary=is_primary,
+            fallback_customer=stay.customer if is_primary else None,
+        )
+
+        full_name = (entry.get('full_name') or '').strip()
+        cnic = (entry.get('cnic') or '').strip()
+        phone = (entry.get('phone') or '').strip()
+
+        if customer:
+            full_name = full_name or customer.display_name
+            cnic = cnic or (customer.cnic or '')
+            phone = phone or (customer.phone or '')
+            if is_primary:
+                primary_customer = customer
+
+        if not full_name:
+            continue
+
+        StayGuest.objects.create(
+            stay=stay,
+            customer=customer,
+            full_name=full_name,
+            cnic=cnic,
+            phone=phone,
+            is_primary=is_primary,
+            sort_order=sort_order,
+        )
+
+    if primary_customer and stay.customer_id != primary_customer.id:
+        stay.customer = primary_customer
+
+    stay.guests_count = max(len(normalized), 1)
+    stay.save(update_fields=['customer', 'guests_count'])

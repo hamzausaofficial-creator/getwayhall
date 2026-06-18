@@ -446,7 +446,7 @@ class GuestHouseServiceViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.
 
 class StayBookingViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewSet):
     queryset = StayBooking.objects.select_related('customer', 'room').prefetch_related(
-        'charges', 'charges__service',
+        'charges', 'charges__service', 'guest_roster', 'guest_roster__customer',
     ).all()
     serializer_class = StayBookingSerializer
     permission_classes = [IsGuestHouseApp, IsGhStaffOrAbove, IsTenantOwner]

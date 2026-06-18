@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { format, addDays, parseISO, differenceInCalendarDays } from 'date-fns';
 import {
   ChevronLeft, Calendar, User, BedDouble, Wallet, FileText,
@@ -15,9 +15,7 @@ import AppLoader from '../../components/AppLoader';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useGhPageVisibility } from '../../context/GhPageVisibilityContext';
 import { GH_MODULE_KEYS } from '../../constants/ghPages';
-import CustomerSearchSelect from '../../components/CustomerSearchSelect';
-import CnicScannerPanel from '../../components/guesthouse/CnicScannerPanel';
-import ScannedGuestPanel from '../../components/guesthouse/ScannedGuestPanel';
+import StayGuestRoster, { buildGuestRosterPayload, validateGuestRoster } from '../../components/guesthouse/StayGuestRoster';
 import { formatRs } from '../../utils/currency';
 import { resolveMediaUrl } from '../../utils/media';
 import { customerDisplayName } from '../../utils/customer';
@@ -93,6 +91,7 @@ export default function BookFutureStayPage() {
   const [formError, setFormError] = useState('');
   const [scannedGuest, setScannedGuest] = useState(null);
   const [creatingGuest, setCreatingGuest] = useState(false);
+  const [companions, setCompanions] = useState([]);
   const savingGuestRef = useRef(false);
 
   const toggleAddon = (id) => {
@@ -299,6 +298,50 @@ export default function BookFutureStayPage() {
     await saveGuestFromScan(scannedGuest);
   };
 
+  const handleCompanionIdScan = async (index, parsed) => {
+    if (creatingGuest || savingGuestRef.current) return;
+    setCreatingGuest(true);
+    try {
+      const result = await resolveGuestFromIdScan(parsed, { customers });
+      if (result.status === 'invalid') {
+        toast.error('Could not read ID card. Scan again.');
+        return;
+      }
+      if (result.status === 'existing' || result.status === 'created') {
+        const list = await reloadCustomers();
+        const match = list.find((c) => c.id === result.customer.id) || result.customer;
+        setCompanions((prev) => prev.map((guest, i) => (
+          i === index
+            ? {
+              customer: String(match.id),
+              full_name: match.full_name || customerDisplayName(match),
+              cnic: match.cnic || '',
+              phone: match.phone || '',
+            }
+            : guest
+        )));
+        toast.success(`Guest ${index + 2} added from ID scan`);
+        return;
+      }
+      setCompanions((prev) => prev.map((guest, i) => (
+        i === index
+          ? {
+            ...guest,
+            full_name: result.draft.full_name || '',
+            cnic: result.draft.cnic || '',
+            phone: result.draft.phone || '',
+            customer: '',
+          }
+          : guest
+      )));
+      toast('ID read — complete guest details', { icon: 'ℹ️' });
+    } catch {
+      toast.error('Failed to process ID card scan');
+    } finally {
+      setCreatingGuest(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
@@ -310,6 +353,12 @@ export default function BookFutureStayPage() {
       setFormError('Please select a guest and room.');
       return;
     }
+    const primaryCustomer = customers.find((c) => String(c.id) === String(form.customer));
+    const rosterError = validateGuestRoster(form.customer, primaryCustomer, companions);
+    if (rosterError) {
+      setFormError(rosterError);
+      return;
+    }
     setSubmitting(true);
     try {
       const created = await createStay({
@@ -318,6 +367,7 @@ export default function BookFutureStayPage() {
         check_in: form.check_in,
         check_out: form.check_out,
         guests_count: Number(form.guests_count) || 1,
+        guest_roster: buildGuestRosterPayload(form.customer, primaryCustomer, companions),
         advance_paid: parseFloat(form.advance_paid) || 0,
         advance_payment_method: form.advance_payment_method,
         addon_service_ids: selectedAddonIds,
@@ -451,52 +501,31 @@ export default function BookFutureStayPage() {
             <div className="premium-card" style={{ padding: '28px' }}>
               <SectionHeader
                 icon={User}
-                title="Guest details"
-                subtitle={showIdScanner ? 'Scan ID card or search guest for this reservation' : 'Search guest for this reservation'}
+                title="Guests on this stay"
+                subtitle="Primary booker on top, then everyone staying in the room with CNIC / ID"
               />
-              {showIdScanner && (
-                <>
-                  <CnicScannerPanel onScan={handleIdScan} disabled={loading || submitting || creatingGuest} />
-                  <ScannedGuestPanel
-                    draft={scannedGuest}
-                    loading={creatingGuest && !scannedGuest}
-                    saving={creatingGuest}
-                    onChange={handleScannedGuestChange}
-                    onPhoneChange={handleScannedPhoneChange}
-                    onSave={handleCreateGuestFromScan}
-                    onCancel={() => setScannedGuest(null)}
-                  />
-                </>
-              )}
-
-              <div className="input-group" style={{ marginTop: '16px' }}>
-                <label>Guest / Customer</label>
-                <CustomerSearchSelect
-                  customers={customers}
-                  value={form.customer}
-                  onChange={(customerId) => {
-                    setForm({ ...form, customer: customerId });
-                    if (customerId) setScannedGuest(null);
-                  }}
-                  placeholder="Search guest by name, phone, or CNIC…"
-                  disabled={loading}
-                />
-                {form.customer && (
-                  <Link
-                    to={`/gh/customers/${form.customer}`}
-                    style={{ marginTop: '10px', fontSize: '13px', fontWeight: '600', color: 'var(--primary)', display: 'inline-block' }}
-                  >
-                    View guest profile →
-                  </Link>
-                )}
-                <button
-                  type="button"
-                  onClick={() => navigate('/gh/customers', { state: { openCreate: true } })}
-                  style={{ marginTop: '10px', fontSize: '13px', fontWeight: '600', color: 'var(--primary)', background: 'transparent', textAlign: 'left', display: 'block' }}
-                >
-                  + Add new customer manually
-                </button>
-              </div>
+              <StayGuestRoster
+                guestsCount={form.guests_count}
+                customers={customers}
+                primaryCustomerId={form.customer}
+                onPrimaryCustomerChange={(customerId) => {
+                  setForm({ ...form, customer: customerId });
+                  if (customerId) setScannedGuest(null);
+                }}
+                companions={companions}
+                onCompanionsChange={setCompanions}
+                showIdScanner={showIdScanner}
+                onIdScanPrimary={handleIdScan}
+                onIdScanCompanion={handleCompanionIdScan}
+                scanProcessing={creatingGuest}
+                scannedGuest={scannedGuest}
+                onScannedGuestChange={handleScannedGuestChange}
+                onScannedPhoneChange={handleScannedPhoneChange}
+                onSaveScannedGuest={handleCreateGuestFromScan}
+                onCancelScannedGuest={() => setScannedGuest(null)}
+                savingScannedGuest={creatingGuest}
+                disabled={loading || submitting}
+              />
             </div>
 
             {/* Dates */}

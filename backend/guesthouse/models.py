@@ -203,6 +203,31 @@ class StayCharge(models.Model):
         return f'{self.description} - {self.amount}'
 
 
+class StayGuest(models.Model):
+    """Guest on a stay — primary booker plus companions (Booking.com-style roster)."""
+    stay = models.ForeignKey(StayBooking, on_delete=models.CASCADE, related_name='guest_roster')
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='stay_guest_entries',
+    )
+    full_name = models.CharField(max_length=200)
+    cnic = models.CharField(max_length=20, blank=True, default='')
+    phone = models.CharField(max_length=20, blank=True, default='')
+    is_primary = models.BooleanField(default=False)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sort_order', 'id']
+
+    def __str__(self):
+        role = 'Primary' if self.is_primary else 'Guest'
+        return f'{self.full_name} ({role})'
+
+
 class StayPayment(models.Model):
     METHOD_CHOICES = (
         ('CASH', 'Cash'),

@@ -1,14 +1,12 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { useNavigate, useParams, useLocation, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import {
   ChevronLeft, Sparkles, BedDouble, FileText, CheckCircle, X, HelpCircle,
 } from 'lucide-react';
 import { createStay, updateStay, getStay, listRooms, getAvailableRooms, listGhServices } from '../../api/guesthouse';
 import { computeStayBilling } from '../../utils/ghBilling';
 import { StayAddonsPicker, StayBillingBreakdown, GuestsCountHint } from '../../components/guesthouse/StayAddonsSection';
-import CustomerSearchSelect from '../../components/CustomerSearchSelect';
-import CnicScannerPanel from '../../components/guesthouse/CnicScannerPanel';
-import ScannedGuestPanel from '../../components/guesthouse/ScannedGuestPanel';
+import StayGuestRoster, { buildGuestRosterPayload, validateGuestRoster } from '../../components/guesthouse/StayGuestRoster';
 import client from '../../api/client';
 import toast from 'react-hot-toast';
 import AppLoader from '../../components/AppLoader';
@@ -86,6 +84,7 @@ export default function StayFormPage() {
   const [scanProcessing, setScanProcessing] = useState(false);
   const [scannedGuest, setScannedGuest] = useState(null);
   const [savingGuest, setSavingGuest] = useState(false);
+  const [companions, setCompanions] = useState([]);
   const savingGuestRef = useRef(false);
 
   const toggleAddon = (id) => {
@@ -222,6 +221,17 @@ export default function StayFormPage() {
             notes: s.notes || '',
             status: s.status,
           });
+          const roster = Array.isArray(s.guests) ? s.guests : [];
+          setCompanions(
+            roster
+              .filter((guest) => !guest.is_primary)
+              .map((guest) => ({
+                customer: guest.customer ? String(guest.customer) : '',
+                full_name: guest.full_name || '',
+                cnic: guest.cnic || '',
+                phone: guest.phone || '',
+              })),
+          );
         } else if (prefillCheckIn || prefillRoom) {
           setForm((f) => ({
             ...f,
@@ -302,6 +312,12 @@ export default function StayFormPage() {
       setFormError(stayEstimate.error);
       return;
     }
+    const primaryCustomer = customers.find((c) => String(c.id) === String(form.customer));
+    const rosterError = validateGuestRoster(form.customer, primaryCustomer, companions);
+    if (rosterError) {
+      setFormError(rosterError);
+      return;
+    }
     setSubmitting(true);
     const payload = {
       customer: Number(form.customer),
@@ -309,6 +325,7 @@ export default function StayFormPage() {
       check_in: form.check_in,
       check_out: form.check_out,
       guests_count: Number(form.guests_count),
+      guest_roster: buildGuestRosterPayload(form.customer, primaryCustomer, companions),
       addon_service_ids: selectedAddonIds,
       notes: form.notes,
       status: form.status,
@@ -425,61 +442,27 @@ export default function StayFormPage() {
 
         <div className="booking-layout">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-            {!isEdit && showIdScanner && (
-              <section style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {sectionTitle('ID card scan')}
-                <div className="premium-card" style={{ padding: '20px' }}>
-                  <CnicScannerPanel onScan={handleIdScan} disabled={submitting || scanProcessing || savingGuest} />
-                  <ScannedGuestPanel
-                    draft={scannedGuest}
-                    loading={scanProcessing}
-                    saving={savingGuest}
-                    onChange={handleScannedGuestChange}
-                    onPhoneChange={handleScannedPhoneChange}
-                    onSave={() => saveGuestFromScan(scannedGuest)}
-                    onCancel={() => setScannedGuest(null)}
-                  />
-                </div>
-              </section>
-            )}
-
             <section style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {sectionTitle('Guest & room')}
-              <div className="premium-card form-grid-2 form-grid-2--gap-24" style={{ padding: '28px' }}>
-                <div className="input-group">
-                  <label>Guest / Customer</label>
-                  <CustomerSearchSelect
-                    customers={customers}
-                    value={form.customer}
-                    onChange={(id) => setForm({ ...form, customer: id })}
-                    disabled={submitting}
-                  />
-                  {form.customer && (
-                    <Link
-                      to={`/gh/customers/${form.customer}`}
-                      style={{ marginTop: '8px', fontSize: '12px', fontWeight: '600', color: 'var(--primary)', display: 'inline-block' }}
-                    >
-                      View guest profile →
-                    </Link>
-                  )}
-                  {!isEdit && (
-                    <button
-                      type="button"
-                      onClick={() => navigate('/gh/customers', { state: { openCreate: true } })}
-                      style={{
-                        marginTop: '8px',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        color: 'var(--primary)',
-                        background: 'transparent',
-                        textAlign: 'left',
-                        display: 'block',
-                      }}
-                    >
-                      + Add new customer
-                    </button>
-                  )}
-                </div>
+              {sectionTitle('Guests & room')}
+              <div className="premium-card" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <StayGuestRoster
+                  guestsCount={form.guests_count}
+                  customers={customers}
+                  primaryCustomerId={form.customer}
+                  onPrimaryCustomerChange={(customerId) => setForm({ ...form, customer: customerId })}
+                  companions={companions}
+                  onCompanionsChange={setCompanions}
+                  showIdScanner={showIdScanner && !isEdit}
+                  onIdScanPrimary={handleIdScan}
+                  scanProcessing={scanProcessing}
+                  scannedGuest={scannedGuest}
+                  onScannedGuestChange={handleScannedGuestChange}
+                  onScannedPhoneChange={handleScannedPhoneChange}
+                  onSaveScannedGuest={() => saveGuestFromScan(scannedGuest)}
+                  onCancelScannedGuest={() => setScannedGuest(null)}
+                  savingScannedGuest={savingGuest}
+                  disabled={submitting}
+                />
                 <div className="input-group">
                   <label>Room</label>
                   <select
