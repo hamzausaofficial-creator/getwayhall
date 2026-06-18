@@ -248,8 +248,7 @@ const CustomerManagement = () => {
       <div className="animate-fade-in">
         <div className="page-header">
           <div>
-            <h2 style={{ fontSize: '24px', fontWeight: '700' }}>Customer CRM</h2>
-            <p style={{ color: 'var(--text-muted)' }}>Click a customer to view bookings, balance due, and record payments.</p>
+            <p style={{ color: 'var(--text-muted)', margin: 0 }}>Click a customer to view bookings, balance due, and record payments.</p>
           </div>
           {canManage && (
           <button type="button" className="btn-primary" onClick={() => handleOpenFormModal()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

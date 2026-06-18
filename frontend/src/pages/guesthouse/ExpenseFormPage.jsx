@@ -202,10 +202,7 @@ export default function ExpenseFormPage() {
             <ChevronLeft size={20} />
           </button>
           <div>
-            <h2 style={{ fontSize: '28px', fontWeight: '800', margin: 0, color: 'var(--secondary)' }}>
-              {isEdit ? 'Edit expense voucher' : 'Record expense voucher'}
-            </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0 }}>
               Guest house operating cost - saved to reports automatically.
             </p>
           </div>

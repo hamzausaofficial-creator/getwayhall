@@ -126,10 +126,7 @@ export default function GuestHouseExpenses() {
     <div className="animate-fade-in" style={{ paddingBottom: '40px' }}>
       <div className="page-header">
         <div>
-          <h2 style={{ fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--secondary)', margin: 0 }}>
-            Expenses & Vouchers
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '6px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0 }}>
             Track guest house operating costs - salary, utilities, maintenance, and more.
           </p>
         </div>

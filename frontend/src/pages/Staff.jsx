@@ -287,8 +287,7 @@ const Staff = ({ embedded = false }) => {
         {!embedded ? (
           <div className="page-header">
             <div>
-              <h2 style={{ fontSize: '24px', fontWeight: '700' }}>Staff Management</h2>
-              <p style={{ color: 'var(--text-muted)' }}>
+              <p style={{ color: 'var(--text-muted)', margin: 0 }}>
                 Manage your team - click a staff member to view full details.
               </p>
             </div>

@@ -67,6 +67,10 @@
   color: var(--primary);
 }
 
+[data-theme='dark'] .dashboard-header__title {
+  color: var(--text-main);
+}
+
 [data-theme='dark'] .login-card__subtitle {
   color: var(--text-muted);
 }

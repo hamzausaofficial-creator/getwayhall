@@ -381,10 +381,7 @@ export default function StayFormPage() {
               <ChevronLeft size={20} />
             </button>
             <div>
-              <h2 style={{ fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--secondary)', margin: 0 }}>
-                {isEdit ? 'Modify Stay' : 'New Stay Booking'}
-              </h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0 }}>
                 {isEdit ? `Updating ${bookingRef}` : 'Reserve a room and record guest stay details.'}
               </p>
             </div>

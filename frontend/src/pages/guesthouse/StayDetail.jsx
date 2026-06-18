@@ -14,6 +14,7 @@ import CancelStayModal from '../../components/guesthouse/CancelStayModal';
 import AppLoader from '../../components/AppLoader';
 import toast from 'react-hot-toast';
 import { usePermissions } from '../../hooks/usePermissions';
+import { usePageTitle } from '../../context/PageTitleContext';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { formatRs, formatCollectDuePKR, hasCollectDue } from '../../utils/currency';
 import { canCancelGhStay } from '../../utils/ghStay';
@@ -104,6 +105,7 @@ export default function StayDetail() {
   const [chargeDesc, setChargeDesc] = useState('');
   const [chargeAmount, setChargeAmount] = useState('');
   const [addingCharge, setAddingCharge] = useState(false);
+  usePageTitle(stay?.customer_name || stay?.booking_ref || null);
 
   const load = async () => {
     setLoading(true);
@@ -256,9 +258,6 @@ export default function StayDetail() {
           <p style={{ fontSize: '12px', fontWeight: '700', color: 'var(--primary)', fontFamily: 'monospace', margin: '0 0 6px 0' }}>
             {stay.booking_ref}
           </p>
-          <h2 style={{ fontSize: 'clamp(22px, 4vw, 28px)', fontWeight: '800', margin: 0, wordBreak: 'break-word' }}>
-            {stay.customer_name || 'Guest'}
-          </h2>
           <p style={{ color: 'var(--text-muted)', marginTop: '8px', fontSize: '14px', display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
               <BedDouble size={14} /> Room {stay.room_number}

@@ -223,10 +223,7 @@ const Reports = () => {
       {/* Title */}
       <div className="page-header">
         <div>
-          <h2 style={{ fontSize: '28px', fontWeight: '800', color: 'var(--secondary)', letterSpacing: '-0.02em' }}>
-            Reports & Analytics
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginTop: '4px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '15px', margin: 0 }}>
             Generate and examine financial balance sheets, hall utilization reports, and cost analysis.
           </p>
         </div>

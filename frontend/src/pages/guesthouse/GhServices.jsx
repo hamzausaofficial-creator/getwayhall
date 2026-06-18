@@ -131,8 +131,7 @@ export default function GhServices({ embedded = false }) {
       {!embedded && (
         <div className="page-header">
           <div>
-            <h2 style={{ fontSize: '24px', fontWeight: '700' }}>Add-on Services</h2>
-            <p style={{ color: 'var(--text-muted)' }}>
+            <p style={{ color: 'var(--text-muted)', margin: 0 }}>
               Manage AC, breakfast, laundry, and other extras shown when booking stays.
             </p>
           </div>

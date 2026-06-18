@@ -7,6 +7,7 @@ import { getGhExpense, deleteGhExpense } from '../../api/guesthouse';
 import toast from 'react-hot-toast';
 import AppLoader from '../../components/AppLoader';
 import { usePermissions } from '../../hooks/usePermissions';
+import { usePageTitle } from '../../context/PageTitleContext';
 import { formatRs } from '../../utils/currency';
 import { GH_CATEGORY_LABELS, voucherDisplayId } from '../../utils/ghExpenseHelpers';
 
@@ -26,6 +27,7 @@ export default function GhExpenseDetail() {
   const { canManage } = usePermissions();
   const [expense, setExpense] = useState(null);
   const [loading, setLoading] = useState(true);
+  usePageTitle(expense?.title || null);
 
   useEffect(() => {
     const load = async () => {
@@ -90,7 +92,6 @@ export default function GhExpenseDetail() {
           <p style={{ fontSize: '12px', fontWeight: '700', color: 'var(--primary)', fontFamily: 'monospace', marginBottom: '6px' }}>
             {voucherId}
           </p>
-          <h2 style={{ fontSize: '28px', fontWeight: '800', margin: 0 }}>{expense.title}</h2>
           <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>
             Expense voucher - view, print, or use again for a new payment
           </p>

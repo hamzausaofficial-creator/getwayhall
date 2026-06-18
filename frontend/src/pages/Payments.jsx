@@ -293,10 +293,7 @@ const Payments = () => {
         {/* HEADER ROW */}
       <div className="page-header">
         <div>
-          <h2 style={{ fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--secondary)' }}>
-            Financial Ledger & Payments
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0 }}>
             Monitor booking deposits, manual installments, and overall revenue metrics.
           </p>
         </div>

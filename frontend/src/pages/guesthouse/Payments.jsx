@@ -130,10 +130,7 @@ export default function GuestHousePayments() {
     <div className="animate-fade-in" style={{ paddingBottom: '40px' }}>
       <div className="page-header">
         <div>
-          <h2 style={{ fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--secondary)', margin: 0 }}>
-            Payments & Collections
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '6px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0 }}>
             Record guest deposits, track collections, and monitor outstanding balances.
           </p>
         </div>

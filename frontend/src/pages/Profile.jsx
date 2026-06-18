@@ -100,7 +100,6 @@ const Profile = () => {
   return (
     <div className="profile-page animate-fade-in">
       <div className="profile-page__header">
-        <h2 className="profile-page__title">My Profile</h2>
         <p className="profile-page__subtitle">
           Manage your personal credentials, profile picture, and access controls.
         </p>

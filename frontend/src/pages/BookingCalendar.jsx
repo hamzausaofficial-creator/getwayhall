@@ -213,8 +213,7 @@ const BookingCalendar = () => {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h2 style={{ fontSize: '24px', fontWeight: '700' }}>Booking Calendar</h2>
-          <p style={{ color: 'var(--text-muted)' }}>Visualize your venue schedule and upcoming events.</p>
+          <p style={{ color: 'var(--text-muted)', margin: 0 }}>Visualize your venue schedule and upcoming events.</p>
         </div>
         <button className="btn-primary" onClick={() => handleOpenModal()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Plus size={18} /> New Booking

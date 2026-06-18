@@ -13,6 +13,7 @@ import { getDecorationPackage } from '../api/decorations';
 import client from '../api/client';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import { usePageTitle } from '../context/PageTitleContext';
 import AppLoader from '../components/AppLoader';
 import { TIER_LABELS, TIER_STYLES } from '../utils/decorationHelpers';
 
@@ -25,6 +26,7 @@ const DecorationPackageDetail = () => {
   const [pkg, setPkg] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  usePageTitle(pkg?.name || null);
 
   useEffect(() => {
     const load = async () => {
@@ -92,10 +94,6 @@ const DecorationPackageDetail = () => {
           <p style={{ fontSize: '12px', fontWeight: '700', color: 'var(--primary)', fontFamily: 'monospace', marginBottom: '6px' }}>
             PKG-{pkg.id}
           </p>
-          <h2 style={{ fontSize: '28px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <Sparkles size={28} color="var(--primary)" />
-            {pkg.name}
-          </h2>
           <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>
             Decoration package - stage, lighting aur florals ki bundle detail
           </p>

@@ -173,10 +173,7 @@ export default function AllRecords({ embedded = false }) {
       {!embedded && (
         <div className="page-header">
           <div>
-            <h2 style={{ fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--secondary)', margin: 0 }}>
-              All Records
-            </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '6px' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0 }}>
               Every reservation, payment, and expense voucher in one place - with record type clearly marked.
             </p>
           </div>

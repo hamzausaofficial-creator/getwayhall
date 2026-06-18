@@ -79,8 +79,7 @@ const HallManagement = ({ embedded = false }) => {
       {!embedded ? (
         <div className="page-header">
           <div>
-            <h2 style={{ fontSize: '24px', fontWeight: '700' }}>Hall Management</h2>
-            <p style={{ color: 'var(--text-muted)' }}>Overview of all your available venues and halls.</p>
+            <p style={{ color: 'var(--text-muted)', margin: 0 }}>Overview of all your available venues and halls.</p>
           </div>
           {canManage && (
             <button type="button" className="btn-primary" onClick={openCreate} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

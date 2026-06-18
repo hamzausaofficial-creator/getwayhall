@@ -152,8 +152,7 @@ const DecorationPackages = () => {
       <div className="animate-fade-in">
         <div className="page-header">
           <div>
-            <h2 style={{ fontSize: '24px', fontWeight: '700' }}>Decoration Packages</h2>
-            <p style={{ color: 'var(--text-muted)' }}>Create pricing bundles for stage, lighting, florals, and themed décor.</p>
+            <p style={{ color: 'var(--text-muted)', margin: 0 }}>Create pricing bundles for stage, lighting, florals, and themed décor.</p>
           </div>
           {canManage && (
           <button type="button" className="btn-primary" onClick={() => openModal()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

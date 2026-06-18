@@ -15,6 +15,7 @@ import client from '../api/client';
 import toast from 'react-hot-toast';
 import AppLoader from '../components/AppLoader';
 import { useAuth } from '../context/AuthContext';
+import { usePageTitle } from '../context/PageTitleContext';
 import {
   STATUS_COLORS,
   CATEGORY_LABELS,
@@ -30,6 +31,7 @@ const InventoryDetail = () => {
   const [item, setItem] = useState(null);
   const [allocations, setAllocations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  usePageTitle(item?.name || null);
 
   useEffect(() => {
     const load = async () => {
@@ -99,7 +101,6 @@ const InventoryDetail = () => {
           <p style={{ fontSize: '12px', fontWeight: '700', color: 'var(--primary)', fontFamily: 'monospace', marginBottom: '6px' }}>
             INV-{item.id}
           </p>
-          <h2 style={{ fontSize: '28px', fontWeight: '800' }}>{item.name}</h2>
           <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>
             Inventory item - stock aur event allocations ki detail
           </p>

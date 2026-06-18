@@ -296,8 +296,7 @@ const GuestHouseStays = () => {
     <div className="animate-fade-in" style={{ paddingBottom: '40px', maxWidth: '100%', overflowX: 'hidden' }}>
       <div className="page-header">
         <div style={{ minWidth: 0 }}>
-          <h2 style={{ fontSize: 'clamp(22px, 4vw, 28px)', fontWeight: '800', margin: 0 }}>Stay Reservations</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '6px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0 }}>
             Daily view - today&apos;s in-house and check-in stays. Search or open All Records for other dates.
           </p>
         </div>

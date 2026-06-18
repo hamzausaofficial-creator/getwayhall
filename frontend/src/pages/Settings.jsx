@@ -396,8 +396,7 @@ const Settings = () => {
   return (
     <div className="animate-fade-in">
       <div style={{ marginBottom: '32px' }}>
-        <h2 style={{ fontSize: '24px', fontWeight: '700' }}>Settings</h2>
-        <p style={{ color: 'var(--text-muted)' }}>Configure your application and account preferences.</p>
+        <p style={{ color: 'var(--text-muted)', margin: 0 }}>Configure your application and account preferences.</p>
       </div>
 
       <div className="settings-layout">

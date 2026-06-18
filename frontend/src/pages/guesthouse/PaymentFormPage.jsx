@@ -190,10 +190,7 @@ export default function PaymentFormPage() {
               <ChevronLeft size={20} />
             </button>
             <div>
-              <h2 style={{ fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--secondary)', margin: 0 }}>
-                {isEdit ? 'Edit Payment' : 'Record Payment'}
-              </h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0 }}>
                 {isEdit ? 'Update deposit details for a stay' : 'Capture guest payment against a stay booking.'}
               </p>
             </div>

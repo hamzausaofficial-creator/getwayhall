@@ -91,8 +91,7 @@ export default function StayCalendar() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h2 style={{ fontSize: 'clamp(22px, 4vw, 28px)', fontWeight: '800', margin: 0 }}>Stay Calendar</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '6px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0 }}>
             Click a stay for quick actions. Double-click a future date to book.
           </p>
         </div>

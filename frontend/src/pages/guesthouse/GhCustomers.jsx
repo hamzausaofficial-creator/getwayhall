@@ -280,8 +280,7 @@ export default function GhCustomers() {
       <div className="animate-fade-in gh-cust-page">
         <div className="page-header">
           <div style={{ minWidth: 0 }}>
-            <h2 style={{ fontSize: 'clamp(22px, 4vw, 28px)', fontWeight: '800', margin: 0 }}>Guest Directory</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '6px' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0 }}>
               Manage guests, daily reservations, stay history, and balance due.
             </p>
           </div>

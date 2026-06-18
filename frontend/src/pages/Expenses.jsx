@@ -172,10 +172,7 @@ const Expenses = () => {
       {/* Title */}
       <div className="page-header">
         <div>
-          <h2 style={{ fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--secondary)' }}>
-            Payment Receipts & Vouchers
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginTop: '4px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '15px', margin: 0 }}>
             Manage official cash accounts, utility bills, capital draws, decoration, FBR tax, and vendor payments.
           </p>
         </div>

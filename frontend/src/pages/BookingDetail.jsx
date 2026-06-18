@@ -19,6 +19,7 @@ import { getBooking } from '../api/bookings';
 import client from '../api/client';
 import toast from 'react-hot-toast';
 import { usePermissions } from '../hooks/usePermissions';
+import { usePageTitle } from '../context/PageTitleContext';
 import {
   formatRs,
   formatCollectDue,
@@ -63,6 +64,7 @@ const BookingDetail = () => {
   const [inventoryLines, setInventoryLines] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  usePageTitle(booking?.event_name || null);
 
   useEffect(() => {
     const load = async () => {
@@ -129,7 +131,6 @@ const BookingDetail = () => {
           <p style={{ fontSize: '12px', fontWeight: '700', color: 'var(--primary)', fontFamily: 'monospace', marginBottom: '6px' }}>
             {booking.booking_id || `BK-${booking.id}`}
           </p>
-          <h2 style={{ fontSize: '28px', fontWeight: '800' }}>{booking.event_name}</h2>
           <p style={{ color: 'var(--text-muted)', marginTop: '8px', fontSize: '15px' }}>
             Booking details - yeh reservation ki poori summary hai
           </p>

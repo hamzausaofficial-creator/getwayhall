@@ -220,10 +220,7 @@ export default function RoomFormPage() {
               <ChevronLeft size={20} />
             </button>
             <div>
-              <h2 style={{ fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--secondary)', margin: 0 }}>
-                {isEdit ? 'Modify Room' : 'Add New Room'}
-              </h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0 }}>
                 {isEdit ? `Room ${form.room_number}` : 'Set up room details, capacity, and nightly rate.'}
               </p>
             </div>

@@ -206,10 +206,7 @@ export default function HallFormPage() {
               <ChevronLeft size={20} />
             </button>
             <div>
-              <h2 style={{ fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--secondary)', margin: 0 }}>
-                {isEdit ? 'Modify Hall' : 'Add New Hall'}
-              </h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0 }}>
                 {isEdit ? form.name : 'Set up hall name, capacity, location, and daily rate.'}
               </p>
             </div>

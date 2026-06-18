@@ -14,6 +14,7 @@ import { getExpense } from '../api/finance';
 import client from '../api/client';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import { usePageTitle } from '../context/PageTitleContext';
 import AppLogo from '../components/AppLogo';
 import { BRAND_FULL_NAME } from '../constants/brand';
 import {
@@ -33,6 +34,7 @@ const ExpenseDetail = () => {
 
   const [expense, setExpense] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  usePageTitle(expense?.title || null);
 
   useEffect(() => {
     const load = async () => {
@@ -98,7 +100,6 @@ const ExpenseDetail = () => {
             <p style={{ fontSize: '12px', fontWeight: '700', color: 'var(--primary)', fontFamily: 'monospace', marginBottom: '6px' }}>
               PV-{expense.id}
             </p>
-            <h2 style={{ fontSize: '28px', fontWeight: '800' }}>{expense.title}</h2>
             <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>
               Payment voucher - yeh expense / receipt ki detail hai
             </p>

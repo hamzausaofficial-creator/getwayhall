@@ -12,8 +12,15 @@ import { guestHouseSearch } from '../api/guesthouse';
 import { useAppType } from '../hooks/useAppType';
 import { usePermissions } from '../hooks/usePermissions';
 import { GhPageVisibilityProvider, useGhPageVisibility } from '../context/GhPageVisibilityContext';
+import { PageTitleProvider, usePageTitleContext } from '../context/PageTitleContext';
 import { GH_PAGE_KEYS } from '../constants/ghPages';
 import { resolveMediaUrl } from '../utils/media';
+
+function DashboardHeaderTitle() {
+  const { title } = usePageTitleContext();
+  if (!title) return null;
+  return <h1 className="dashboard-header__title">{title}</h1>;
+}
 
 const DashboardLayoutContent = () => {
   const { user, logout } = useAuth();
@@ -182,6 +189,7 @@ const DashboardLayoutContent = () => {
   ].filter(Boolean).join(' ');
 
   return (
+    <PageTitleProvider>
     <div className={shellClass}>
       <div
         className={`sidebar-backdrop ${mobileMenuOpen ? 'sidebar-backdrop--visible' : ''}`}
@@ -208,6 +216,7 @@ const DashboardLayoutContent = () => {
                 <Menu size={20} />
               </button>
             )}
+            <DashboardHeaderTitle />
           </div>
 
           <div className="dashboard-header__actions">
@@ -525,6 +534,7 @@ const DashboardLayoutContent = () => {
         </div>
       </main>
     </div>
+    </PageTitleProvider>
   );
 };
 

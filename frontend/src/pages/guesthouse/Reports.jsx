@@ -220,10 +220,7 @@ export default function GuestHouseReports() {
     <div className="animate-fade-in print-hide">
       <div className="page-header">
         <div>
-          <h2 style={{ fontSize: '28px', fontWeight: '800', color: 'var(--secondary)', letterSpacing: '-0.02em', margin: 0 }}>
-            Reports & Analytics
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginTop: '6px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '15px', margin: 0 }}>
             Guest house revenue, collections, room performance, and expense analysis.
           </p>
         </div>

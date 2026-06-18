@@ -23,6 +23,7 @@ import { formatCollectDue, formatCollectDuePKR, bookingCollectDue, hasCollectDue
 import toast from 'react-hot-toast';
 import { customerDisplayName, buildCustomerPayload } from '../utils/customer';
 import { usePermissions } from '../hooks/usePermissions';
+import { usePageTitle } from '../context/PageTitleContext';
 import CancelBookingModal from '../components/bookings/CancelBookingModal';
 import CnicScannerPanel from '../components/guesthouse/CnicScannerPanel';
 import ScannedGuestPanel from '../components/guesthouse/ScannedGuestPanel';
@@ -66,6 +67,9 @@ const Bookings = () => {
   const [viewMode, setViewMode] = useState('list'); // 'list', 'create', 'edit'
   const [editingId, setEditingId] = useState(null);
   const isEdit = viewMode === 'edit';
+  usePageTitle(
+    viewMode === 'create' ? 'Booking Request' : viewMode === 'edit' ? 'Modify Booking Details' : null,
+  );
   
   const [searchQuery, setSearchQuery] = useState('');
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -568,8 +572,7 @@ const Bookings = () => {
           <>
             <div className="page-header">
               <div>
-                <h2 style={{ fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--secondary)' }}>Bookings & Reservations</h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>Oversee schedule listings, revenue parameters, and confirm hall draft bookings.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0 }}>Oversee schedule listings, revenue parameters, and confirm hall draft bookings.</p>
               </div>
               {canManage && (
               <button className="btn-primary" onClick={handleCreateNewClick} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '10px', fontSize: '14px', fontWeight: '600' }}>
@@ -749,10 +752,7 @@ const Bookings = () => {
                   <ChevronLeft size={20} />
                 </button>
                 <div>
-                  <h2 style={{ fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--secondary)' }}>
-                    {viewMode === 'create' ? 'Booking Request' : 'Modify Booking Details'}
-                  </h2>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '2px' }}>Fill in the details to reserve a hall slot.</p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0 }}>Fill in the details to reserve a hall slot.</p>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>

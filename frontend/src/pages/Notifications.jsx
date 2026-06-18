@@ -95,10 +95,7 @@ const Notifications = () => {
     <div className="animate-fade-in">
       <div className="page-header">
         <div>
-          <h2 style={{ fontSize: '24px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Bell size={26} /> Notifications
-          </h2>
-          <p style={{ color: 'var(--text-muted)' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0 }}>
             {isGuestHouse
               ? 'Upcoming check-ins, balance due, activity, and customer SMS / WhatsApp messages.'
               : 'Alerts, bookings, payments, and customer SMS / WhatsApp messages.'}

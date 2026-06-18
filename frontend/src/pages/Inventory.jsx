@@ -132,8 +132,7 @@ const Inventory = () => {
       <div className="animate-fade-in">
         <div className="page-header">
           <div>
-            <h2 style={{ fontSize: '24px', fontWeight: '700' }}>Inventory Management</h2>
-            <p style={{ color: 'var(--text-muted)' }}>Track and manage your hall's supplies and equipment.</p>
+            <p style={{ color: 'var(--text-muted)', margin: 0 }}>Track and manage your hall&apos;s supplies and equipment.</p>
           </div>
           {canManage && (
           <button className="btn-primary" onClick={() => openModal()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
