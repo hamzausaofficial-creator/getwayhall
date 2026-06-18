@@ -34,3 +34,41 @@ export function getAppLoginPortal(pathname = '') {
   }
   return null;
 }
+
+const PORTAL_STORAGE_KEY = 'login_portal_choice';
+
+/** Guess portal from username prefix while typing (Guest House staff accounts). */
+export function guessPortalFromUsername(username) {
+  const value = String(username || '').trim().toLowerCase();
+  if (!value) return null;
+  if (/^gh[_-]/.test(value) || value.includes('guesthouse') || value.includes('guest_house')) {
+    return APP_GUEST_HOUSE;
+  }
+  return null;
+}
+
+export function readStoredLoginPortal() {
+  try {
+    const stored = sessionStorage.getItem(PORTAL_STORAGE_KEY);
+    if (stored === APP_GUEST_HOUSE || stored === APP_MARRIAGE_HALL) return stored;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+export function storeLoginPortal(portal) {
+  const normalized = normalizeAppType(portal);
+  try {
+    sessionStorage.setItem(PORTAL_STORAGE_KEY, normalized);
+  } catch {
+    /* ignore */
+  }
+  return normalized;
+}
+
+export function portalLabel(portal) {
+  return normalizeAppType(portal) === APP_GUEST_HOUSE
+    ? 'Guest House'
+    : 'Marriage Hall';
+}

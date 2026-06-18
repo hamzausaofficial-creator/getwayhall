@@ -482,7 +482,7 @@ const Staff = ({ embedded = false }) => {
                         lineHeight: 1.5,
                       }}
                     >
-                      Sign in at the {portalLabel} login page with username + password.
+                      Sign in at the login page with username + password — {portalLabel} opens automatically.
                       Role <strong>{roleStyle.label}</strong> controls which pages they see.
                       Use &quot;Reset password&quot; below to change their password.
                     </div>

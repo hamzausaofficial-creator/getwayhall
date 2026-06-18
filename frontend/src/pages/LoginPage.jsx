@@ -1,28 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { User, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
 import AppLogo from '../components/AppLogo';
+import { getPortalHint } from '../api/auth';
 import {
   APP_GUEST_HOUSE,
   APP_MARRIAGE_HALL,
   getDefaultHomePath,
   getAppLoginPortal,
+  guessPortalFromUsername,
   normalizeAppType,
+  portalLabel,
+  readStoredLoginPortal,
+  storeLoginPortal,
 } from '../utils/appType';
-
-const PORTAL_STORAGE_KEY = 'login_portal_choice';
-
-function readStoredPortal() {
-  try {
-    const stored = sessionStorage.getItem(PORTAL_STORAGE_KEY);
-    if (stored === APP_GUEST_HOUSE || stored === APP_MARRIAGE_HALL) return stored;
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
 
 function fieldErrorMessage(value) {
   if (!value) return '';
@@ -33,7 +26,7 @@ function fieldErrorMessage(value) {
 const LoginPage = () => {
   const [searchParams] = useSearchParams();
   const portalParam = getAppLoginPortal(`?portal=${searchParams.get('portal') || ''}`);
-  const [portal, setPortal] = useState(portalParam ?? readStoredPortal() ?? APP_MARRIAGE_HALL);
+  const [portal, setPortal] = useState(portalParam ?? readStoredLoginPortal() ?? APP_MARRIAGE_HALL);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -42,28 +35,34 @@ const LoginPage = () => {
   const [usernameError, setUsernameError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const navigate = useNavigate();
-  const { login, clearSession } = useAuth();
+  const { login } = useAuth();
 
-  const isHall = portal === APP_MARRIAGE_HALL;
+  useEffect(() => {
+    const trimmed = username.trim();
+    if (!trimmed) return undefined;
+
+    const guessed = guessPortalFromUsername(trimmed);
+    if (guessed) {
+      setPortal(storeLoginPortal(guessed));
+    }
+
+    const timer = setTimeout(() => {
+      getPortalHint(trimmed)
+        .then((data) => {
+          if (data?.app_type) setPortal(storeLoginPortal(data.app_type));
+        })
+        .catch(() => {
+          /* optional hint */
+        });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [username]);
 
   const clearFieldErrors = () => {
     setError('');
     setUsernameError('');
     setPasswordError('');
-  };
-
-  /** Secret toggle: click "Gateway" to switch Guest House ↔ Marriage Hall */
-  const toggleSecretPortal = () => {
-    setPortal((current) => {
-      const next = current === APP_MARRIAGE_HALL ? APP_GUEST_HOUSE : APP_MARRIAGE_HALL;
-      try {
-        sessionStorage.setItem(PORTAL_STORAGE_KEY, next);
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
-    clearFieldErrors();
   };
 
   const handleLogin = async (e) => {
@@ -74,17 +73,7 @@ const LoginPage = () => {
     try {
       const loggedIn = await login({ username: username.trim(), password });
       const userApp = normalizeAppType(loggedIn?.app_type);
-
-      if (userApp !== portal) {
-        clearSession();
-        setError(
-          userApp === APP_GUEST_HOUSE
-            ? 'This account is for Guest House. Click Gateway above to switch portal, then sign in again.'
-            : 'This account is for Marriage Hall. Click Gateway above to switch portal, then sign in again.',
-        );
-        return;
-      }
-
+      storeLoginPortal(userApp);
       navigate(getDefaultHomePath(loggedIn));
     } catch (err) {
       const data = err.response?.data;
@@ -114,16 +103,9 @@ const LoginPage = () => {
         <div className="login-card__brand">
           <AppLogo size="sm" tone="dark" className="login-card__logo-mark" />
           <div>
-            <button
-              type="button"
-              className="login-card__title login-card__title--secret"
-              onClick={toggleSecretPortal}
-              aria-label="Gateway"
-            >
-              Gateway
-            </button>
+            <h1 className="login-card__title">Gateway</h1>
             <p className="login-card__subtitle">
-              {isHall ? 'Marriage Hall Management' : 'Guest House Management'}
+              {portalLabel(portal)} Management
             </p>
           </div>
         </div>
@@ -196,7 +178,7 @@ const LoginPage = () => {
           <button type="submit" className="login-submit" disabled={isLoading}>
             {isLoading ? 'Signing in…' : (
               <>
-                Sign in to {isHall ? 'Marriage Hall' : 'Guest House'}
+                Sign in to {portalLabel(portal)}
                 <ArrowRight size={18} />
               </>
             )}

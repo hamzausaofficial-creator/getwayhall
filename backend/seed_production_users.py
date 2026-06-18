@@ -93,5 +93,5 @@ if __name__ == '__main__':
         upsert_user(spec)
 
     print('Done. Marriage Hall: admin / admin123')
-    print('Done. Guest House: gh_admin / admin123 (login via Guest House portal)')
+    print('Done. Guest House: gh_admin / admin123 (portal auto-detects on login)')
     print('Django admin: https://YOUR-RAILWAY-URL/admin/  (use admin / admin123)')

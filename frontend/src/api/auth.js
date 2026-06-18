@@ -37,3 +37,11 @@ export const changePassword = async ({ current_password, new_password, confirm_p
   });
   return response.data;
 };
+
+/** Resolve Marriage Hall vs Guest House portal for a username (login page auto-detect). */
+export const getPortalHint = async (username) => {
+  const response = await client.get('/auth/portal-hint/', {
+    params: { username: String(username || '').trim() },
+  });
+  return response.data;
+};

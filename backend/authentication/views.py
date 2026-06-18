@@ -20,6 +20,23 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
 
+class PortalHintView(APIView):
+    """Public hint for login UI — which app (hall vs guest house) a username belongs to."""
+
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        username = (request.query_params.get('username') or '').strip()
+        if not username:
+            return Response({'app_type': None})
+
+        user = User.objects.filter(**{f'{User.USERNAME_FIELD}__iexact': username}).first()
+        if not user:
+            return Response({'app_type': None})
+
+        return Response({'app_type': getattr(user, 'app_type', 'MARRIAGE_HALL')})
+
+
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = (permissions.AllowAny,)
