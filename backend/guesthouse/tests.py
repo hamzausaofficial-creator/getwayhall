@@ -63,6 +63,56 @@ class GuestHouseStayTests(TestCase):
         response = client.post('/api/guesthouse/stays/', self._stay_payload(), format='json')
         self.assertEqual(response.status_code, 201)
 
+    def test_staff_can_create_stay_with_guest_roster(self):
+        client = APIClient()
+        client.force_authenticate(user=self.staff)
+        check_in = self.check_in + timedelta(days=30)
+        check_out = check_in + timedelta(days=2)
+        response = client.post('/api/guesthouse/stays/', {
+            **self._stay_payload(check_in=check_in, check_out=check_out),
+            'guests_count': 1,
+            'guest_roster': [{
+                'customer': self.customer.id,
+                'full_name': self.customer.full_name,
+                'cnic': self.customer.cnic,
+                'phone': self.customer.phone,
+                'is_primary': True,
+            }],
+        }, format='json')
+        self.assertEqual(response.status_code, 201)
+
+    def test_empty_companion_rows_ignored_when_guests_count_one(self):
+        client = APIClient()
+        client.force_authenticate(user=self.staff)
+        check_in = self.check_in + timedelta(days=40)
+        check_out = check_in + timedelta(days=2)
+        response = client.post('/api/guesthouse/stays/', {
+            **self._stay_payload(check_in=check_in, check_out=check_out),
+            'guests_count': 1,
+            'guest_roster': [
+                {
+                    'customer': self.customer.id,
+                    'full_name': self.customer.full_name,
+                    'cnic': self.customer.cnic,
+                    'phone': self.customer.phone,
+                    'is_primary': True,
+                },
+                {
+                    'customer': None,
+                    'full_name': '',
+                    'cnic': '',
+                    'phone': '',
+                    'is_primary': False,
+                },
+            ],
+        }, format='json')
+        self.assertEqual(response.status_code, 201)
+
+        client = APIClient()
+        client.force_authenticate(user=self.staff)
+        response = client.post('/api/guesthouse/stays/', self._stay_payload(), format='json')
+        self.assertEqual(response.status_code, 201)
+
     def test_overlapping_stay_rejected(self):
         StayBooking.objects.create(
             tenant=self.tenant,

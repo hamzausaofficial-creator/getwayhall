@@ -9,6 +9,25 @@ def _find_customer_by_cnic(tenant, cnic):
     return Customer.objects.filter(tenant=tenant, cnic=cnic).first()
 
 
+def _guest_entry_filled(entry):
+    if entry.get('customer') or entry.get('customer_id'):
+        return True
+    return bool((entry.get('full_name') or '').strip() or (entry.get('cnic') or '').strip())
+
+
+def _enrich_guest_entry(entry, tenant):
+    data = dict(entry)
+    customer_id = data.get('customer') or data.get('customer_id')
+    if customer_id and tenant:
+        customer = Customer.objects.filter(pk=customer_id, tenant=tenant).first()
+        if customer:
+            data['customer'] = customer.id
+            data['full_name'] = (data.get('full_name') or '').strip() or customer.display_name
+            data['cnic'] = (data.get('cnic') or '').strip() or (customer.cnic or '')
+            data['phone'] = (data.get('phone') or '').strip() or (customer.phone or '')
+    return data
+
+
 def _resolve_customer(tenant, entry, *, is_primary=False, fallback_customer=None):
     customer_id = entry.get('customer') or entry.get('customer_id')
     if customer_id and tenant:
@@ -61,11 +80,18 @@ def sync_stay_guests(stay, guests_data):
         ensure_primary_guest_row(stay)
         return
 
+    normalized = []
     for index, raw in enumerate(guests_data):
-        entry = dict(raw)
+        if not _guest_entry_filled(raw):
+            continue
+        entry = _enrich_guest_entry(raw, tenant)
         if 'is_primary' not in entry:
             entry['is_primary'] = index == 0
         normalized.append(entry)
+
+    if not normalized:
+        ensure_primary_guest_row(stay)
+        return
 
     if not any(g['is_primary'] for g in normalized):
         normalized[0]['is_primary'] = True

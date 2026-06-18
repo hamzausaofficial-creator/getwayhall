@@ -6,7 +6,7 @@ import {
 import { createStay, updateStay, getStay, listRooms, getAvailableRooms, listGhServices } from '../../api/guesthouse';
 import { computeStayBilling } from '../../utils/ghBilling';
 import { StayAddonsPicker, StayBillingBreakdown, GuestsCountHint } from '../../components/guesthouse/StayAddonsSection';
-import StayGuestRoster, { buildGuestRosterPayload, validateGuestRoster } from '../../components/guesthouse/StayGuestRoster';
+import StayGuestRoster, { buildGuestRosterPayload, shouldSendGuestRoster, validateGuestRoster } from '../../components/guesthouse/StayGuestRoster';
 import client from '../../api/client';
 import toast from 'react-hot-toast';
 import AppLoader from '../../components/AppLoader';
@@ -313,7 +313,7 @@ export default function StayFormPage() {
       return;
     }
     const primaryCustomer = customers.find((c) => String(c.id) === String(form.customer));
-    const rosterError = validateGuestRoster(form.customer, primaryCustomer, companions);
+    const rosterError = validateGuestRoster(form.customer, primaryCustomer, companions, form.guests_count);
     if (rosterError) {
       setFormError(rosterError);
       return;
@@ -325,11 +325,13 @@ export default function StayFormPage() {
       check_in: form.check_in,
       check_out: form.check_out,
       guests_count: Number(form.guests_count),
-      guest_roster: buildGuestRosterPayload(form.customer, primaryCustomer, companions),
       addon_service_ids: selectedAddonIds,
       notes: form.notes,
       status: form.status,
     };
+    if (shouldSendGuestRoster(form.guests_count, companions)) {
+      payload.guest_roster = buildGuestRosterPayload(form.customer, primaryCustomer, companions);
+    }
     if (!isEdit) {
       payload.advance_paid = Number(form.advance_paid) || 0;
       payload.advance_payment_method = form.advance_payment_method;

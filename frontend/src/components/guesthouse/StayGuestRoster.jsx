@@ -26,7 +26,9 @@ export function buildGuestRosterPayload(primaryCustomerId, primaryCustomer, comp
       is_primary: true,
     });
   }
-  companions.forEach((guest) => {
+  companions
+    .filter((guest) => guest.customer || (guest.full_name || '').trim() || (guest.cnic || '').trim())
+    .forEach((guest) => {
     roster.push({
       customer: guest.customer ? Number(guest.customer) : null,
       full_name: (guest.full_name || '').trim(),
@@ -38,16 +40,29 @@ export function buildGuestRosterPayload(primaryCustomerId, primaryCustomer, comp
   return roster;
 }
 
-export function validateGuestRoster(primaryCustomerId, primaryCustomer, companions = []) {
+/** Omit guest_roster for single-guest stays — backend creates primary from `customer`. */
+export function shouldSendGuestRoster(guestsCount, companions = []) {
+  const count = Number(guestsCount) || 1;
+  if (count > 1) return true;
+  return companions.some(
+    (guest) => guest.customer || (guest.full_name || '').trim() || (guest.cnic || '').trim(),
+  );
+}
+
+export function validateGuestRoster(primaryCustomerId, primaryCustomer, companions = [], guestsCount = 1) {
   if (!primaryCustomerId) {
     return 'Please select the primary guest who is making this booking.';
   }
   const primaryCnic = (primaryCustomer?.cnic || '').trim();
-  if (!primaryCnic) {
+  if (!primaryCnic && !primaryCustomer?.id) {
     return 'Primary guest CNIC is required.';
   }
-  for (let i = 0; i < companions.length; i += 1) {
-    const guest = companions[i];
+  if (!primaryCnic && primaryCustomer?.id) {
+    return 'Primary guest profile is missing CNIC. Update the guest profile or scan ID card.';
+  }
+  const expectedCompanions = Math.max(0, Number(guestsCount) || 1) - 1;
+  for (let i = 0; i < expectedCompanions; i += 1) {
+    const guest = companions[i] || {};
     const name = (guest.full_name || '').trim();
     const cnic = (guest.cnic || '').trim();
     if (!guest.customer && !name) {

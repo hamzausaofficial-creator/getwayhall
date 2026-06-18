@@ -4,7 +4,7 @@ from rest_framework import serializers
 from django.db.models import Q, Sum
 from .models import Room, StayBooking, StayPayment, GhExpense, GuestHouseService, StayCharge, StayGuest
 from .billing import compute_service_amount, get_included_guests
-from .guest_roster import sync_stay_guests, ensure_primary_guest_row
+from .guest_roster import sync_stay_guests, ensure_primary_guest_row, _guest_entry_filled, _enrich_guest_entry
 
 
 class RoomSerializer(serializers.ModelSerializer):
@@ -309,13 +309,19 @@ class StayBookingSerializer(serializers.ModelSerializer):
         raw = self.initial_data.get('guest_roster') or []
         if not isinstance(raw, list):
             return []
-        return raw
+        tenant = getattr(getattr(self.context.get('request'), 'user', None), 'tenant', None)
+        cleaned = []
+        for entry in raw:
+            if not _guest_entry_filled(entry):
+                continue
+            cleaned.append(_enrich_guest_entry(entry, tenant))
+        return cleaned
 
     def validate(self, attrs):
         check_in = attrs.get('check_in') or getattr(self.instance, 'check_in', None)
         check_out = attrs.get('check_out') or getattr(self.instance, 'check_out', None)
         room = attrs.get('room') or getattr(self.instance, 'room', None)
-        guests_count = attrs.get('guests_count') or getattr(self.instance, 'guests_count', 1)
+        requested_guests = int(attrs.get('guests_count') or getattr(self.instance, 'guests_count', 1) or 1)
         guest_roster = self._parse_guest_roster()
         if guest_roster is not None:
             if not guest_roster:
@@ -333,11 +339,27 @@ class StayBookingSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError({
                         'guest_roster': f'Guest {index + 1}: name is required.',
                     })
-                if not guest.get('customer') and not cnic and is_primary:
+                if is_primary and not cnic:
                     raise serializers.ValidationError({
-                        'guest_roster': 'Primary guest CNIC is required.',
+                        'guest_roster': (
+                            'Primary guest CNIC is required.'
+                            if not guest.get('customer')
+                            else 'Primary guest profile is missing CNIC. Update the guest profile.'
+                        ),
                     })
-            attrs['guests_count'] = len(guest_roster)
+                if not is_primary and not guest.get('customer') and not cnic:
+                    raise serializers.ValidationError({
+                        'guest_roster': f'Guest {index + 1}: CNIC is required.',
+                    })
+            if len(guest_roster) < requested_guests:
+                raise serializers.ValidationError({
+                    'guest_roster': (
+                        f'Please add details for all {requested_guests} guests '
+                        f'({len(guest_roster)} provided).'
+                    ),
+                })
+            attrs['guests_count'] = requested_guests
+        guests_count = attrs.get('guests_count') or requested_guests
         if check_in and check_out and check_out <= check_in:
             raise serializers.ValidationError({'check_out': 'Check-out must be after check-in.'})
         if room and check_in and check_out and room.status != 'ACTIVE':

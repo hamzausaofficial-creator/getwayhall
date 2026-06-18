@@ -15,7 +15,7 @@ import AppLoader from '../../components/AppLoader';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useGhPageVisibility } from '../../context/GhPageVisibilityContext';
 import { GH_MODULE_KEYS } from '../../constants/ghPages';
-import StayGuestRoster, { buildGuestRosterPayload, validateGuestRoster } from '../../components/guesthouse/StayGuestRoster';
+import StayGuestRoster, { buildGuestRosterPayload, shouldSendGuestRoster, validateGuestRoster } from '../../components/guesthouse/StayGuestRoster';
 import { formatRs } from '../../utils/currency';
 import { resolveMediaUrl } from '../../utils/media';
 import { customerDisplayName } from '../../utils/customer';
@@ -354,26 +354,29 @@ export default function BookFutureStayPage() {
       return;
     }
     const primaryCustomer = customers.find((c) => String(c.id) === String(form.customer));
-    const rosterError = validateGuestRoster(form.customer, primaryCustomer, companions);
+    const rosterError = validateGuestRoster(form.customer, primaryCustomer, companions, form.guests_count);
     if (rosterError) {
       setFormError(rosterError);
       return;
     }
     setSubmitting(true);
     try {
-      const created = await createStay({
+      const payload = {
         customer: Number(form.customer),
         room: Number(form.room),
         check_in: form.check_in,
         check_out: form.check_out,
         guests_count: Number(form.guests_count) || 1,
-        guest_roster: buildGuestRosterPayload(form.customer, primaryCustomer, companions),
         advance_paid: parseFloat(form.advance_paid) || 0,
         advance_payment_method: form.advance_payment_method,
         addon_service_ids: selectedAddonIds,
         status: form.status,
         notes: form.notes,
-      });
+      };
+      if (shouldSendGuestRoster(form.guests_count, companions)) {
+        payload.guest_roster = buildGuestRosterPayload(form.customer, primaryCustomer, companions);
+      }
+      const created = await createStay(payload);
       toast.success('Future stay booked successfully');
       if (Number(form.advance_paid) > 0) {
         navigate(`/gh/print/stay/${created.id}?doc=advance`);
