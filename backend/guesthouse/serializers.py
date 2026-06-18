@@ -351,14 +351,7 @@ class StayBookingSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError({
                         'guest_roster': f'Guest {index + 1}: CNIC is required.',
                     })
-            if len(guest_roster) < requested_guests:
-                raise serializers.ValidationError({
-                    'guest_roster': (
-                        f'Please add details for all {requested_guests} guests '
-                        f'({len(guest_roster)} provided).'
-                    ),
-                })
-            attrs['guests_count'] = requested_guests
+            attrs['guests_count'] = len(guest_roster)
         guests_count = attrs.get('guests_count') or requested_guests
         if check_in and check_out and check_out <= check_in:
             raise serializers.ValidationError({'check_out': 'Check-out must be after check-in.'})

@@ -15,7 +15,12 @@ import AppLoader from '../../components/AppLoader';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useGhPageVisibility } from '../../context/GhPageVisibilityContext';
 import { GH_MODULE_KEYS } from '../../constants/ghPages';
-import StayGuestRoster, { buildGuestRosterPayload, shouldSendGuestRoster, validateGuestRoster } from '../../components/guesthouse/StayGuestRoster';
+import StayGuestRoster, {
+  buildGuestRosterPayload,
+  deriveGuestsCount,
+  shouldSendGuestRoster,
+  validateGuestRoster,
+} from '../../components/guesthouse/StayGuestRoster';
 import { formatRs } from '../../utils/currency';
 import { resolveMediaUrl } from '../../utils/media';
 import { customerDisplayName } from '../../utils/customer';
@@ -168,13 +173,28 @@ export default function BookFutureStayPage() {
     [rooms, form.room],
   );
 
+  const primaryCustomer = useMemo(
+    () => customers.find((c) => String(c.id) === String(form.customer)),
+    [customers, form.customer],
+  );
+
+  const effectiveGuestsCount = useMemo(
+    () => deriveGuestsCount(companions),
+    [companions],
+  );
+
+  const maxAdditionalGuests = useMemo(() => {
+    if (!selectedRoom) return undefined;
+    return Math.max((Number(selectedRoom.beds) || 1) - 1, 0);
+  }, [selectedRoom]);
+
   const stayEstimate = useMemo(() => {
     if (!form.check_in || !form.check_out || !selectedRoom) return null;
     const nights = differenceInCalendarDays(parseISO(form.check_out), parseISO(form.check_in));
     if (nights <= 0) return { error: 'Check-out must be after check-in.' };
     const billing = computeStayBilling({
       room: selectedRoom,
-      guestsCount: form.guests_count,
+      guestsCount: effectiveGuestsCount,
       nights,
       services,
       selectedServiceIds: selectedAddonIds,
@@ -186,7 +206,7 @@ export default function BookFutureStayPage() {
       due: Math.max(0, billing.total - advance),
       error: null,
     };
-  }, [form.check_in, form.check_out, form.guests_count, form.advance_paid, selectedRoom, services, selectedAddonIds]);
+  }, [form.check_in, form.check_out, form.advance_paid, selectedRoom, services, selectedAddonIds, effectiveGuestsCount]);
 
   const formattedDates = useMemo(() => {
     if (!form.check_in || !form.check_out) return null;
@@ -353,8 +373,7 @@ export default function BookFutureStayPage() {
       setFormError('Please select a guest and room.');
       return;
     }
-    const primaryCustomer = customers.find((c) => String(c.id) === String(form.customer));
-    const rosterError = validateGuestRoster(form.customer, primaryCustomer, companions, form.guests_count);
+    const rosterError = validateGuestRoster(form.customer, primaryCustomer, companions);
     if (rosterError) {
       setFormError(rosterError);
       return;
@@ -366,7 +385,7 @@ export default function BookFutureStayPage() {
         room: Number(form.room),
         check_in: form.check_in,
         check_out: form.check_out,
-        guests_count: Number(form.guests_count) || 1,
+        guests_count: effectiveGuestsCount,
         advance_paid: parseFloat(form.advance_paid) || 0,
         advance_payment_method: form.advance_payment_method,
         addon_service_ids: selectedAddonIds,
@@ -508,9 +527,9 @@ export default function BookFutureStayPage() {
                 subtitle="Primary booker on top, then everyone staying in the room with CNIC / ID"
               />
               <StayGuestRoster
-                guestsCount={form.guests_count}
                 customers={customers}
                 primaryCustomerId={form.customer}
+                maxAdditionalGuests={maxAdditionalGuests}
                 onPrimaryCustomerChange={(customerId) => {
                   setForm({ ...form, customer: customerId });
                   if (customerId) setScannedGuest(null);
@@ -566,19 +585,21 @@ export default function BookFutureStayPage() {
                   />
                 </div>
                 <div className="input-group">
-                  <label>Number of guests</label>
-                  <div style={{ position: 'relative' }}>
-                    <Users size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input
-                      type="number"
-                      min={1}
-                      required
-                      value={form.guests_count}
-                      onChange={(e) => setForm({ ...form, guests_count: e.target.value })}
-                      style={{ padding: '12px 14px 12px 36px', borderRadius: '10px', width: '100%' }}
-                    />
+                  <label>Guests on stay</label>
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      border: '1px solid var(--border)',
+                      background: 'var(--background)',
+                      fontSize: '14px',
+                      fontWeight: '700',
+                    }}
+                  >
+                    {effectiveGuestsCount} guest{effectiveGuestsCount !== 1 ? 's' : ''}
+                    {primaryCustomer ? ` — booked by ${customerDisplayName(primaryCustomer)}` : ''}
                   </div>
-                  <GuestsCountHint room={selectedRoom} guestsCount={form.guests_count} />
+                  <GuestsCountHint room={selectedRoom} guestsCount={effectiveGuestsCount} />
                 </div>
                 <div className="input-group">
                   <label>Booking status</label>
@@ -681,7 +702,7 @@ export default function BookFutureStayPage() {
               selectedIds={selectedAddonIds}
               onToggle={toggleAddon}
               nights={stayEstimate?.nights || 0}
-              guestsCount={form.guests_count}
+              guestsCount={effectiveGuestsCount}
             />
 
             {/* Advance payment */}
@@ -800,6 +821,20 @@ export default function BookFutureStayPage() {
               </div>
 
               <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {primaryCustomer && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '14px', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <User size={18} color="var(--primary)" />
+                    </div>
+                    <div>
+                      <p style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-muted)', margin: 0 }}>Primary booker</p>
+                      <p style={{ fontSize: '14px', fontWeight: '800', margin: '2px 0 0 0' }}>{customerDisplayName(primaryCustomer)}</p>
+                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
+                        {effectiveGuestsCount} guest{effectiveGuestsCount !== 1 ? 's' : ''} · total auto-calculated
+                      </p>
+                    </div>
+                  </div>
+                )}
                 {selectedRoom ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '14px', borderBottom: '1px solid var(--border)' }}>
                     <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

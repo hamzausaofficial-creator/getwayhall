@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { User, Users, IdCard, Phone, ScanLine } from 'lucide-react';
+import { User, Users, IdCard, Phone, ScanLine, Plus, X } from 'lucide-react';
 import CustomerSearchSelect from '../CustomerSearchSelect';
 import CnicScannerPanel from './CnicScannerPanel';
 import ScannedGuestPanel from './ScannedGuestPanel';
@@ -14,6 +14,15 @@ const emptyCompanion = () => ({
   cnic: '',
   phone: '',
 });
+
+export function isCompanionFilled(guest) {
+  return Boolean(guest?.customer || (guest?.full_name || '').trim() || (guest?.cnic || '').trim());
+}
+
+/** Primary + each added companion slot */
+export function deriveGuestsCount(companions = []) {
+  return 1 + (companions?.length || 0);
+}
 
 export function buildGuestRosterPayload(primaryCustomerId, primaryCustomer, companions = []) {
   const roster = [];
@@ -49,7 +58,7 @@ export function shouldSendGuestRoster(guestsCount, companions = []) {
   );
 }
 
-export function validateGuestRoster(primaryCustomerId, primaryCustomer, companions = [], guestsCount = 1) {
+export function validateGuestRoster(primaryCustomerId, primaryCustomer, companions = []) {
   if (!primaryCustomerId) {
     return 'Please select the primary guest who is making this booking.';
   }
@@ -60,11 +69,13 @@ export function validateGuestRoster(primaryCustomerId, primaryCustomer, companio
   if (!primaryCnic && primaryCustomer?.id) {
     return 'Primary guest profile is missing CNIC. Update the guest profile or scan ID card.';
   }
-  const expectedCompanions = Math.max(0, Number(guestsCount) || 1) - 1;
-  for (let i = 0; i < expectedCompanions; i += 1) {
-    const guest = companions[i] || {};
+  for (let i = 0; i < companions.length; i += 1) {
+    const guest = companions[i];
     const name = (guest.full_name || '').trim();
     const cnic = (guest.cnic || '').trim();
+    if (String(guest.customer) === String(primaryCustomerId)) {
+      return `Additional guest ${i + 1} cannot be the same as the primary booker.`;
+    }
     if (!guest.customer && !name) {
       return `Additional guest ${i + 1}: name is required.`;
     }
@@ -76,12 +87,12 @@ export function validateGuestRoster(primaryCustomerId, primaryCustomer, companio
 }
 
 export default function StayGuestRoster({
-  guestsCount,
   customers,
   primaryCustomerId,
   onPrimaryCustomerChange,
   companions,
   onCompanionsChange,
+  maxAdditionalGuests,
   showIdScanner = false,
   onIdScanPrimary,
   onIdScanCompanion,
@@ -95,16 +106,9 @@ export default function StayGuestRoster({
   disabled = false,
 }) {
   const [activeScanIndex, setActiveScanIndex] = useState(null);
-  const companionCount = Math.max(0, Number(guestsCount) || 1) - 1;
+  const totalGuests = deriveGuestsCount(companions);
   const primaryCustomer = customers.find((c) => String(c.id) === String(primaryCustomerId));
-
-  useEffect(() => {
-    const needed = Math.max(0, Number(guestsCount) || 1) - 1;
-    if (companions.length === needed) return;
-    const next = [...companions];
-    while (next.length < needed) next.push(emptyCompanion());
-    onCompanionsChange(next.slice(0, needed));
-  }, [guestsCount, companions, onCompanionsChange]);
+  const canAddGuest = maxAdditionalGuests === undefined || companions.length < maxAdditionalGuests;
 
   const updateCompanion = (index, patch) => {
     onCompanionsChange(
@@ -122,6 +126,15 @@ export default function StayGuestRoster({
     });
   };
 
+  const addCompanion = () => {
+    if (!canAddGuest) return;
+    onCompanionsChange([...companions, emptyCompanion()]);
+  };
+
+  const removeCompanion = (index) => {
+    onCompanionsChange(companions.filter((_, i) => i !== index));
+  };
+
   return (
     <div className="stay-guest-roster">
       <div className="stay-guest-roster__primary card-surface">
@@ -131,7 +144,7 @@ export default function StayGuestRoster({
           </div>
           <div>
             <h4 className="stay-guest-roster__title">Primary guest</h4>
-            <p className="stay-guest-roster__subtitle">Person making the booking — shown first on stay details</p>
+            <p className="stay-guest-roster__subtitle">Booking is under this person&apos;s name — payment &amp; receipts use primary guest</p>
           </div>
         </div>
 
@@ -176,8 +189,9 @@ export default function StayGuestRoster({
         </div>
 
         {primaryCustomer && (
-          <div className="stay-guest-roster__profile-card">
+          <div className="stay-guest-roster__profile-card stay-guest-roster__profile-card--primary">
             <div className="stay-guest-roster__profile-main">
+              <span className="stay-guest-roster__profile-badge">Primary booker</span>
               <p className="stay-guest-roster__profile-name">{customerDisplayName(primaryCustomer)}</p>
               <p className="stay-guest-roster__profile-meta">
                 <IdCard size={14} aria-hidden />
@@ -195,7 +209,17 @@ export default function StayGuestRoster({
         )}
       </div>
 
-      {companionCount > 0 && (
+      <div className="stay-guest-roster__total-bar">
+        <div className="stay-guest-roster__total-bar-left">
+          <Users size={16} aria-hidden />
+          <span>
+            <strong>{totalGuests}</strong> guest{totalGuests !== 1 ? 's' : ''} on this stay
+          </span>
+        </div>
+        <span className="stay-guest-roster__total-bar-hint">Total updates payment automatically</span>
+      </div>
+
+      {companions.length > 0 && (
         <div className="stay-guest-roster__companions">
           <div className="stay-guest-roster__heading">
             <div className="stay-guest-roster__heading-icon">
@@ -204,7 +228,7 @@ export default function StayGuestRoster({
             <div>
               <h4 className="stay-guest-roster__title">Additional guests</h4>
               <p className="stay-guest-roster__subtitle">
-                {companionCount} more guest{companionCount !== 1 ? 's' : ''} staying in the room — ID details for each person
+                {companions.length} more guest{companions.length !== 1 ? 's' : ''} — each needs name &amp; CNIC
               </p>
             </div>
           </div>
@@ -213,17 +237,29 @@ export default function StayGuestRoster({
             <div key={`companion-${index}`} className="stay-guest-roster__companion card-surface">
               <div className="stay-guest-roster__companion-head">
                 <span className="stay-guest-roster__companion-badge">Guest {index + 2}</span>
-                {showIdScanner && (
+                <div className="stay-guest-roster__companion-actions">
+                  {showIdScanner && (
+                    <button
+                      type="button"
+                      className="stay-guest-roster__scan-btn"
+                      onClick={() => setActiveScanIndex(index)}
+                      disabled={disabled || scanProcessing}
+                    >
+                      <ScanLine size={14} aria-hidden />
+                      Scan ID
+                    </button>
+                  )}
                   <button
                     type="button"
-                    className="stay-guest-roster__scan-btn"
-                    onClick={() => setActiveScanIndex(index)}
-                    disabled={disabled || scanProcessing}
+                    className="stay-guest-roster__remove-btn"
+                    onClick={() => removeCompanion(index)}
+                    disabled={disabled}
+                    aria-label={`Remove guest ${index + 2}`}
                   >
-                    <ScanLine size={14} aria-hidden />
-                    Scan ID
+                    <X size={14} aria-hidden />
+                    Remove
                   </button>
-                )}
+                </div>
               </div>
 
               {showIdScanner && activeScanIndex === index && (
@@ -236,7 +272,7 @@ export default function StayGuestRoster({
               <div className="input-group">
                 <label>Search existing guest (optional)</label>
                 <CustomerSearchSelect
-                  customers={customers}
+                  customers={customers.filter((c) => String(c.id) !== String(primaryCustomerId))}
                   value={guest.customer}
                   onChange={(customerId) => handleCompanionSelect(index, customerId)}
                   placeholder="Match by name, phone, or CNIC…"
@@ -276,6 +312,21 @@ export default function StayGuestRoster({
             </div>
           ))}
         </div>
+      )}
+
+      <button
+        type="button"
+        className="stay-guest-roster__add-btn"
+        onClick={addCompanion}
+        disabled={disabled || !canAddGuest}
+      >
+        <Plus size={16} aria-hidden />
+        Add another guest
+      </button>
+      {maxAdditionalGuests !== undefined && !canAddGuest && (
+        <p className="stay-guest-roster__limit-hint">
+          Room capacity reached ({totalGuests} of {maxAdditionalGuests + 1} guests).
+        </p>
       )}
     </div>
   );

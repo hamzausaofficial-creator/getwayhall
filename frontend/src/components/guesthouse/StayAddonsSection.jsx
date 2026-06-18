@@ -106,11 +106,16 @@ export function StayBillingBreakdown({ billing, advance = 0, compact = false }) 
       {billing.extraGuests > 0 && (
         <div style={rowStyle}>
           <span style={{ color: 'var(--text-muted)' }}>
-            Extra guests ({billing.extraGuests} × {formatRs(billing.extraFee)}/night)
+            Extra guests ({billing.extraGuests} × {formatRs(billing.extraFee)}/night × {billing.nights} night{billing.nights !== 1 ? 's' : ''})
           </span>
           <span style={{ fontWeight: '700' }}>{formatRs(billing.extraGuestTotal)}</span>
         </div>
       )}
+      <div style={{ ...rowStyle, fontSize: compact ? '11px' : '12px' }}>
+        <span style={{ color: 'var(--text-muted)' }}>
+          {billing.guests} guest{billing.guests !== 1 ? 's' : ''} total ({billing.included} included in room rate)
+        </span>
+      </div>
       {billing.serviceLines.map((line) => (
         <div key={line.id} style={rowStyle}>
           <span style={{ color: 'var(--text-muted)' }}>{line.label}</span>

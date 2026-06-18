@@ -259,7 +259,13 @@ export default function StayDetail() {
           <p style={{ fontSize: '12px', fontWeight: '700', color: 'var(--primary)', fontFamily: 'monospace', margin: '0 0 6px 0' }}>
             {stay.booking_ref}
           </p>
-          <p style={{ color: 'var(--text-muted)', marginTop: '8px', fontSize: '14px', display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+          <h2 style={{ fontSize: '22px', fontWeight: '900', margin: '0 0 4px 0', color: 'var(--secondary)' }}>
+            {stay.customer_name}
+          </h2>
+          <p style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)', margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Primary booker
+          </p>
+          <p style={{ color: 'var(--text-muted)', marginTop: '0', fontSize: '14px', display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
               <BedDouble size={14} /> Room {stay.room_number}
             </span>

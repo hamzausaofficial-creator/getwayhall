@@ -6,7 +6,12 @@ import {
 import { createStay, updateStay, getStay, listRooms, getAvailableRooms, listGhServices } from '../../api/guesthouse';
 import { computeStayBilling } from '../../utils/ghBilling';
 import { StayAddonsPicker, StayBillingBreakdown, GuestsCountHint } from '../../components/guesthouse/StayAddonsSection';
-import StayGuestRoster, { buildGuestRosterPayload, shouldSendGuestRoster, validateGuestRoster } from '../../components/guesthouse/StayGuestRoster';
+import StayGuestRoster, {
+  buildGuestRosterPayload,
+  deriveGuestsCount,
+  shouldSendGuestRoster,
+  validateGuestRoster,
+} from '../../components/guesthouse/StayGuestRoster';
 import client from '../../api/client';
 import toast from 'react-hot-toast';
 import AppLoader from '../../components/AppLoader';
@@ -222,16 +227,19 @@ export default function StayFormPage() {
             status: s.status,
           });
           const roster = Array.isArray(s.guests) ? s.guests : [];
-          setCompanions(
-            roster
-              .filter((guest) => !guest.is_primary)
-              .map((guest) => ({
-                customer: guest.customer ? String(guest.customer) : '',
-                full_name: guest.full_name || '',
-                cnic: guest.cnic || '',
-                phone: guest.phone || '',
-              })),
-          );
+          const companionRows = roster
+            .filter((guest) => !guest.is_primary)
+            .map((guest) => ({
+              customer: guest.customer ? String(guest.customer) : '',
+              full_name: guest.full_name || '',
+              cnic: guest.cnic || '',
+              phone: guest.phone || '',
+            }));
+          const expectedCompanions = Math.max((s.guests_count || 1) - 1, companionRows.length);
+          while (companionRows.length < expectedCompanions) {
+            companionRows.push({ customer: '', full_name: '', cnic: '', phone: '' });
+          }
+          setCompanions(companionRows);
         } else if (prefillCheckIn || prefillRoom) {
           setForm((f) => ({
             ...f,
@@ -280,6 +288,21 @@ export default function StayFormPage() {
     [rooms, form.room],
   );
 
+  const primaryCustomer = useMemo(
+    () => customers.find((c) => String(c.id) === String(form.customer)),
+    [customers, form.customer],
+  );
+
+  const effectiveGuestsCount = useMemo(
+    () => deriveGuestsCount(companions),
+    [companions],
+  );
+
+  const maxAdditionalGuests = useMemo(() => {
+    if (!selectedRoom) return undefined;
+    return Math.max((Number(selectedRoom.beds) || 1) - 1, 0);
+  }, [selectedRoom]);
+
   const stayEstimate = useMemo(() => {
     if (!form.check_in || !form.check_out || !selectedRoom) return null;
     const nights = Math.round(
@@ -288,14 +311,14 @@ export default function StayFormPage() {
     if (nights <= 0) return { error: 'Check-out must be after check-in.' };
     const billing = computeStayBilling({
       room: selectedRoom,
-      guestsCount: form.guests_count,
+      guestsCount: effectiveGuestsCount,
       nights,
       services,
       selectedServiceIds: selectedAddonIds,
     });
     const advance = Number(form.advance_paid) || 0;
     return { ...billing, due: Math.max(0, billing.total - advance) };
-  }, [form.check_in, form.check_out, form.guests_count, form.advance_paid, selectedRoom, services, selectedAddonIds]);
+  }, [form.check_in, form.check_out, form.advance_paid, selectedRoom, services, selectedAddonIds, effectiveGuestsCount]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -312,8 +335,7 @@ export default function StayFormPage() {
       setFormError(stayEstimate.error);
       return;
     }
-    const primaryCustomer = customers.find((c) => String(c.id) === String(form.customer));
-    const rosterError = validateGuestRoster(form.customer, primaryCustomer, companions, form.guests_count);
+    const rosterError = validateGuestRoster(form.customer, primaryCustomer, companions);
     if (rosterError) {
       setFormError(rosterError);
       return;
@@ -324,12 +346,12 @@ export default function StayFormPage() {
       room: Number(form.room),
       check_in: form.check_in,
       check_out: form.check_out,
-      guests_count: Number(form.guests_count),
+      guests_count: effectiveGuestsCount,
       addon_service_ids: selectedAddonIds,
       notes: form.notes,
       status: form.status,
     };
-    if (shouldSendGuestRoster(form.guests_count, companions)) {
+    if (shouldSendGuestRoster(effectiveGuestsCount, companions)) {
       payload.guest_roster = buildGuestRosterPayload(form.customer, primaryCustomer, companions);
     }
     if (!isEdit) {
@@ -448,9 +470,9 @@ export default function StayFormPage() {
               {sectionTitle('Guests & room')}
               <div className="premium-card" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
                 <StayGuestRoster
-                  guestsCount={form.guests_count}
                   customers={customers}
                   primaryCustomerId={form.customer}
+                  maxAdditionalGuests={maxAdditionalGuests}
                   onPrimaryCustomerChange={(customerId) => setForm({ ...form, customer: customerId })}
                   companions={companions}
                   onCompanionsChange={setCompanions}
@@ -515,15 +537,21 @@ export default function StayFormPage() {
                   />
                 </div>
                 <div className="input-group">
-                  <label>Number of guests</label>
-                  <input
-                    type="number"
-                    min={1}
-                    required
-                    value={form.guests_count}
-                    onChange={(e) => setForm({ ...form, guests_count: e.target.value })}
-                  />
-                  <GuestsCountHint room={selectedRoom} guestsCount={form.guests_count} />
+                  <label>Guests on stay</label>
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      border: '1px solid var(--border)',
+                      background: 'var(--background)',
+                      fontSize: '14px',
+                      fontWeight: '700',
+                    }}
+                  >
+                    {effectiveGuestsCount} guest{effectiveGuestsCount !== 1 ? 's' : ''}
+                    {primaryCustomer ? ` — booked by ${customerDisplayName(primaryCustomer)}` : ''}
+                  </div>
+                  <GuestsCountHint room={selectedRoom} guestsCount={effectiveGuestsCount} />
                 </div>
                 {isEdit ? (
                   <div className="input-group">
@@ -561,7 +589,7 @@ export default function StayFormPage() {
               selectedIds={selectedAddonIds}
               onToggle={toggleAddon}
               nights={stayEstimate?.nights || 0}
-              guestsCount={form.guests_count}
+              guestsCount={effectiveGuestsCount}
             />
 
             <section style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
