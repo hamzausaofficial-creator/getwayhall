@@ -4,6 +4,7 @@ import { getGuestHouseAlerts } from '../api/guesthouse';
 import client from '../api/client';
 import { normalizeList } from '../utils/listData';
 import { useAppType } from './useAppType';
+import { useAuth } from '../context/AuthContext';
 
 const POLL_INTERVAL = 30000;
 
@@ -19,6 +20,7 @@ const timeAgo = (dateStr) => {
 };
 
 export const useNotifications = () => {
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const { isGuestHouse } = useAppType();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -37,6 +39,7 @@ export const useNotifications = () => {
   }, []);
 
   const fetchNotifications = useCallback(async () => {
+    if (!isAuthenticated) return;
     if (isGuestHouse) {
       try {
         const alerts = await getGuestHouseAlerts();
@@ -167,13 +170,14 @@ export const useNotifications = () => {
     } catch {
       /* silent poll failure */
     }
-  }, [lastFetchedAt, prefs, isGuestHouse]);
+  }, [lastFetchedAt, prefs, isGuestHouse, isAuthenticated]);
 
   useEffect(() => {
+    if (authLoading || !isAuthenticated) return undefined;
     fetchNotifications();
     const interval = setInterval(fetchNotifications, POLL_INTERVAL);
     return () => clearInterval(interval);
-  }, [fetchNotifications]);
+  }, [fetchNotifications, authLoading, isAuthenticated]);
 
   const markAllRead = () => setUnreadCount(0);
 

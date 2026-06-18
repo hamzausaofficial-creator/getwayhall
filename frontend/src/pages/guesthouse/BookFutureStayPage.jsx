@@ -20,6 +20,7 @@ import { GH_MODULE_KEYS } from '../../constants/ghPages';
 import StayGuestRoster, {
   buildGuestRosterPayload,
   deriveGuestsCount,
+  getFilledCompanions,
   shouldSendGuestRoster,
   validateGuestRoster,
 } from '../../components/guesthouse/StayGuestRoster';
@@ -178,6 +179,11 @@ export default function BookFutureStayPage() {
   const primaryCustomer = useMemo(
     () => customers.find((c) => String(c.id) === String(form.customer)),
     [customers, form.customer],
+  );
+
+  const filledCompanions = useMemo(
+    () => getFilledCompanions(companions),
+    [companions],
   );
 
   const effectiveGuestsCount = useMemo(
@@ -390,8 +396,8 @@ export default function BookFutureStayPage() {
         status: form.status,
         notes: form.notes,
       };
-      if (shouldSendGuestRoster(form.guests_count, companions)) {
-        payload.guest_roster = buildGuestRosterPayload(form.customer, primaryCustomer, companions);
+      if (shouldSendGuestRoster(effectiveGuestsCount, filledCompanions)) {
+        payload.guest_roster = buildGuestRosterPayload(form.customer, primaryCustomer, filledCompanions);
       }
       const created = await createStay(payload);
       toast.success('Future stay booked successfully');

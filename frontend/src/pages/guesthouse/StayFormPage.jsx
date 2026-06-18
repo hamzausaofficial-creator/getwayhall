@@ -10,6 +10,7 @@ import LiveBookingEstimate from '../../components/guesthouse/LiveBookingEstimate
 import StayGuestRoster, {
   buildGuestRosterPayload,
   deriveGuestsCount,
+  getFilledCompanions,
   shouldSendGuestRoster,
   validateGuestRoster,
 } from '../../components/guesthouse/StayGuestRoster';
@@ -236,10 +237,6 @@ export default function StayFormPage() {
               cnic: guest.cnic || '',
               phone: guest.phone || '',
             }));
-          const expectedCompanions = Math.max((s.guests_count || 1) - 1, companionRows.length);
-          while (companionRows.length < expectedCompanions) {
-            companionRows.push({ customer: '', full_name: '', cnic: '', phone: '' });
-          }
           setCompanions(companionRows);
         } else if (prefillCheckIn || prefillRoom) {
           setForm((f) => ({
@@ -351,8 +348,12 @@ export default function StayFormPage() {
       notes: form.notes,
       status: form.status,
     };
-    if (shouldSendGuestRoster(effectiveGuestsCount, companions)) {
-      payload.guest_roster = buildGuestRosterPayload(form.customer, primaryCustomer, companions);
+    if (shouldSendGuestRoster(effectiveGuestsCount, getFilledCompanions(companions))) {
+      payload.guest_roster = buildGuestRosterPayload(
+        form.customer,
+        primaryCustomer,
+        getFilledCompanions(companions),
+      );
     }
     if (!isEdit) {
       payload.advance_paid = Number(form.advance_paid) || 0;

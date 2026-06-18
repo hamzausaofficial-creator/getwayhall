@@ -19,9 +19,13 @@ export function isCompanionFilled(guest) {
   return Boolean(guest?.customer || (guest?.full_name || '').trim() || (guest?.cnic || '').trim());
 }
 
-/** Primary + each added companion slot */
+export function getFilledCompanions(companions = []) {
+  return (companions || []).filter(isCompanionFilled);
+}
+
+/** Primary + each companion with name/CNIC or profile selected */
 export function deriveGuestsCount(companions = []) {
-  return 1 + (companions?.length || 0);
+  return 1 + getFilledCompanions(companions).length;
 }
 
 export function buildGuestRosterPayload(primaryCustomerId, primaryCustomer, companions = []) {
@@ -69,19 +73,24 @@ export function validateGuestRoster(primaryCustomerId, primaryCustomer, companio
   if (!primaryCnic && primaryCustomer?.id) {
     return 'Primary guest profile is missing CNIC. Update the guest profile or scan ID card.';
   }
-  for (let i = 0; i < companions.length; i += 1) {
-    const guest = companions[i];
+  for (const guest of getFilledCompanions(companions)) {
     const name = (guest.full_name || '').trim();
     const cnic = (guest.cnic || '').trim();
+    const slotIndex = companions.indexOf(guest);
+    const label = slotIndex >= 0 ? slotIndex + 1 : 1;
     if (String(guest.customer) === String(primaryCustomerId)) {
-      return `Additional guest ${i + 1} cannot be the same as the primary booker.`;
+      return `Additional guest ${label} cannot be the same as the primary booker.`;
     }
     if (!guest.customer && !name) {
-      return `Additional guest ${i + 1}: name is required.`;
+      return `Additional guest ${label}: name is required.`;
     }
     if (!guest.customer && !cnic) {
-      return `Additional guest ${i + 1}: CNIC is required.`;
+      return `Additional guest ${label}: CNIC is required.`;
     }
+  }
+  const emptySlots = companions.length - getFilledCompanions(companions).length;
+  if (emptySlots > 0) {
+    return `You have ${emptySlots} empty guest slot${emptySlots !== 1 ? 's' : ''}. Fill details or click Remove.`;
   }
   return '';
 }
@@ -107,6 +116,7 @@ export default function StayGuestRoster({
 }) {
   const [activeScanIndex, setActiveScanIndex] = useState(null);
   const totalGuests = deriveGuestsCount(companions);
+  const pendingSlots = Math.max(0, companions.length - getFilledCompanions(companions).length);
   const primaryCustomer = customers.find((c) => String(c.id) === String(primaryCustomerId));
   const canAddGuest = maxAdditionalGuests === undefined || companions.length < maxAdditionalGuests;
 
@@ -214,6 +224,11 @@ export default function StayGuestRoster({
           <Users size={16} aria-hidden />
           <span>
             <strong>{totalGuests}</strong> guest{totalGuests !== 1 ? 's' : ''} on this stay
+            {pendingSlots > 0 && (
+              <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>
+                {' '}({pendingSlots} slot{pendingSlots !== 1 ? 's' : ''} incomplete)
+              </span>
+            )}
           </span>
         </div>
         <span className="stay-guest-roster__total-bar-hint">Har guest par primary jaisa room charge</span>
