@@ -204,10 +204,94 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--primary);
-  margin: 0 0 14px 0;
   display: flex;
   align-items: center;
   gap: 8px;
+  margin: 0 0 12px;
+}
+
+.gh-cust-related {
+  margin-bottom: 18px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(91, 213, 30, 0.25);
+  background: linear-gradient(180deg, var(--primary-light) 0%, var(--surface) 100%);
+}
+
+.gh-cust-related__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gh-cust-related__chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 13px;
+}
+
+.gh-cust-related__chip--link {
+  cursor: pointer;
+  border-color: rgba(91, 213, 30, 0.45);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.gh-cust-related__chip--link:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.gh-cust-related__chip-name {
+  font-weight: 800;
+  color: var(--secondary);
+}
+
+.gh-cust-related__chip--link .gh-cust-related__chip-name {
+  color: var(--primary);
+}
+
+.gh-cust-related__chip-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.gh-cust-stay__guests {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.gh-cust-stay__guest-link,
+.gh-cust-stay__guest-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.gh-cust-stay__guest-link {
+  border: 1px solid rgba(91, 213, 30, 0.45);
+  background: var(--primary-light);
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.gh-cust-stay__guest-link:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+.gh-cust-stay__guest-tag {
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--text-muted);
 }
 
 .gh-cust-stays {

@@ -467,7 +467,7 @@ export default function GhCustomers() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                       <div style={{ minWidth: 0 }}>
                         <h3 className="gh-cust-detail__name">{customerDisplayName(selectedCustomer)}</h3>
-                        <p className="gh-cust-detail__sub">Guest profile & stay history</p>
+                        <p className="gh-cust-detail__sub">Primary booker — click a guest below to open their profile</p>
                       </div>
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                         {canOperate && (
@@ -501,6 +501,42 @@ export default function GhCustomers() {
                         <Calendar size={14} /> Joined {new Date(selectedCustomer.created_at).toLocaleDateString()}
                       </span>
                     </div>
+
+                    {(summary?.related_guests?.length > 0) && (
+                      <div className="gh-cust-related">
+                        <p className="gh-cust-stays-title" style={{ marginBottom: 10 }}>
+                          <Users size={16} /> Guests who stayed with {customerDisplayName(selectedCustomer)}
+                        </p>
+                        <div className="gh-cust-related__list">
+                          {summary.related_guests.map((guest) => {
+                            const key = guest.customer_id || guest.cnic || guest.full_name;
+                            if (guest.customer_id) {
+                              return (
+                                <button
+                                  key={key}
+                                  type="button"
+                                  className="gh-cust-related__chip gh-cust-related__chip--link"
+                                  onClick={() => navigate(`/gh/customers/${guest.customer_id}`)}
+                                >
+                                  <span className="gh-cust-related__chip-name">{guest.full_name}</span>
+                                  {guest.stays_together > 1 && (
+                                    <span className="gh-cust-related__chip-meta">{guest.stays_together} stays</span>
+                                  )}
+                                </button>
+                              );
+                            }
+                            return (
+                              <span key={key} className="gh-cust-related__chip" title="No saved profile yet">
+                                <span className="gh-cust-related__chip-name">{guest.full_name}</span>
+                                {guest.cnic && (
+                                  <span className="gh-cust-related__chip-meta">{guest.cnic}</span>
+                                )}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="gh-cust-stats">
                       <div className="gh-cust-stat">
@@ -566,6 +602,31 @@ export default function GhCustomers() {
                                   <p className="gh-cust-stay__ref">{stay.booking_ref}</p>
                                   <p className="gh-cust-stay__room">Room {stay.room_number}</p>
                                   <p className="gh-cust-stay__dates">{formatStayDates(stay.check_in, stay.check_out)}</p>
+                                  {Array.isArray(stay.guests) && stay.guests.length > 0 && (
+                                    <div className="gh-cust-stay__guests">
+                                      {stay.guests
+                                        .filter((g) => !g.is_primary)
+                                        .map((g) => (
+                                          g.customer ? (
+                                            <button
+                                              key={`${stay.id}-g-${g.id || g.customer}`}
+                                              type="button"
+                                              className="gh-cust-stay__guest-link"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                navigate(`/gh/customers/${g.customer}`);
+                                              }}
+                                            >
+                                              {g.full_name}
+                                            </button>
+                                          ) : (
+                                            <span key={`${stay.id}-g-${g.id || g.full_name}`} className="gh-cust-stay__guest-tag">
+                                              {g.full_name}
+                                            </span>
+                                          )
+                                        ))}
+                                    </div>
+                                  )}
                                 </div>
                                 <StatusBadge status={stay.status} />
                               </div>

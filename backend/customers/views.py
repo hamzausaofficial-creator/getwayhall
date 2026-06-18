@@ -36,6 +36,8 @@ class CustomerViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelView
 
             stays_qs = StayBooking.objects.filter(customer=customer).select_related(
                 'room', 'customer'
+            ).prefetch_related(
+                'guest_roster', 'guest_roster__customer',
             ).order_by('-check_in', '-created_at')
             if tenant_id:
                 stays_qs = stays_qs.filter(tenant_id=tenant_id)
@@ -43,14 +45,35 @@ class CustomerViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelView
             outstanding = stays_qs.exclude(status='CANCELLED').annotate(
                 due=Greatest(F('total_amount') - F('advance_paid'), Decimal('0'))
             ).aggregate(total=Sum('due'))['total'] or Decimal('0')
+            stays_list = list(stays_qs)
             stays_data = StayBookingSerializer(
-                stays_qs, many=True, context={'request': request}
+                stays_list, many=True, context={'request': request}
             ).data
+
+            related_map = {}
+            for stay in stays_list:
+                for guest in stay.guest_roster.all():
+                    if guest.is_primary:
+                        continue
+                    key = guest.customer_id or (guest.cnic or '').strip() or guest.full_name
+                    if not key:
+                        continue
+                    if key not in related_map:
+                        related_map[key] = {
+                            'customer_id': guest.customer_id,
+                            'full_name': guest.full_name,
+                            'cnic': guest.cnic or '',
+                            'phone': guest.phone or '',
+                            'stays_together': 0,
+                        }
+                    related_map[key]['stays_together'] += 1
+            related_guests = list(related_map.values())
 
             return Response({
                 'customer': CustomerSerializer(customer, context={'request': request}).data,
                 'stays': stays_data,
                 'stays_count': len(stays_data),
+                'related_guests': related_guests,
                 'total_outstanding': float(outstanding),
             })
 
