@@ -1088,6 +1088,10 @@
   line-height: 1.2;
 }
 
+.login-card__title-accent {
+  color: var(--primary, #5bd51e);
+}
+
 .login-card__title--secret {
   display: block;
   padding: 0;

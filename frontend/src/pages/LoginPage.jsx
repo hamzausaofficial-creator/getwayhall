@@ -114,7 +114,9 @@ const LoginPage = () => {
         <div className="login-card__brand">
           <AppLogo size="sm" tone="dark" className="login-card__logo-mark" />
           <div>
-            <h1 className="login-card__title">Gateway</h1>
+            <h1 className="login-card__title">
+              Gateway <span className="login-card__title-accent">Centre</span>
+            </h1>
             <p className="login-card__subtitle">
               {portalLabel(portal)} Management
             </p>
