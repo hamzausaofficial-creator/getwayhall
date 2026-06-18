@@ -85,7 +85,6 @@ export default function BookFutureStayPage() {
     advance_paid: '',
     advance_payment_method: 'CASH',
     notes: '',
-    status: 'CONFIRMED',
   });
   const [rooms, setRooms] = useState([]);
   const [bookedRoomIds, setBookedRoomIds] = useState([]);
@@ -393,7 +392,7 @@ export default function BookFutureStayPage() {
         advance_paid: parseFloat(form.advance_paid) || 0,
         advance_payment_method: form.advance_payment_method,
         addon_service_ids: selectedAddonIds,
-        status: form.status,
+        status: 'CONFIRMED',
         notes: form.notes,
       };
       if (shouldSendGuestRoster(effectiveGuestsCount, filledCompanions)) {
@@ -570,17 +569,6 @@ export default function BookFutureStayPage() {
                     </div>
                   </div>
                 )}
-                <div className="input-group">
-                  <label>Booking status</label>
-                  <select
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value })}
-                    style={{ width: '100%', padding: '12px 14px', borderRadius: '10px' }}
-                  >
-                    <option value="CONFIRMED">Confirmed</option>
-                    <option value="PENDING">Pending</option>
-                  </select>
-                </div>
               </div>
             </div>
 
