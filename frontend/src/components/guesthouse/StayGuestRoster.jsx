@@ -231,7 +231,7 @@ export default function StayGuestRoster({
             )}
           </span>
         </div>
-        <span className="stay-guest-roster__total-bar-hint">Har guest par primary jaisa room charge</span>
+        <span className="stay-guest-roster__total-bar-hint">Each guest is charged the same nightly room rate as the primary guest</span>
       </div>
 
       {companions.length > 0 && (

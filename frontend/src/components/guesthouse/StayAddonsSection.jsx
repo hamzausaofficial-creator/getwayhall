@@ -130,9 +130,9 @@ export function GuestsCountHint({ room, guestsCount }) {
 
   return (
     <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '6px 0 0 0' }}>
-      Har guest ko primary jaisa room rate lagta hai: {nightly.toLocaleString()} / guest / night.
+      Each guest pays the same nightly rate as the primary guest: {formatRs(nightly)} per guest per night.
       {' '}
-      {guests} guest{guests !== 1 ? 's' : ''} = {(nightly * guests).toLocaleString()} / night.
+      {guests} guest{guests !== 1 ? 's' : ''} = {formatRs(nightly * guests)} per night.
     </p>
   );
 }
