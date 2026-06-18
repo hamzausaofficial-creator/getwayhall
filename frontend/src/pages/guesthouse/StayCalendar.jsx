@@ -89,19 +89,6 @@ export default function StayCalendar() {
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
-        <div>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0 }}>
-            Click a stay for quick actions. Double-click a future date to book.
-          </p>
-        </div>
-        {canOperate && (
-          <button type="button" className="btn-primary" onClick={() => goToBook()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Plus size={18} /> Book Stay
-          </button>
-        )}
-      </div>
-
       <div className="calendar-layout">
         <div className="premium-card" style={{ padding: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
