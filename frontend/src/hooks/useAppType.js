@@ -9,14 +9,13 @@ import {
 } from '../utils/appType';
 
 export function useAppType() {
-  const { user, loading } = useAuth();
-  const cached =
-    typeof window !== 'undefined' ? localStorage.getItem('user_app_type') : '';
-  const appType = normalizeAppType(user?.app_type || cached);
+  const { user, loading, isAuthenticated } = useAuth();
+  const appType = normalizeAppType(isAuthenticated ? user?.app_type : null);
 
   return {
     user,
     loading,
+    isAuthenticated,
     appType,
     isGuestHouse: isGuestHouseApp(appType),
     isMarriageHall: isMarriageHallApp(appType),

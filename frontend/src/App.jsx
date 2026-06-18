@@ -43,7 +43,7 @@ import BookFutureStayPage from './pages/guesthouse/BookFutureStayPage';
 import GhServices from './pages/guesthouse/GhServices';
 import HallFormPage from './pages/HallFormPage';
 
-import { useAuth } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import { AdminRoute, ManagerRoute, StaffBlockedRoute } from './components/RoleRoute';
 import { MarriageHallRoute, GuestHouseRoute } from './components/AppTypeRoute';
 import { GhPageRoute } from './components/GhPageRoute';
@@ -52,16 +52,6 @@ import { GH_PAGE_KEYS } from './constants/ghPages';
 const ghPage = (pageKey, element) => (
   <GhPageRoute pageKey={pageKey}>{element}</GhPageRoute>
 );
-
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading, user } = useAuth();
-
-  if (loading) return <AppLoader fullScreen />;
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (!user) return <AppLoader fullScreen message="Loading profile…" />;
-
-  return children;
-};
 
 function App() {
   return (

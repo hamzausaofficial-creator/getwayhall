@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
 import { User, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
 import AppLogo from '../components/AppLogo';
 import { getPortalHint } from '../api/auth';
+import { hasAuthSession } from '../utils/authSession';
 import {
   APP_GUEST_HOUSE,
   APP_MARRIAGE_HALL,
@@ -35,7 +36,16 @@ const LoginPage = () => {
   const [usernameError, setUsernameError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const location = useLocation();
+  const { login, isAuthenticated, loading: authLoading, user } = useAuth();
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (hasAuthSession() && isAuthenticated && user) {
+      const from = location.state?.from;
+      navigate(from && from !== '/login' ? from : getDefaultHomePath(user), { replace: true });
+    }
+  }, [authLoading, isAuthenticated, user, navigate, location.state]);
 
   useEffect(() => {
     const trimmed = username.trim();
@@ -74,7 +84,8 @@ const LoginPage = () => {
       const loggedIn = await login({ username: username.trim(), password });
       const userApp = normalizeAppType(loggedIn?.app_type);
       storeLoginPortal(userApp);
-      navigate(getDefaultHomePath(loggedIn));
+      const from = location.state?.from;
+      navigate(from && from !== '/login' ? from : getDefaultHomePath(loggedIn));
     } catch (err) {
       const data = err.response?.data;
       const usernameMsg = fieldErrorMessage(data?.username);

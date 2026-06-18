@@ -1,6 +1,13 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getMe, login as loginApi, updateMe } from '../api/auth';
 import { getUserSettings } from '../api/core';
+import {
+  clearAuthSession,
+  getAccessToken,
+  hasAuthSession,
+  isAccessTokenValid,
+  persistAuthSession,
+} from '../utils/authSession';
 
 const syncThemeFromServer = async () => {
   try {
@@ -18,38 +25,82 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => hasAuthSession());
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        try {
-          const userData = await getMe();
-          if (userData?.role) localStorage.setItem('user_role', userData.role);
-          if (userData?.app_type) localStorage.setItem('user_app_type', userData.app_type);
-          setUser(userData);
-          setIsAuthenticated(true);
-          await syncThemeFromServer();
-        } catch (error) {
-          console.error('Session expired');
-          logout();
-        }
-      }
-      setLoading(false);
-    };
-    checkAuth();
+  const clearSession = useCallback(() => {
+    clearAuthSession();
+    setUser(null);
+    setIsAuthenticated(false);
   }, []);
+
+  const logout = useCallback(() => {
+    const theme = localStorage.getItem('theme');
+    clearAuthSession();
+    if (theme) localStorage.setItem('theme', theme);
+    setUser(null);
+    setIsAuthenticated(false);
+    window.location.href = '/login';
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkAuth = async () => {
+      const token = getAccessToken();
+
+      if (!token || !isAccessTokenValid(token)) {
+        clearAuthSession();
+        if (!cancelled) {
+          setUser(null);
+          setIsAuthenticated(false);
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const userData = await getMe();
+        if (cancelled) return;
+
+        persistAuthSession({
+          access: token,
+          refresh: localStorage.getItem('refresh_token'),
+          role: userData?.role,
+          appType: userData?.app_type,
+        });
+        setUser(userData);
+        setIsAuthenticated(true);
+        await syncThemeFromServer();
+      } catch {
+        if (!cancelled) {
+          clearSession();
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    checkAuth();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clearSession]);
 
   const login = async (credentials) => {
     const data = await loginApi(credentials);
-    localStorage.setItem('access_token', data.access);
-    localStorage.setItem('refresh_token', data.refresh);
-    localStorage.setItem('isAuthenticated', 'true');
+    persistAuthSession({
+      access: data.access,
+      refresh: data.refresh,
+    });
     const userData = await getMe();
-    if (userData?.role) localStorage.setItem('user_role', userData.role);
-    if (userData?.app_type) localStorage.setItem('user_app_type', userData.app_type);
+    persistAuthSession({
+      access: data.access,
+      refresh: data.refresh,
+      role: userData?.role,
+      appType: userData?.app_type,
+    });
     setUser(userData);
     setIsAuthenticated(true);
     await syncThemeFromServer();
@@ -64,31 +115,29 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUser = async () => {
     const userData = await getMe();
-    if (userData?.role) localStorage.setItem('user_role', userData.role);
-    if (userData?.app_type) localStorage.setItem('user_app_type', userData.app_type);
+    persistAuthSession({
+      access: getAccessToken(),
+      refresh: localStorage.getItem('refresh_token'),
+      role: userData?.role,
+      appType: userData?.app_type,
+    });
     setUser(userData);
+    setIsAuthenticated(true);
     return userData;
   };
 
-  const clearSession = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('user_role');
-    localStorage.removeItem('user_app_type');
-    setUser(null);
-    setIsAuthenticated(false);
-  };
-
-  const logout = () => {
-    localStorage.clear();
-    setUser(null);
-    setIsAuthenticated(false);
-    window.location.href = '/login';
-  };
-
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthenticated, login, updateProfile, refreshUser, logout, clearSession }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      isAuthenticated,
+      login,
+      updateProfile,
+      refreshUser,
+      logout,
+      clearSession,
+    }}
+    >
       {children}
     </AuthContext.Provider>
   );
