@@ -83,6 +83,8 @@ class Booking(models.Model):
             models.Index(fields=['start_date']),
             models.Index(fields=['booking_status']),
         ]
+        verbose_name = 'MH booking'
+        verbose_name_plural = '3 · MH — Bookings'
 
     @staticmethod
     def _aware_datetime(value):
@@ -218,8 +220,8 @@ class MarriageHallPageLive(MarriageHallPageVisibility):
 
     class Meta:
         proxy = True
-        verbose_name = 'MH page live'
-        verbose_name_plural = 'MH pages — show/hide (live)'
+        verbose_name = 'MH page — show in menu'
+        verbose_name_plural = '1 · MH pages — Show in menu (live)'
 
 
 class MarriageHallPageMaintenance(MarriageHallPageVisibility):
@@ -227,5 +229,5 @@ class MarriageHallPageMaintenance(MarriageHallPageVisibility):
 
     class Meta:
         proxy = True
-        verbose_name = 'MH page maintenance'
-        verbose_name_plural = 'MH pages — maintenance mode'
+        verbose_name = 'MH page — maintenance'
+        verbose_name_plural = '2 · MH pages — Maintenance & reopen time'

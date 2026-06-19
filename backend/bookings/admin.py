@@ -73,7 +73,7 @@ class MarriageHallPageLiveInline(admin.TabularInline):
     can_delete = False
     verbose_name = 'Page'
     verbose_name_plural = (
-        'Marriage Hall — <strong>Show/hide (live)</strong>: tick to show in menu, untick to hide'
+        'Marriage Hall — <strong>Show in menu</strong> (tick = page visible in app sidebar)'
     )
 
     def has_add_permission(self, request, obj=None):
@@ -94,7 +94,7 @@ class MarriageHallPageMaintenanceInline(admin.StackedInline):
     can_delete = False
     verbose_name = 'Page'
     verbose_name_plural = (
-        'Marriage Hall — <strong>Maintenance mode</strong>: set end date/time to auto-reopen the page'
+        'Marriage Hall — <strong>Maintenance & reopen time</strong> (set when page opens again)'
     )
 
     def has_add_permission(self, request, obj=None):
@@ -129,10 +129,10 @@ class MarriageHallPageLiveAdmin(_HallPageAdminBase):
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
-        extra_context['title'] = 'Marriage Hall — Show/hide pages (live)'
+        extra_context['title'] = 'Marriage Hall — 1 · Show in menu'
         extra_context['subtitle'] = (
-            'Tick <strong>Show in menu</strong> to keep a page visible. '
-            'Untick to hide it from users. Press <strong>Save</strong> after changes.'
+            '<strong>For:</strong> hiding or showing Marriage Hall pages in the app sidebar. '
+            'Tick <strong>Show in menu</strong> = visible. Untick = hidden. Save at the bottom.'
         )
         return super().changelist_view(request, extra_context=extra_context)
 
@@ -167,9 +167,9 @@ class MarriageHallPageMaintenanceAdmin(MaintenanceUntilAdminMixin, _HallPageAdmi
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
-        extra_context['title'] = 'Marriage Hall — Maintenance mode'
+        extra_context['title'] = 'Marriage Hall — 2 · Maintenance & reopen time'
         extra_context['subtitle'] = (
-            'Tick <strong>Maintenance mode</strong> and set <strong>Maintenance ends at</strong> '
-            '(date + 12-hour AM/PM dropdowns) in the table below, then press <strong>Save</strong>.'
+            '<strong>For:</strong> putting pages under maintenance and scheduling when they reopen. '
+            'Tick maintenance, set date + 12-hour AM/PM time, then Save.'
         )
         return super().changelist_view(request, extra_context=extra_context)

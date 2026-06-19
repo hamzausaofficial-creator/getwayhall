@@ -35,14 +35,14 @@ INSTALLED_APPS = [
     
     # Local Apps
     'core.apps.CoreConfig',
-    'authentication',
-    'venues',
-    'bookings',
-    'customers',
-    'finance',
-    'inventory',
-    'decorations',
-    'guesthouse',
+    'authentication.apps.AuthenticationConfig',
+    'guesthouse.apps.GuesthouseConfig',
+    'bookings.apps.BookingsConfig',
+    'customers.apps.CustomersConfig',
+    'finance.apps.FinanceConfig',
+    'venues.apps.VenuesConfig',
+    'inventory.apps.InventoryConfig',
+    'decorations.apps.DecorationsConfig',
     'landing.apps.LandingConfig',
 ]
 

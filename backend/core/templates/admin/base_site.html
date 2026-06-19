@@ -1,0 +1,16 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'admin/css/gateway_admin.css' %}">
+<link rel="stylesheet" href="{% static 'admin/css/maintenance_schedule.css' %}">
+{% endblock %}
+
+{% block branding %}
+<div id="branding">
+  <h1 id="site-name"><a href="{% url 'admin:index' %}">Gateway Centre — Admin</a></h1>
+</div>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

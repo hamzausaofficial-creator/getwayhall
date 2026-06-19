@@ -12,6 +12,21 @@ class TenantAdmin(AdminOnlyAdminMixin, admin.ModelAdmin):
     search_fields = ('name', 'subdomain', 'phone', 'address')
     readonly_fields = ('created_at', 'updated_at')
 
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'subdomain', 'plan_type', 'is_active', 'phone', 'address', 'sms_enabled', 'default_country_code'),
+            'description': (
+                '<strong>Tenant</strong> = one organization (e.g. your centre). '
+                'Scroll down on this page to control <strong>Guest House</strong> and '
+                '<strong>Marriage Hall</strong> page show/hide and maintenance times for this tenant.'
+            ),
+        }),
+        ('Timestamps', {
+            'classes': ('collapse',),
+            'fields': ('created_at', 'updated_at'),
+        }),
+    )
+
     def get_inlines(self, request, obj):
         from guesthouse.admin import GuestHousePageLiveInline, GuestHousePageMaintenanceInline
         from bookings.admin import MarriageHallPageLiveInline, MarriageHallPageMaintenanceInline

@@ -23,6 +23,10 @@ class Tenant(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        verbose_name = 'Tenant'
+        verbose_name_plural = 'Tenants'
+
 
 class UserSettings(models.Model):
     """Per-user preferences: notifications, locale, theme."""
@@ -77,6 +81,8 @@ class NotificationLog(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        verbose_name = 'Notification log'
+        verbose_name_plural = 'SMS & notification log'
 
     def __str__(self):
         return f'{self.notification_type} → {self.recipient} ({self.status})'

@@ -1,0 +1,45 @@
+/* Gateway Centre — cleaner Django admin */
+
+#site-name a {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+#content-main .module table th,
+#content-main .module table td {
+  vertical-align: middle;
+}
+
+.dashboard #content-main .app-core.module,
+.dashboard #content-main .app-guesthouse.module,
+.dashboard #content-main .app-bookings.module {
+  margin-bottom: 1.25rem;
+}
+
+.dashboard .app-list .model-guesthousepagelive a,
+.dashboard .app-list .model-marriagehallpagelive a {
+  font-weight: 700;
+}
+
+.dashboard .app-list .model-guesthousepagemaintenance a,
+.dashboard .app-list .model-marriagehallpagemaintenance a {
+  font-weight: 700;
+}
+
+.change-list .help,
+.change-form .help,
+fieldset .description {
+  font-size: 13px;
+  line-height: 1.55;
+  color: #475569;
+}
+
+.inline-group h2 {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.module h2,
+.module caption {
+  font-size: 14px;
+}

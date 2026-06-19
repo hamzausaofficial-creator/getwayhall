@@ -46,6 +46,8 @@ class Room(models.Model):
     class Meta:
         unique_together = [('tenant', 'room_number')]
         ordering = ['room_number']
+        verbose_name = 'GH room'
+        verbose_name_plural = '3 · GH — Rooms'
 
     def __str__(self):
         return f'{self.room_number} ({self.get_room_type_display()})'
@@ -73,6 +75,8 @@ class GuestHouseService(models.Model):
     class Meta:
         ordering = ['sort_order', 'label']
         unique_together = [('tenant', 'code')]
+        verbose_name = 'GH add-on service'
+        verbose_name_plural = '4 · GH — Add-on services'
 
     def __str__(self):
         return self.label
@@ -118,6 +122,8 @@ class StayBooking(models.Model):
 
     class Meta:
         ordering = ['-check_in']
+        verbose_name = 'GH stay'
+        verbose_name_plural = '5 · GH — Stays & bookings'
 
     def __str__(self):
         return self.booking_ref or f'Stay #{self.pk}'
@@ -193,6 +199,8 @@ class StayCharge(models.Model):
 
     class Meta:
         ordering = ['id']
+        verbose_name = 'GH stay charge'
+        verbose_name_plural = '8 · GH — Stay charges (advanced)'
 
     def __str__(self):
         return f'{self.description} - {self.amount}'
@@ -254,6 +262,8 @@ class StayPayment(models.Model):
 
     class Meta:
         ordering = ['-payment_date']
+        verbose_name = 'GH payment'
+        verbose_name_plural = '6 · GH — Payments'
 
     def __str__(self):
         return f'GH-PAY-{self.id}'
@@ -287,6 +297,8 @@ class GhExpense(models.Model):
 
     class Meta:
         ordering = ['-expense_date', '-id']
+        verbose_name = 'GH expense'
+        verbose_name_plural = '7 · GH — Expenses'
 
     def __str__(self):
         return self.title
@@ -341,8 +353,8 @@ class GuestHousePageLive(GuestHousePageVisibility):
 
     class Meta:
         proxy = True
-        verbose_name = 'GH page live'
-        verbose_name_plural = 'GH pages — show/hide (live)'
+        verbose_name = 'GH page — show in menu'
+        verbose_name_plural = '1 · GH pages — Show in menu (live)'
 
 
 class GuestHousePageMaintenance(GuestHousePageVisibility):
@@ -350,5 +362,5 @@ class GuestHousePageMaintenance(GuestHousePageVisibility):
 
     class Meta:
         proxy = True
-        verbose_name = 'GH page maintenance'
-        verbose_name_plural = 'GH pages — maintenance mode'
+        verbose_name = 'GH page — maintenance'
+        verbose_name_plural = '2 · GH pages — Maintenance & reopen time'
