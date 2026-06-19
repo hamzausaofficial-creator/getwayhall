@@ -13,7 +13,6 @@ import {
   getAppLoginPortal,
   guessPortalFromUsername,
   normalizeAppType,
-  portalLabel,
   readStoredLoginPortal,
   storeLoginPortal,
 } from '../utils/appType';
@@ -117,9 +116,6 @@ const LoginPage = () => {
             <h1 className="login-card__title">
               Gateway <span className="login-card__title-accent">Centre</span>
             </h1>
-            <p className="login-card__subtitle">
-              {portalLabel(portal)} Management
-            </p>
           </div>
         </div>
 
@@ -191,7 +187,7 @@ const LoginPage = () => {
           <button type="submit" className="login-submit" disabled={isLoading}>
             {isLoading ? 'Signing in…' : (
               <>
-                Sign in to {portalLabel(portal)}
+                Sign in
                 <ArrowRight size={18} />
               </>
             )}
