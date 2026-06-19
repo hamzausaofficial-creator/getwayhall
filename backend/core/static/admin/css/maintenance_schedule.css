@@ -29,3 +29,11 @@
   flex-direction: column;
   align-items: flex-start;
 }
+
+.change-list td.field-maintenance_until .maintenance-until-widget {
+  min-width: 280px;
+}
+
+.change-list td.field-maintenance_until .maintenance-time-select select {
+  min-width: 3.5rem;
+}

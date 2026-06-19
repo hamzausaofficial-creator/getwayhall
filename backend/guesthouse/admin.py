@@ -175,7 +175,7 @@ class GuestHousePageLiveInline(admin.TabularInline):
         return False
 
 
-class GuestHousePageMaintenanceInline(admin.TabularInline):
+class GuestHousePageMaintenanceInline(admin.StackedInline):
     """Maintenance mode for Guest House pages inside Tenant edit screen."""
     model = GuestHousePageMaintenance
     form = GuestHousePageMaintenanceForm
@@ -236,9 +236,9 @@ class GuestHousePageMaintenanceAdmin(MaintenanceUntilAdminMixin, _GhPageAdminBas
     form = GuestHousePageMaintenanceForm
     list_display = (
         'label', 'page_key', 'entry_kind', 'tenant', 'maintenance_badge',
-        'in_maintenance', 'ends_at_display',
+        'in_maintenance', 'maintenance_until',
     )
-    list_editable = ('in_maintenance',)
+    list_editable = ('in_maintenance', 'maintenance_until')
 
     fieldsets = (
         (None, {
@@ -261,8 +261,7 @@ class GuestHousePageMaintenanceAdmin(MaintenanceUntilAdminMixin, _GhPageAdminBas
         extra_context = extra_context or {}
         extra_context['title'] = 'Guest House — Maintenance mode'
         extra_context['subtitle'] = (
-            'Tick <strong>Maintenance mode</strong> in the table, then click a page name to set '
-            '<strong>Maintenance ends at</strong> with date + 12-hour AM/PM dropdowns. '
-            'Press <strong>Save</strong> after changes.'
+            'Tick <strong>Maintenance mode</strong> and set <strong>Maintenance ends at</strong> '
+            '(date + 12-hour AM/PM dropdowns) in the table below, then press <strong>Save</strong>.'
         )
         return super().changelist_view(request, extra_context=extra_context)

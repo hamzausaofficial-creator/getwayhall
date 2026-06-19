@@ -83,7 +83,7 @@ class MarriageHallPageLiveInline(admin.TabularInline):
         return False
 
 
-class MarriageHallPageMaintenanceInline(admin.TabularInline):
+class MarriageHallPageMaintenanceInline(admin.StackedInline):
     """Maintenance mode for Marriage Hall pages inside Tenant edit screen."""
     model = MarriageHallPageMaintenance
     form = MarriageHallPageMaintenanceForm
@@ -144,9 +144,9 @@ class MarriageHallPageMaintenanceAdmin(MaintenanceUntilAdminMixin, _HallPageAdmi
     form = MarriageHallPageMaintenanceForm
     list_display = (
         'label', 'page_key', 'tenant', 'maintenance_badge',
-        'in_maintenance', 'ends_at_display',
+        'in_maintenance', 'maintenance_until',
     )
-    list_editable = ('in_maintenance',)
+    list_editable = ('in_maintenance', 'maintenance_until')
 
     fieldsets = (
         (None, {
@@ -169,8 +169,7 @@ class MarriageHallPageMaintenanceAdmin(MaintenanceUntilAdminMixin, _HallPageAdmi
         extra_context = extra_context or {}
         extra_context['title'] = 'Marriage Hall — Maintenance mode'
         extra_context['subtitle'] = (
-            'Tick <strong>Maintenance mode</strong> in the table, then click a page name to set '
-            '<strong>Maintenance ends at</strong> with date + 12-hour AM/PM dropdowns. '
-            'Press <strong>Save</strong> after changes.'
+            'Tick <strong>Maintenance mode</strong> and set <strong>Maintenance ends at</strong> '
+            '(date + 12-hour AM/PM dropdowns) in the table below, then press <strong>Save</strong>.'
         )
         return super().changelist_view(request, extra_context=extra_context)
