@@ -1281,7 +1281,7 @@
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: #334155;
+  color: var(--text-muted);
   margin-bottom: 8px;
 }
 
@@ -1294,7 +1294,7 @@
 .login-field__icon {
   position: absolute;
   left: 14px;
-  color: #94a3b8;
+  color: var(--icon-muted);
   pointer-events: none;
 }
 
@@ -1303,32 +1303,38 @@
   height: 48px;
   padding: 0 44px 0 44px;
   font-size: 15px;
-  color: #0f172a;
-  background: #f8fafc;
-  border: 1.5px solid #e2e8f0;
+  color: var(--text-main);
+  background: var(--surface-muted);
+  border: 1.5px solid var(--border);
   border-radius: 12px;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  caret-color: var(--text-main);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s, color 0.2s;
 }
 
 .login-field__wrap input:focus {
-  background: #fff;
-  border-color: #5bd51e;
+  background: var(--surface);
+  color: var(--text-main);
+  border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(91, 213, 30, 0.15);
 }
 
 .login-field__wrap input::placeholder {
-  color: #94a3b8;
+  color: var(--text-muted);
+  opacity: 0.85;
 }
 
 .login-field__wrap--error input {
-  border-color: #ef4444;
-  background: #fff5f5;
+  border-color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 8%, var(--surface-muted));
+  color: var(--text-main);
 }
 
 .login-field__wrap--error input:focus {
-  border-color: #dc2626;
+  border-color: var(--color-danger);
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--color-danger) 8%, var(--surface));
 }
 
 .login-field__error {
@@ -1344,7 +1350,7 @@
   right: 12px;
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--icon-muted);
   cursor: pointer;
   padding: 4px;
   display: flex;
@@ -1352,7 +1358,22 @@
 }
 
 .login-field__toggle:hover {
-  color: #64748b;
+  color: var(--text-muted);
+}
+
+.login-field__wrap input:-webkit-autofill,
+.login-field__wrap input:-webkit-autofill:hover,
+.login-field__wrap input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text-main);
+  -webkit-box-shadow: 0 0 0 1000px var(--surface-muted) inset;
+  box-shadow: 0 0 0 1000px var(--surface-muted) inset;
+  caret-color: var(--text-main);
+  transition: background-color 9999s ease-out 0s;
+}
+
+.login-field__wrap input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+  box-shadow: 0 0 0 1000px var(--surface) inset;
 }
 
 .login-submit {
