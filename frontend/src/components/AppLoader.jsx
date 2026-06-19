@@ -1,5 +1,4 @@
 import { cn } from '../lib/utils';
-import AppLogo from './AppLogo';
 import './app-loader.css';
 
 function SpeederLoader() {
@@ -47,9 +46,6 @@ export default function AppLoader({
       aria-live="polite"
       aria-label={message || label}
     >
-      {!inline && (
-        <AppLogo size={fullScreen ? 'md' : 'sm'} tone="dark" className="app-loader__brand" />
-      )}
       <div className="app-loader__stage">
         <SpeederLoader />
       </div>

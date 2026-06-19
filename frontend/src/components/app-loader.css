@@ -22,10 +22,6 @@
   padding: 2.5rem 1rem;
 }
 
-.app-loader__brand {
-  margin-bottom: 0.75rem;
-}
-
 .app-loader__stage {
   position: relative;
   width: min(100%, 420px);
