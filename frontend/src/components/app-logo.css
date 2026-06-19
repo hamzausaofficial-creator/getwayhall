@@ -11,11 +11,10 @@
   flex-shrink: 0;
 }
 
-/* Logo shows in brand green on all backgrounds */
+/* Transparent logo — brand green on all backgrounds */
 .app-logo__img--light,
 .app-logo__img--dark {
   filter: none;
-  border-radius: 6px;
 }
 
 .app-logo__text {
