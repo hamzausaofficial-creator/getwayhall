@@ -6,6 +6,8 @@ from core.admin_mixins import (
     ManagerOnlyAdminMixin,
     TenantScopedAdminMixin,
 )
+from core.maintenance_admin import MaintenanceUntilAdminMixin
+from core.maintenance_forms import GuestHousePageMaintenanceForm
 from core.models import Tenant
 
 from .models import (
@@ -176,6 +178,7 @@ class GuestHousePageLiveInline(admin.TabularInline):
 class GuestHousePageMaintenanceInline(admin.TabularInline):
     """Maintenance mode for Guest House pages inside Tenant edit screen."""
     model = GuestHousePageMaintenance
+    form = GuestHousePageMaintenanceForm
     extra = 0
     fields = ('label', 'page_key', 'in_maintenance', 'maintenance_until')
     readonly_fields = ('label', 'page_key')
@@ -227,21 +230,23 @@ class GuestHousePageLiveAdmin(_GhPageAdminBase):
 
 
 @admin.register(GuestHousePageMaintenance)
-class GuestHousePageMaintenanceAdmin(_GhPageAdminBase):
+class GuestHousePageMaintenanceAdmin(MaintenanceUntilAdminMixin, _GhPageAdminBase):
     """Tick Maintenance mode and set when the page should reopen automatically."""
 
+    form = GuestHousePageMaintenanceForm
     list_display = (
         'label', 'page_key', 'entry_kind', 'tenant', 'maintenance_badge',
-        'in_maintenance', 'maintenance_until',
+        'in_maintenance', 'ends_at_display',
     )
-    list_editable = ('in_maintenance', 'maintenance_until')
+    list_editable = ('in_maintenance',)
 
     fieldsets = (
         (None, {
             'fields': ('tenant', 'label', 'page_key', 'in_maintenance', 'maintenance_until', 'sort_order'),
             'description': (
-                'Tick <strong>Maintenance mode</strong>, then pick <strong>Maintenance ends at</strong> '
-                '(date &amp; time). The page reopens automatically when that time is reached.'
+                'Tick <strong>Maintenance mode</strong>, then open a row to set '
+                '<strong>Maintenance ends at</strong> using the date and 12-hour '
+                '(AM/PM) time dropdowns.'
             ),
         }),
     )
@@ -256,8 +261,8 @@ class GuestHousePageMaintenanceAdmin(_GhPageAdminBase):
         extra_context = extra_context or {}
         extra_context['title'] = 'Guest House — Maintenance mode'
         extra_context['subtitle'] = (
-            'Tick <strong>Maintenance mode</strong>, set <strong>Maintenance ends at</strong> '
-            '(date &amp; time) in the table below, then press <strong>Save</strong>. '
-            'Leave time empty if there is no fixed reopen schedule.'
+            'Tick <strong>Maintenance mode</strong> in the table, then click a page name to set '
+            '<strong>Maintenance ends at</strong> with date + 12-hour AM/PM dropdowns. '
+            'Press <strong>Save</strong> after changes.'
         )
         return super().changelist_view(request, extra_context=extra_context)
