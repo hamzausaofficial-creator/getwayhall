@@ -44,8 +44,9 @@ const emptyCustomer = {
 
 export default function GhCustomers() {
   const { canOperate, canManage, canAccessPayments, canCancelStay } = usePermissions();
-  const { isModuleVisible } = useGhPageVisibility();
-  const showIdScanner = isModuleVisible(GH_MODULE_KEYS.ID_SCANNER);
+  const { isModuleVisible, isModuleInMaintenance } = useGhPageVisibility();
+  const showIdScanner = isModuleVisible(GH_MODULE_KEYS.ID_SCANNER)
+    && !isModuleInMaintenance(GH_MODULE_KEYS.ID_SCANNER);
   const [cancelTarget, setCancelTarget] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();

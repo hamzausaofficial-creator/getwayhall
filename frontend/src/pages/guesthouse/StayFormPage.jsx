@@ -70,8 +70,9 @@ export default function StayFormPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { canOperate } = usePermissions();
-  const { isModuleVisible } = useGhPageVisibility();
-  const showIdScanner = isModuleVisible(GH_MODULE_KEYS.ID_SCANNER);
+  const { isModuleVisible, isModuleInMaintenance } = useGhPageVisibility();
+  const showIdScanner = isModuleVisible(GH_MODULE_KEYS.ID_SCANNER)
+    && !isModuleInMaintenance(GH_MODULE_KEYS.ID_SCANNER);
   const isEdit = Boolean(stayId);
 
   const prefillCheckIn = location.state?.check_in || searchParams.get('check_in') || '';

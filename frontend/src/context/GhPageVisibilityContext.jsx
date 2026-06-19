@@ -6,9 +6,13 @@ import { GH_PAGE_ORDER, GH_PAGE_PATHS } from '../constants/ghPages';
 const GhPageVisibilityContext = createContext({
   loading: true,
   visibility: null,
+  maintenance: null,
   moduleVisibility: null,
+  moduleMaintenance: null,
   isPageVisible: () => true,
+  isPageInMaintenance: () => false,
   isModuleVisible: () => true,
+  isModuleInMaintenance: () => false,
   firstVisiblePath: '/gh/stays',
   reload: () => {},
 });
@@ -16,7 +20,9 @@ const GhPageVisibilityContext = createContext({
 export function GhPageVisibilityProvider({ enabled = true, children }) {
   const [loading, setLoading] = useState(enabled);
   const [visibility, setVisibility] = useState(null);
+  const [maintenance, setMaintenance] = useState(null);
   const [moduleVisibility, setModuleVisibility] = useState(null);
+  const [moduleMaintenance, setModuleMaintenance] = useState(null);
   const [tick, setTick] = useState(0);
 
   const reload = () => setTick((t) => t + 1);
@@ -25,7 +31,9 @@ export function GhPageVisibilityProvider({ enabled = true, children }) {
     if (!enabled) {
       setLoading(false);
       setVisibility(null);
+      setMaintenance(null);
       setModuleVisibility(null);
+      setModuleMaintenance(null);
       return undefined;
     }
 
@@ -35,20 +43,28 @@ export function GhPageVisibilityProvider({ enabled = true, children }) {
       .then((data) => {
         if (!active) return;
         const map = {};
+        const maintMap = {};
         const moduleMap = {};
+        const moduleMaintMap = {};
         (data?.pages || []).forEach((page) => {
           map[page.key] = page.is_visible === true;
+          maintMap[page.key] = page.in_maintenance === true;
         });
         (data?.modules || []).forEach((mod) => {
           moduleMap[mod.key] = mod.is_visible === true;
+          moduleMaintMap[mod.key] = mod.in_maintenance === true;
         });
         setVisibility(map);
+        setMaintenance(maintMap);
         setModuleVisibility(moduleMap);
+        setModuleMaintenance(moduleMaintMap);
       })
       .catch(() => {
         if (!active) return;
         setVisibility(null);
+        setMaintenance(null);
         setModuleVisibility(null);
+        setModuleMaintenance(null);
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -63,9 +79,19 @@ export function GhPageVisibilityProvider({ enabled = true, children }) {
       return visibility[pageKey] !== false;
     };
 
+    const isPageInMaintenance = (pageKey) => {
+      if (maintenance === null) return false;
+      return maintenance[pageKey] === true;
+    };
+
     const isModuleVisible = (moduleKey) => {
       if (moduleVisibility === null) return true;
       return moduleVisibility[moduleKey] !== false;
+    };
+
+    const isModuleInMaintenance = (moduleKey) => {
+      if (moduleMaintenance === null) return false;
+      return moduleMaintenance[moduleKey] === true;
     };
 
     const firstVisiblePath = GH_PAGE_ORDER
@@ -75,13 +101,17 @@ export function GhPageVisibilityProvider({ enabled = true, children }) {
     return {
       loading,
       visibility,
+      maintenance,
       moduleVisibility,
+      moduleMaintenance,
       isPageVisible,
+      isPageInMaintenance,
       isModuleVisible,
+      isModuleInMaintenance,
       firstVisiblePath,
       reload,
     };
-  }, [loading, visibility, moduleVisibility, reload]);
+  }, [loading, visibility, maintenance, moduleVisibility, moduleMaintenance, reload]);
 
   return (
     <GhPageVisibilityContext.Provider value={value}>

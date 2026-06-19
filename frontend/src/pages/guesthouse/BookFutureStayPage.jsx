@@ -68,8 +68,9 @@ export default function BookFutureStayPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { canOperate } = usePermissions();
-  const { isModuleVisible } = useGhPageVisibility();
-  const showIdScanner = isModuleVisible(GH_MODULE_KEYS.ID_SCANNER);
+  const { isModuleVisible, isModuleInMaintenance } = useGhPageVisibility();
+  const showIdScanner = isModuleVisible(GH_MODULE_KEYS.ID_SCANNER)
+    && !isModuleInMaintenance(GH_MODULE_KEYS.ID_SCANNER);
 
   const prefillCheckIn = location.state?.check_in || searchParams.get('check_in') || '';
   const prefillCheckOut = location.state?.check_out || searchParams.get('check_out') || '';

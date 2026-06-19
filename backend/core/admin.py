@@ -13,9 +13,14 @@ class TenantAdmin(AdminOnlyAdminMixin, admin.ModelAdmin):
     readonly_fields = ('created_at', 'updated_at')
 
     def get_inlines(self, request, obj):
-        from guesthouse.admin import GuestHousePageInline
-        from bookings.admin import MarriageHallPageInline
-        return [GuestHousePageInline, MarriageHallPageInline]
+        from guesthouse.admin import GuestHousePageLiveInline, GuestHousePageMaintenanceInline
+        from bookings.admin import MarriageHallPageLiveInline, MarriageHallPageMaintenanceInline
+        return [
+            GuestHousePageLiveInline,
+            GuestHousePageMaintenanceInline,
+            MarriageHallPageLiveInline,
+            MarriageHallPageMaintenanceInline,
+        ]
 
     def get_object(self, request, object_id, from_field=None):
         obj = super().get_object(request, object_id, from_field)

@@ -170,7 +170,7 @@ class Booking(models.Model):
 
 
 class MarriageHallPageVisibility(models.Model):
-    """Per-tenant maintenance toggle for Marriage Hall sidebar pages."""
+    """Per-tenant show/hide and maintenance toggles for Marriage Hall pages."""
 
     tenant = models.ForeignKey(
         Tenant,
@@ -180,18 +180,46 @@ class MarriageHallPageVisibility(models.Model):
     page_key = models.CharField(max_length=32)
     label = models.CharField(max_length=64)
     is_visible = models.BooleanField(
-        'Page live',
+        'Show in menu',
         default=True,
-        help_text='Uncheck to put this page in maintenance mode (hidden from staff and managers).',
+        help_text='Uncheck to hide this page from the sidebar and block direct access.',
+    )
+    in_maintenance = models.BooleanField(
+        'Maintenance mode',
+        default=False,
+        help_text='When enabled, users who open this page see an “Under maintenance” screen.',
     )
     sort_order = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         ordering = ['sort_order', 'page_key']
         unique_together = [('tenant', 'page_key')]
-        verbose_name = 'MH page maintenance'
-        verbose_name_plural = 'MH pages — maintenance mode'
+        verbose_name = 'MH page visibility'
+        verbose_name_plural = 'MH pages — show/hide & maintenance'
 
     def __str__(self):
-        status = 'Live' if self.is_visible else 'Maintenance'
+        if self.in_maintenance:
+            status = 'Maintenance'
+        elif self.is_visible:
+            status = 'Visible'
+        else:
+            status = 'Hidden'
         return f'{self.label} ({self.tenant.name}) - {status}'
+
+
+class MarriageHallPageLive(MarriageHallPageVisibility):
+    """Proxy for admin: show/hide pages in menu only."""
+
+    class Meta:
+        proxy = True
+        verbose_name = 'MH page live'
+        verbose_name_plural = 'MH pages — show/hide (live)'
+
+
+class MarriageHallPageMaintenance(MarriageHallPageVisibility):
+    """Proxy for admin: maintenance mode toggle only."""
+
+    class Meta:
+        proxy = True
+        verbose_name = 'MH page maintenance'
+        verbose_name_plural = 'MH pages — maintenance mode'

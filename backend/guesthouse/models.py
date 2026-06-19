@@ -293,7 +293,7 @@ class GhExpense(models.Model):
 
 
 class GuestHousePageVisibility(models.Model):
-    """Per-tenant toggle for Guest House sidebar pages (managed in Django admin)."""
+    """Per-tenant show/hide and maintenance toggles for Guest House pages."""
 
     tenant = models.ForeignKey(
         Tenant,
@@ -303,18 +303,46 @@ class GuestHousePageVisibility(models.Model):
     page_key = models.CharField(max_length=32)
     label = models.CharField(max_length=64)
     is_visible = models.BooleanField(
-        'Page live',
+        'Show in menu',
         default=True,
-        help_text='Uncheck to put this page or module in maintenance mode (hidden from users).',
+        help_text='Uncheck to hide this page or module from the sidebar and block direct access.',
+    )
+    in_maintenance = models.BooleanField(
+        'Maintenance mode',
+        default=False,
+        help_text='When enabled, users who open this page see an “Under maintenance” screen.',
     )
     sort_order = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         ordering = ['sort_order', 'page_key']
         unique_together = [('tenant', 'page_key')]
-        verbose_name = 'GH page maintenance'
-        verbose_name_plural = 'GH pages — maintenance mode'
+        verbose_name = 'GH page visibility'
+        verbose_name_plural = 'GH pages — show/hide & maintenance'
 
     def __str__(self):
-        status = 'Live' if self.is_visible else 'Maintenance'
+        if self.in_maintenance:
+            status = 'Maintenance'
+        elif self.is_visible:
+            status = 'Visible'
+        else:
+            status = 'Hidden'
         return f'{self.label} ({self.tenant.name}) - {status}'
+
+
+class GuestHousePageLive(GuestHousePageVisibility):
+    """Proxy for admin: show/hide pages in menu only."""
+
+    class Meta:
+        proxy = True
+        verbose_name = 'GH page live'
+        verbose_name_plural = 'GH pages — show/hide (live)'
+
+
+class GuestHousePageMaintenance(GuestHousePageVisibility):
+    """Proxy for admin: maintenance mode toggle only."""
+
+    class Meta:
+        proxy = True
+        verbose_name = 'GH page maintenance'
+        verbose_name_plural = 'GH pages — maintenance mode'

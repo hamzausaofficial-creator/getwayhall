@@ -15,7 +15,8 @@ from .models import (
     StayCharge,
     StayPayment,
     GhExpense,
-    GuestHousePageVisibility,
+    GuestHousePageLive,
+    GuestHousePageMaintenance,
 )
 from .page_visibility import ensure_tenant_gh_pages, GH_MODULE_KEYS
 
@@ -125,9 +126,36 @@ class GhExpenseAdmin(ManagerOnlyAdminMixin, TenantScopedAdminMixin, admin.ModelA
     date_hierarchy = 'expense_date'
 
 
-class GuestHousePageInline(admin.TabularInline):
-    """Hide/show Guest House pages inside Tenant edit screen."""
-    model = GuestHousePageVisibility
+class _GhPageAdminBase(AdminOnlyAdminMixin, admin.ModelAdmin):
+    list_display_links = ('label',)
+    list_filter = ('tenant',)
+    search_fields = ('label', 'page_key', 'tenant__name')
+    ordering = ('tenant__name', 'sort_order', 'page_key')
+    list_per_page = 50
+    list_select_related = ('tenant',)
+    readonly_fields = ('page_key', 'label', 'sort_order', 'tenant')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    @admin.display(description='Type')
+    def entry_kind(self, obj):
+        if obj.page_key in GH_MODULE_KEYS:
+            return mark_safe('<span style="color:#7c3aed;font-weight:600;">Module</span>')
+        return mark_safe('<span style="color:#0369a1;font-weight:600;">Page</span>')
+
+    def changelist_view(self, request, extra_context=None):
+        for tenant in Tenant.objects.all():
+            ensure_tenant_gh_pages(tenant)
+        return super().changelist_view(request, extra_context=extra_context)
+
+
+class GuestHousePageLiveInline(admin.TabularInline):
+    """Show/hide Guest House pages inside Tenant edit screen."""
+    model = GuestHousePageLive
     extra = 0
     fields = ('label', 'page_key', 'is_visible')
     readonly_fields = ('label', 'page_key')
@@ -135,8 +163,7 @@ class GuestHousePageInline(admin.TabularInline):
     can_delete = False
     verbose_name = 'Page'
     verbose_name_plural = (
-        'Guest House pages — tick <strong>Page live</strong> to show, '
-        'untick to put in <strong>maintenance mode</strong>'
+        'Guest House — <strong>Show/hide (live)</strong>: tick to show in menu, untick to hide'
     )
 
     def has_add_permission(self, request, obj=None):
@@ -146,57 +173,87 @@ class GuestHousePageInline(admin.TabularInline):
         return False
 
 
-@admin.register(GuestHousePageVisibility)
-class GuestHousePageVisibilityAdmin(AdminOnlyAdminMixin, admin.ModelAdmin):
-    """Tick Page live to keep pages available; untick for maintenance mode."""
-
-    list_display = ('label', 'page_key', 'entry_kind', 'tenant', 'status_badge', 'is_visible')
-    list_display_links = ('label',)
-    list_editable = ('is_visible',)
-    list_filter = ('tenant', 'is_visible')
-    search_fields = ('label', 'page_key', 'tenant__name')
-    ordering = ('tenant__name', 'sort_order', 'page_key')
-    list_per_page = 50
-    list_select_related = ('tenant',)
-    readonly_fields = ('page_key', 'label', 'sort_order', 'tenant')
-
-    fieldsets = (
-        (None, {
-            'fields': ('tenant', 'label', 'page_key', 'is_visible', 'sort_order'),
-            'description': (
-                'Uncheck <strong>Page live</strong> to put a sidebar page or in-app module '
-                '(e.g. ID card scanner) in <strong>maintenance mode</strong>. '
-                'Users see an “Under maintenance” screen instead.'
-            ),
-        }),
+class GuestHousePageMaintenanceInline(admin.TabularInline):
+    """Maintenance mode for Guest House pages inside Tenant edit screen."""
+    model = GuestHousePageMaintenance
+    extra = 0
+    fields = ('label', 'page_key', 'in_maintenance')
+    readonly_fields = ('label', 'page_key')
+    ordering = ('sort_order',)
+    can_delete = False
+    verbose_name = 'Page'
+    verbose_name_plural = (
+        'Guest House — <strong>Maintenance mode</strong>: tick to show “Under maintenance” screen'
     )
 
-    @admin.display(description='Type')
-    def entry_kind(self, obj):
-        if obj.page_key in GH_MODULE_KEYS:
-            return mark_safe('<span style="color:#7c3aed;font-weight:600;">Module</span>')
-        return mark_safe('<span style="color:#0369a1;font-weight:600;">Page</span>')
-
-    @admin.display(description='Status')
-    def status_badge(self, obj):
-        if obj.is_visible:
-            return mark_safe('<span style="color:#15803d;font-weight:700;">Live</span>')
-        return mark_safe('<span style="color:#b45309;font-weight:700;">Maintenance</span>')
-
-    def has_add_permission(self, request):
+    def has_add_permission(self, request, obj=None):
         return False
 
     def has_delete_permission(self, request, obj=None):
         return False
 
+
+@admin.register(GuestHousePageLive)
+class GuestHousePageLiveAdmin(_GhPageAdminBase):
+    """Tick Show in menu to display a page or module; untick to hide it."""
+
+    list_display = ('label', 'page_key', 'entry_kind', 'tenant', 'live_badge', 'is_visible')
+    list_editable = ('is_visible',)
+
+    fieldsets = (
+        (None, {
+            'fields': ('tenant', 'label', 'page_key', 'is_visible', 'sort_order'),
+            'description': (
+                'Tick <strong>Show in menu</strong> to display this page or module in the app. '
+                'Untick to hide it from the sidebar and block direct URL access.'
+            ),
+        }),
+    )
+
+    @admin.display(description='Status')
+    def live_badge(self, obj):
+        if obj.is_visible:
+            return mark_safe('<span style="color:#15803d;font-weight:700;">Live</span>')
+        return mark_safe('<span style="color:#64748b;font-weight:700;">Hidden</span>')
+
     def changelist_view(self, request, extra_context=None):
-        for tenant in Tenant.objects.all():
-            ensure_tenant_gh_pages(tenant)
         extra_context = extra_context or {}
-        extra_context['title'] = 'Guest House — Page maintenance mode'
+        extra_context['title'] = 'Guest House — Show/hide pages (live)'
         extra_context['subtitle'] = (
-            'Tick <strong>Page live</strong> to keep a page or module available. '
-            'Untick to hide it and show an “Under maintenance” message to users. '
-            'Press <strong>Save</strong> at the bottom after changes.'
+            'Tick <strong>Show in menu</strong> to keep a page or module visible. '
+            'Untick to hide it from users. Press <strong>Save</strong> after changes.'
+        )
+        return super().changelist_view(request, extra_context=extra_context)
+
+
+@admin.register(GuestHousePageMaintenance)
+class GuestHousePageMaintenanceAdmin(_GhPageAdminBase):
+    """Tick Maintenance mode to show an “Under maintenance” screen when users open the page."""
+
+    list_display = ('label', 'page_key', 'entry_kind', 'tenant', 'maintenance_badge', 'in_maintenance')
+    list_editable = ('in_maintenance',)
+
+    fieldsets = (
+        (None, {
+            'fields': ('tenant', 'label', 'page_key', 'in_maintenance', 'sort_order'),
+            'description': (
+                'Tick <strong>Maintenance mode</strong> to show an “Under maintenance” screen '
+                'when users open this page or module. The page can stay visible in the menu.'
+            ),
+        }),
+    )
+
+    @admin.display(description='Status')
+    def maintenance_badge(self, obj):
+        if obj.in_maintenance:
+            return mark_safe('<span style="color:#b45309;font-weight:700;">Maintenance</span>')
+        return mark_safe('<span style="color:#15803d;font-weight:700;">Normal</span>')
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['title'] = 'Guest House — Maintenance mode'
+        extra_context['subtitle'] = (
+            'Tick <strong>Maintenance mode</strong> to show an “Under maintenance” screen. '
+            'Untick to restore normal access. Press <strong>Save</strong> after changes.'
         )
         return super().changelist_view(request, extra_context=extra_context)

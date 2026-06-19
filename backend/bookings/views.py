@@ -87,5 +87,6 @@ class MarriageHallPageVisibilityView(APIView):
                 'key': row.page_key,
                 'label': row.label,
                 'is_visible': row.is_visible,
+                'in_maintenance': row.in_maintenance,
             })
         return Response({'pages': pages})

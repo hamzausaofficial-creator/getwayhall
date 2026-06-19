@@ -1,15 +1,25 @@
+import { Navigate } from 'react-router-dom';
 import { useGhPageVisibility } from '../context/GhPageVisibilityContext';
 import { GH_PAGE_LABELS } from '../constants/ghPages';
 import AppLoader from './AppLoader';
 import MaintenancePage from './MaintenancePage';
 
-/** Blocks access when a Guest House page is in maintenance mode (Django admin). */
+/** Guards Guest House routes: maintenance screen vs hidden redirect. */
 export function GhPageRoute({ pageKey, children }) {
-  const { loading, isPageVisible, firstVisiblePath } = useGhPageVisibility();
+  const {
+    loading,
+    isPageVisible,
+    isPageInMaintenance,
+    firstVisiblePath,
+  } = useGhPageVisibility();
 
   if (loading) return <AppLoader fullScreen />;
 
   if (!isPageVisible(pageKey)) {
+    return <Navigate to={firstVisiblePath} replace />;
+  }
+
+  if (isPageInMaintenance(pageKey)) {
     return (
       <MaintenancePage
         pageName={GH_PAGE_LABELS[pageKey]}
