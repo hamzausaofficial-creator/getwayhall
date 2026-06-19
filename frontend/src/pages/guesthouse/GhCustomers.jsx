@@ -17,7 +17,6 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { useGhPageVisibility } from '../../context/GhPageVisibilityContext';
 import { GH_MODULE_KEYS } from '../../constants/ghPages';
 import SearchInput from '../../components/SearchInput';
-import StatCard from '../../components/ui/StatCard';
 import StatusBadge from '../../components/ui/StatusBadge';
 import EmptyState from '../../components/ui/EmptyState';
 import { todayISO } from '../../utils/ghDate';
@@ -142,12 +141,6 @@ export default function GhCustomers() {
       );
     });
   }, [customers, searchQuery]);
-
-  const metrics = useMemo(() => {
-    const withDue = customers.filter((c) => hasCollectDue(c.outstanding_balance));
-    const totalDue = customers.reduce((s, c) => s + (Number(c.outstanding_balance) || 0), 0);
-    return { total: customers.length, withDue: withDue.length, totalDue };
-  }, [customers]);
 
   const handleOpenFormModal = (customer = null) => {
     if (!canOperate) {
@@ -278,46 +271,6 @@ export default function GhCustomers() {
   return (
     <>
       <div className="animate-fade-in gh-cust-page">
-        <div className="page-header">
-          <div style={{ minWidth: 0 }}>
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: 0 }}>
-              Primary bookers only — companions appear inside each primary guest&apos;s profile.
-            </p>
-          </div>
-          {canOperate && (
-            <div className="page-header__actions">
-              <button type="button" className="btn-primary" onClick={() => handleOpenFormModal()}>
-                <UserPlus size={18} /> Add Guest
-              </button>
-            </div>
-          )}
-        </div>
-
-        <section className="dash-kpi-grid" style={{ marginBottom: '24px' }}>
-          {viewTab === 'daily' && dailyData ? (
-            <>
-              <StatCard label="Today's reservations" value={dailyData.counts?.reservations || 0} icon={BedDouble} variant="primary" />
-              <StatCard label="Check-ins today" value={dailyData.counts?.arrivals || 0} icon={Calendar} variant="info" />
-              <StatCard label="Check-outs today" value={dailyData.counts?.departures || 0} icon={Calendar} variant="warning" />
-              <StatCard label="In-house now" value={dailyData.counts?.in_house || 0} icon={Users} variant="success" />
-            </>
-          ) : (
-            <>
-              <StatCard label="Total guests" value={metrics.total} icon={Users} variant="primary" />
-              <StatCard label="With balance due" value={metrics.withDue} icon={Wallet} variant={metrics.withDue > 0 ? 'warning' : 'info'} />
-              <StatCard
-                label="Outstanding total"
-                value={metrics.totalDue}
-                icon={Wallet}
-                isCurrency
-                showZeroAs00
-                variant={metrics.totalDue > 0 ? 'danger' : 'success'}
-                to={canAccessPayments ? '/gh/payments' : undefined}
-              />
-            </>
-          )}
-        </section>
-
         <div className="gh-records-tabs" style={{ marginBottom: '20px' }}>
           <button
             type="button"
