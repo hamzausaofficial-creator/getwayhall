@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Construction, ArrowLeft } from 'lucide-react';
+import { Construction, ArrowLeft, Clock3 } from 'lucide-react';
 import './maintenance-page.css';
 
 export default function MaintenancePage({ pageName, homePath = '/' }) {
@@ -7,23 +7,36 @@ export default function MaintenancePage({ pageName, homePath = '/' }) {
 
   return (
     <div className="maintenance-page">
-      <div className="maintenance-page__card premium-card">
-        <div className="maintenance-page__icon-wrap" aria-hidden>
-          <Construction size={36} />
+      <div className="maintenance-page__card" role="status" aria-live="polite">
+        <div className="maintenance-page__icon-stack" aria-hidden>
+          <span className="maintenance-page__icon-ring maintenance-page__icon-ring--outer" />
+          <span className="maintenance-page__icon-ring maintenance-page__icon-ring--inner" />
+          <div className="maintenance-page__icon-wrap">
+            <Construction size={32} strokeWidth={2} />
+          </div>
         </div>
+
+        <span className="maintenance-page__badge">
+          <Clock3 size={14} aria-hidden />
+          Temporarily unavailable
+        </span>
+
         <h1 className="maintenance-page__title">Under maintenance</h1>
+
+        {pageName ? (
+          <p className="maintenance-page__page-name">{pageName}</p>
+        ) : null}
+
         <p className="maintenance-page__text">
-          {pageName ? (
-            <>
-              <strong>{pageName}</strong> is temporarily unavailable while we make updates.
-            </>
-          ) : (
-            <>This section is temporarily unavailable while we make updates.</>
-          )}
+          {pageName
+            ? 'This section is being updated and will be back online shortly.'
+            : 'This section is temporarily unavailable while we make updates.'}
         </p>
+
         <p className="maintenance-page__hint">
-          Please check back later or continue with another section of the app.
+          You can continue using other parts of the app in the meantime.
         </p>
+
         <button
           type="button"
           className="btn-primary maintenance-page__btn"
