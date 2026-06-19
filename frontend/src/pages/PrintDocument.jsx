@@ -20,7 +20,7 @@ import client from '../api/client';
 import toast from 'react-hot-toast';
 import { formatCollectDuePKR, hasCollectDue } from '../utils/currency';
 import AppLogo from '../components/AppLogo';
-import { BRAND_NAME } from '../constants/brand';
+import { BRAND_FULL_NAME } from '../constants/brand';
 
 // HTML5 Canvas Digital Signature Pad Component
 const SignaturePad = ({ label, subtitle, onSave }) => {
@@ -665,7 +665,7 @@ const PrintDocument = () => {
               textTransform: 'uppercase',
               letterSpacing: '0.1em'
             }}>
-              Gateway Hallora
+              Gateway Centre
             </div>
 
             {/* NEW DOCUMENT HEADER */}
@@ -673,8 +673,8 @@ const PrintDocument = () => {
               <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                 <AppLogo size="md" tone="dark" />
                 <div>
-                  <h1 style={{ fontSize: '32px', color: '#0f172a', fontWeight: '900', letterSpacing: '-0.03em', margin: 0, lineHeight: '1' }}>{BRAND_NAME.toUpperCase()}</h1>
-                  <h2 style={{ fontSize: '14px', color: '#64748b', fontWeight: '800', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '6px 0 0 0' }}>Marriage Hall</h2>
+                  <h1 style={{ fontSize: '32px', color: '#0f172a', fontWeight: '900', letterSpacing: '-0.03em', margin: 0, lineHeight: '1' }}>{BRAND_FULL_NAME.toUpperCase()}</h1>
+                  <h2 style={{ fontSize: '14px', color: '#64748b', fontWeight: '800', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '6px 0 0 0' }}>Venue Management</h2>
                 </div>
               </div>
               

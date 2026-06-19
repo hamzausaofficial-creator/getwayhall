@@ -832,7 +832,7 @@ const Payments = () => {
               </div>
 
               <div style={{ textAlign: 'center', marginTop: '30px', borderTop: '1px dashed #000', paddingTop: '10px', fontSize: '9px' }}>
-                <p style={{ margin: 0 }}>Thank you for choosing Gateway Halls!</p>
+                <p style={{ margin: 0 }}>Thank you for choosing Gateway Centre!</p>
                 <p style={{ margin: '2px 0 0 0' }}>Software generated ledger document.</p>
               </div>
             </div>

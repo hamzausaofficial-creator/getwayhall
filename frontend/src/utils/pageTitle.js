@@ -70,5 +70,5 @@ export function getPageTitle(pathname, search = '') {
     if (pattern.test(path)) return title;
   }
 
-  return 'Gateway';
+  return 'Gateway Centre';
 }

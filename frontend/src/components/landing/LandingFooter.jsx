@@ -29,7 +29,7 @@ export default function LandingFooter() {
               size="sm"
               tone="dark"
               showName
-              nameAccent="Marriage Hall"
+              nameAccent="Centre"
               className="app-logo--footer landing-footer__brand"
             />
             <p className="landing-footer__desc">

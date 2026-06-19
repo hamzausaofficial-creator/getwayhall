@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Construction, ArrowLeft } from 'lucide-react';
+import AppLogo from './AppLogo';
 import './maintenance-page.css';
 
 export default function MaintenancePage({ pageName, homePath = '/' }) {
@@ -8,6 +9,7 @@ export default function MaintenancePage({ pageName, homePath = '/' }) {
   return (
     <div className="maintenance-page">
       <div className="maintenance-page__card premium-card">
+        <AppLogo size="md" tone="dark" className="maintenance-page__logo" />
         <div className="maintenance-page__icon-wrap" aria-hidden>
           <Construction size={36} />
         </div>

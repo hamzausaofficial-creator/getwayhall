@@ -11,14 +11,11 @@
   flex-shrink: 0;
 }
 
-/* White logo on dark backgrounds (sidebar, hero nav) */
-.app-logo__img--light {
-  filter: none;
-}
-
-/* Dark logo on light backgrounds */
+/* Logo shows in brand green on all backgrounds */
+.app-logo__img--light,
 .app-logo__img--dark {
-  filter: brightness(0);
+  filter: none;
+  border-radius: 6px;
 }
 
 .app-logo__text {
@@ -121,8 +118,8 @@
 }
 
 .login-card__logo-mark .app-logo__img {
-  width: 40px !important;
-  height: 40px !important;
-  max-width: 40px !important;
-  max-height: 40px !important;
+  width: 48px !important;
+  height: 48px !important;
+  max-width: 48px !important;
+  max-height: 48px !important;
 }

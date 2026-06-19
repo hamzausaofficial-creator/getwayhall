@@ -137,9 +137,8 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
         <AppLogo
           size={isCollapsed && !isMobile ? 'xs' : 'sm'}
           tone="light"
-          showImage={false}
-          showName
-          name={isCollapsed && !isMobile ? 'G' : undefined}
+          showName={!isCollapsed || isMobile}
+          nameAccent={(!isCollapsed || isMobile) ? 'Centre' : undefined}
           subtitle={(!isCollapsed || isMobile) ? brandSubtitle : undefined}
           className={isCollapsed && !isMobile ? 'app-logo--sidebar-collapsed' : 'app-logo--sidebar'}
         />

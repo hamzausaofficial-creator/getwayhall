@@ -48,7 +48,7 @@ export default function GalleryAlbumSection() {
                 ALBUMS
               </h3>
               <p className="landing-gallery-album__hint">
-                Gateway Marriage Hall Album
+                Gateway Centre Album
               </p>
             </div>
           </div>

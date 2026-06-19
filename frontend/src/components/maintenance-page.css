@@ -13,6 +13,11 @@
   text-align: center;
 }
 
+.maintenance-page__logo {
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
 .maintenance-page__icon-wrap {
   display: inline-flex;
   align-items: center;

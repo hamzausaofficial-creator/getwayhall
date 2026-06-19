@@ -552,7 +552,7 @@ export default function GuestHouseReports() {
       <div id="printable-gh-report-sheet" className="gh-report-print">
         <div className="gh-report-print__page">
           <header className="gh-report-print__head">
-            <AppLogo size="sm" tone="dark" showName showImage={false} name={BRAND_GUEST_HOUSE} className="app-logo--print" />
+            <AppLogo size="sm" tone="dark" showName name={BRAND_GUEST_HOUSE} className="app-logo--print" />
             <p className="gh-report-print__meta">Guest House — {tabLabel} Report</p>
             <p className="gh-report-print__meta">
               Period: {new Date(data.start_date).toLocaleDateString()} — {new Date(data.end_date).toLocaleDateString()}

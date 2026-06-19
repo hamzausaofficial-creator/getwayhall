@@ -23,7 +23,7 @@ export default function AppLogo({
   nameClassName,
   accentClassName,
   subtitleClassName,
-  alt = 'Gateway logo',
+  alt = 'Gateway Centre logo',
 }) {
   const px = SIZES[size] || SIZES.md;
 
