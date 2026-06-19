@@ -43,7 +43,7 @@ export default function LandingNav({ transparent = true }) {
             size="sm"
             tone={solid ? 'dark' : 'light'}
             showName
-            nameAccent="Marriage Hall"
+            nameAccent="Centre"
             className="app-logo--landing-nav"
             nameClassName={solid ? 'landing-nav__logo--dark' : 'landing-nav__logo--light'}
             accentClassName="app-logo__name-accent"
