@@ -228,26 +228,23 @@ class GuestHousePageLiveAdmin(_GhPageAdminBase):
 
 @admin.register(GuestHousePageMaintenance)
 class GuestHousePageMaintenanceAdmin(_GhPageAdminBase):
-    """Tick Maintenance mode to show an “Under maintenance” screen when users open the page."""
+    """Tick Maintenance mode and set when the page should reopen automatically."""
 
-    list_display = ('label', 'page_key', 'entry_kind', 'tenant', 'maintenance_badge', 'in_maintenance', 'ends_at_display')
-    list_editable = ('in_maintenance',)
+    list_display = (
+        'label', 'page_key', 'entry_kind', 'tenant', 'maintenance_badge',
+        'in_maintenance', 'maintenance_until',
+    )
+    list_editable = ('in_maintenance', 'maintenance_until')
 
     fieldsets = (
         (None, {
             'fields': ('tenant', 'label', 'page_key', 'in_maintenance', 'maintenance_until', 'sort_order'),
             'description': (
-                'Tick <strong>Maintenance mode</strong> to show an “Under maintenance” screen. '
-                'Set <strong>Maintenance ends at</strong> to schedule when the page reopens automatically.'
+                'Tick <strong>Maintenance mode</strong>, then pick <strong>Maintenance ends at</strong> '
+                '(date &amp; time). The page reopens automatically when that time is reached.'
             ),
         }),
     )
-
-    @admin.display(description='Ends at')
-    def ends_at_display(self, obj):
-        if obj.maintenance_until:
-            return obj.maintenance_until.strftime('%d %b %Y, %I:%M %p')
-        return '—'
 
     @admin.display(description='Status')
     def maintenance_badge(self, obj):
@@ -259,7 +256,8 @@ class GuestHousePageMaintenanceAdmin(_GhPageAdminBase):
         extra_context = extra_context or {}
         extra_context['title'] = 'Guest House — Maintenance mode'
         extra_context['subtitle'] = (
-            'Tick <strong>Maintenance mode</strong> and set <strong>Maintenance ends at</strong> '
-            'so the page reopens automatically. Press <strong>Save</strong> after changes.'
+            'Tick <strong>Maintenance mode</strong>, set <strong>Maintenance ends at</strong> '
+            '(date &amp; time) in the table below, then press <strong>Save</strong>. '
+            'Leave time empty if there is no fixed reopen schedule.'
         )
         return super().changelist_view(request, extra_context=extra_context)
