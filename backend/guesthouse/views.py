@@ -12,6 +12,7 @@ from datetime import timedelta, datetime, time
 from decimal import Decimal
 
 from core.mixins import TenantQuerysetMixin, TenantAssignMixin
+from core.page_maintenance import page_maintenance_payload
 from core.permissions import (
     IsAdminOrManagerOrReadOnly,
     IsAdminOrManager,
@@ -828,11 +829,12 @@ class GuestHousePageVisibilityView(APIView):
         pages = []
         modules = []
         for row in rows:
+            maint = page_maintenance_payload(row)
             item = {
                 'key': row.page_key,
                 'label': row.label,
                 'is_visible': row.is_visible,
-                'in_maintenance': row.in_maintenance,
+                **maint,
             }
             if row.page_key in GH_MODULE_KEYS:
                 modules.append(item)

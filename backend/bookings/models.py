@@ -189,6 +189,12 @@ class MarriageHallPageVisibility(models.Model):
         default=False,
         help_text='When enabled, users who open this page see an “Under maintenance” screen.',
     )
+    maintenance_until = models.DateTimeField(
+        'Maintenance ends at',
+        null=True,
+        blank=True,
+        help_text='Optional. Page reopens automatically after this date & time (Asia/Karachi).',
+    )
     sort_order = models.PositiveSmallIntegerField(default=0)
 
     class Meta:

@@ -1,9 +1,41 @@
 import { useNavigate } from 'react-router-dom';
-import { Construction, ArrowLeft, Clock3 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Construction, ArrowLeft, Clock3, Timer } from 'lucide-react';
+import {
+  formatMaintenanceEnd,
+  formatMaintenanceRemaining,
+  isMaintenanceExpired,
+} from '../utils/maintenanceTime';
 import './maintenance-page.css';
 
-export default function MaintenancePage({ pageName, homePath = '/' }) {
+export default function MaintenancePage({
+  pageName,
+  homePath = '/',
+  maintenanceUntil = null,
+  onMaintenanceEnded,
+}) {
   const navigate = useNavigate();
+  const [remaining, setRemaining] = useState(() => formatMaintenanceRemaining(maintenanceUntil));
+  const endLabel = formatMaintenanceEnd(maintenanceUntil);
+
+  useEffect(() => {
+    if (!maintenanceUntil) {
+      setRemaining(null);
+      return undefined;
+    }
+
+    const tick = () => {
+      if (isMaintenanceExpired(maintenanceUntil)) {
+        onMaintenanceEnded?.();
+        return;
+      }
+      setRemaining(formatMaintenanceRemaining(maintenanceUntil));
+    };
+
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [maintenanceUntil, onMaintenanceEnded]);
 
   return (
     <div className="maintenance-page">
@@ -32,6 +64,21 @@ export default function MaintenancePage({ pageName, homePath = '/' }) {
             ? 'This section is being updated and will be back online shortly.'
             : 'This section is temporarily unavailable while we make updates.'}
         </p>
+
+        {endLabel ? (
+          <div className="maintenance-page__schedule">
+            <p className="maintenance-page__schedule-label">
+              <Timer size={15} aria-hidden />
+              Expected back online
+            </p>
+            <p className="maintenance-page__schedule-time">{endLabel}</p>
+            {remaining ? (
+              <p className="maintenance-page__countdown">
+                Opens in <strong>{remaining}</strong>
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         <p className="maintenance-page__hint">
           You can continue using other parts of the app in the meantime.

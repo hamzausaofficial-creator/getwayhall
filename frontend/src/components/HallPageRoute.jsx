@@ -10,7 +10,9 @@ export function HallPageRoute({ pageKey, children }) {
     loading,
     isPageVisible,
     isPageInMaintenance,
+    getPageMaintenanceUntil,
     firstVisiblePath,
+    reload,
   } = useHallPageVisibility();
 
   if (loading) return <AppLoader fullScreen />;
@@ -24,6 +26,8 @@ export function HallPageRoute({ pageKey, children }) {
       <MaintenancePage
         pageName={HALL_PAGE_LABELS[pageKey]}
         homePath={firstVisiblePath}
+        maintenanceUntil={getPageMaintenanceUntil(pageKey)}
+        onMaintenanceEnded={reload}
       />
     );
   }

@@ -122,6 +122,47 @@
   color: var(--text-muted);
 }
 
+.maintenance-page__schedule {
+  margin: 0 auto 18px;
+  max-width: 340px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+}
+
+.maintenance-page__schedule-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.maintenance-page__schedule-time {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text-main);
+}
+
+.maintenance-page__countdown {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.maintenance-page__countdown strong {
+  color: var(--primary);
+  font-weight: 800;
+}
+
 .maintenance-page__btn {
   width: 100%;
   max-width: 280px;

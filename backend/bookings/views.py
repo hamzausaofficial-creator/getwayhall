@@ -10,6 +10,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from core.mixins import TenantQuerysetMixin, TenantAssignMixin
+from core.page_maintenance import page_maintenance_payload
 from core.permissions import IsAdminOrManagerOrReadOnly, IsTenantOwner, IsMarriageHallApp
 from .models import Booking, MarriageHallPageVisibility
 from .serializers import BookingSerializer
@@ -83,10 +84,11 @@ class MarriageHallPageVisibilityView(APIView):
         for row in rows:
             if row.page_key not in HALL_PAGE_KEYS:
                 continue
+            maint = page_maintenance_payload(row)
             pages.append({
                 'key': row.page_key,
                 'label': row.label,
                 'is_visible': row.is_visible,
-                'in_maintenance': row.in_maintenance,
+                **maint,
             })
         return Response({'pages': pages})
