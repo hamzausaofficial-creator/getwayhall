@@ -20,7 +20,9 @@ import AppLoader from '../components/AppLoader';
 import { usePermissions } from '../hooks/usePermissions';
 import { useAppType } from '../hooks/useAppType';
 import { useGhPageVisibility } from '../context/GhPageVisibilityContext';
+import { useHallPageVisibility } from '../context/HallPageVisibilityContext';
 import { GH_PAGE_KEYS } from '../constants/ghPages';
+import { HALL_PAGE_KEYS } from '../constants/hallPages';
 import AppLogo from './AppLogo';
 
 const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobileClose }) => {
@@ -32,17 +34,18 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
     canAccessNotifications,
     canAccessDashboard,
   } = usePermissions();
-  const { isPageVisible } = useGhPageVisibility();
+  const { isPageVisible: isGhPageVisible } = useGhPageVisibility();
+  const { isPageVisible: isHallPageVisible } = useHallPageVisibility();
 
   const hallNavItems = [
-    { name: 'Bookings', icon: Calendar, path: '/bookings' },
-    { name: 'Calendar', icon: CalendarDays, path: '/calendar' },
-    { name: 'Customers', icon: Users, path: '/customers' },
-    ...(canAccessExpenses ? [{ name: 'Expenses', icon: Wallet, path: '/expenses' }] : []),
-    { name: 'Inventory', icon: Package, path: '/inventory' },
-    { name: 'Decorations', icon: Sparkles, path: '/decoration-packages' },
-    ...(canAccessNotifications ? [{ name: 'Notifications', icon: Bell, path: '/notifications' }] : []),
-  ];
+    { name: 'Bookings', icon: Calendar, path: '/bookings', pageKey: HALL_PAGE_KEYS.BOOKINGS },
+    { name: 'Calendar', icon: CalendarDays, path: '/calendar', pageKey: HALL_PAGE_KEYS.CALENDAR },
+    { name: 'Customers', icon: Users, path: '/customers', pageKey: HALL_PAGE_KEYS.CUSTOMERS },
+    ...(canAccessExpenses ? [{ name: 'Expenses', icon: Wallet, path: '/expenses', pageKey: HALL_PAGE_KEYS.EXPENSES }] : []),
+    { name: 'Inventory', icon: Package, path: '/inventory', pageKey: HALL_PAGE_KEYS.INVENTORY },
+    { name: 'Decorations', icon: Sparkles, path: '/decoration-packages', pageKey: HALL_PAGE_KEYS.DECORATIONS },
+    ...(canAccessNotifications ? [{ name: 'Notifications', icon: Bell, path: '/notifications', pageKey: HALL_PAGE_KEYS.NOTIFICATIONS }] : []),
+  ].filter((item) => !item.pageKey || isHallPageVisible(item.pageKey));
 
   const guestHouseNavItems = [
     { name: 'Book Stay', icon: Plus, path: '/gh/book', pageKey: GH_PAGE_KEYS.BOOK },
@@ -52,11 +55,11 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
     { name: 'Add-on Services', icon: Snowflake, path: '/gh/services', pageKey: GH_PAGE_KEYS.SERVICES },
     ...(canAccessExpenses ? [{ name: 'Expenses', icon: Wallet, path: '/gh/expenses', pageKey: GH_PAGE_KEYS.EXPENSES }] : []),
     ...(canAccessNotifications ? [{ name: 'Notifications', icon: Bell, path: '/gh/notifications', pageKey: GH_PAGE_KEYS.NOTIFICATIONS }] : []),
-  ].filter((item) => !item.pageKey || isPageVisible(item.pageKey));
+  ].filter((item) => !item.pageKey || isGhPageVisible(item.pageKey));
 
   const dashboardNavItem = isGuestHouse
     ? { name: 'Dashboard', icon: Calculator, path: '/gh/dashboard', pageKey: GH_PAGE_KEYS.DASHBOARD }
-    : { name: 'Accountant', icon: Calculator, path: '/dashboard' };
+    : { name: 'Accountant', icon: Calculator, path: '/dashboard', pageKey: HALL_PAGE_KEYS.DASHBOARD };
   const brandSubtitle = isGuestHouse ? 'Guest House Management' : 'Marriage Hall Management';
 
   const mainNavItems = isGuestHouse ? guestHouseNavItems : hallNavItems;
@@ -149,11 +152,16 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
               {renderNavLink(item)}
             </li>
           ))}
-          {canAccessDashboard && (!isGuestHouse || isPageVisible(dashboardNavItem.pageKey)) && (
+          {canAccessDashboard && (
+            (!dashboardNavItem.pageKey
+              || (isGuestHouse
+                ? isGhPageVisible(dashboardNavItem.pageKey)
+                : isHallPageVisible(dashboardNavItem.pageKey)))
+            && (
             <li className="app-sidebar__nav-item app-sidebar__nav-item--divider">
               {renderNavLink(dashboardNavItem)}
             </li>
-          )}
+          ))}
         </ul>
       </nav>
     </aside>

@@ -14,13 +14,16 @@ class TenantAdmin(AdminOnlyAdminMixin, admin.ModelAdmin):
 
     def get_inlines(self, request, obj):
         from guesthouse.admin import GuestHousePageInline
-        return [GuestHousePageInline]
+        from bookings.admin import MarriageHallPageInline
+        return [GuestHousePageInline, MarriageHallPageInline]
 
     def get_object(self, request, object_id, from_field=None):
         obj = super().get_object(request, object_id, from_field)
         if obj:
             from guesthouse.page_visibility import ensure_tenant_gh_pages
+            from bookings.page_visibility import ensure_tenant_hall_pages
             ensure_tenant_gh_pages(obj)
+            ensure_tenant_hall_pages(obj)
         return obj
 
 

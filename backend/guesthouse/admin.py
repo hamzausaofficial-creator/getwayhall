@@ -134,7 +134,10 @@ class GuestHousePageInline(admin.TabularInline):
     ordering = ('sort_order',)
     can_delete = False
     verbose_name = 'Page'
-    verbose_name_plural = 'Guest House pages & modules - tick Is visible to show, untick to hide'
+    verbose_name_plural = (
+        'Guest House pages — tick <strong>Page live</strong> to show, '
+        'untick to put in <strong>maintenance mode</strong>'
+    )
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -145,9 +148,9 @@ class GuestHousePageInline(admin.TabularInline):
 
 @admin.register(GuestHousePageVisibility)
 class GuestHousePageVisibilityAdmin(AdminOnlyAdminMixin, admin.ModelAdmin):
-    """Tick/untick Is visible checkboxes, then click Save at the bottom."""
+    """Tick Page live to keep pages available; untick for maintenance mode."""
 
-    list_display = ('label', 'page_key', 'entry_kind', 'tenant', 'visibility_badge', 'is_visible')
+    list_display = ('label', 'page_key', 'entry_kind', 'tenant', 'status_badge', 'is_visible')
     list_display_links = ('label',)
     list_editable = ('is_visible',)
     list_filter = ('tenant', 'is_visible')
@@ -161,8 +164,9 @@ class GuestHousePageVisibilityAdmin(AdminOnlyAdminMixin, admin.ModelAdmin):
         (None, {
             'fields': ('tenant', 'label', 'page_key', 'is_visible', 'sort_order'),
             'description': (
-                'Uncheck <strong>Is visible</strong> to hide a sidebar page or an in-app module '
-                '(e.g. ID card scanner on Book Stay / Guest forms).'
+                'Uncheck <strong>Page live</strong> to put a sidebar page or in-app module '
+                '(e.g. ID card scanner) in <strong>maintenance mode</strong>. '
+                'Users see an “Under maintenance” screen instead.'
             ),
         }),
     )
@@ -174,10 +178,10 @@ class GuestHousePageVisibilityAdmin(AdminOnlyAdminMixin, admin.ModelAdmin):
         return mark_safe('<span style="color:#0369a1;font-weight:600;">Page</span>')
 
     @admin.display(description='Status')
-    def visibility_badge(self, obj):
+    def status_badge(self, obj):
         if obj.is_visible:
-            return mark_safe('<span style="color:#15803d;font-weight:700;">Visible</span>')
-        return mark_safe('<span style="color:#b91c1c;font-weight:700;">Hidden</span>')
+            return mark_safe('<span style="color:#15803d;font-weight:700;">Live</span>')
+        return mark_safe('<span style="color:#b45309;font-weight:700;">Maintenance</span>')
 
     def has_add_permission(self, request):
         return False
@@ -189,10 +193,10 @@ class GuestHousePageVisibilityAdmin(AdminOnlyAdminMixin, admin.ModelAdmin):
         for tenant in Tenant.objects.all():
             ensure_tenant_gh_pages(tenant)
         extra_context = extra_context or {}
-        extra_context['title'] = 'Guest House - Hide / Show Pages & Modules'
+        extra_context['title'] = 'Guest House — Page maintenance mode'
         extra_context['subtitle'] = (
-            'Tick or untick <strong>Is visible</strong> for sidebar pages and in-app modules '
-            '(e.g. <strong>ID Card Scanner</strong> on Book Stay). '
-            'Then press <strong>Save</strong> at the bottom of the page.'
+            'Tick <strong>Page live</strong> to keep a page or module available. '
+            'Untick to hide it and show an “Under maintenance” message to users. '
+            'Press <strong>Save</strong> at the bottom after changes.'
         )
         return super().changelist_view(request, extra_context=extra_context)

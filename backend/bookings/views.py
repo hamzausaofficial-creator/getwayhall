@@ -1,16 +1,19 @@
 from decimal import Decimal
 
-from rest_framework import viewsets, filters
+from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db import transaction
 from django.utils import timezone
 
 from core.mixins import TenantQuerysetMixin, TenantAssignMixin
 from core.permissions import IsAdminOrManagerOrReadOnly, IsTenantOwner, IsMarriageHallApp
-from .models import Booking
+from .models import Booking, MarriageHallPageVisibility
 from .serializers import BookingSerializer
+from .page_visibility import ensure_tenant_hall_pages, HALL_PAGE_KEYS
 
 
 class BookingViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewSet):
@@ -62,3 +65,27 @@ class BookingViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewS
 
         booking.refresh_from_db()
         return Response(BookingSerializer(booking, context={'request': request}).data)
+
+
+class MarriageHallPageVisibilityView(APIView):
+    """Return per-tenant Marriage Hall page maintenance flags for the frontend."""
+
+    permission_classes = [IsAuthenticated, IsMarriageHallApp]
+
+    def get(self, request):
+        tenant = request.user.tenant
+        if not tenant:
+            return Response({'detail': 'No tenant.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        ensure_tenant_hall_pages(tenant)
+        rows = MarriageHallPageVisibility.objects.filter(tenant=tenant).order_by('sort_order', 'page_key')
+        pages = []
+        for row in rows:
+            if row.page_key not in HALL_PAGE_KEYS:
+                continue
+            pages.append({
+                'key': row.page_key,
+                'label': row.label,
+                'is_visible': row.is_visible,
+            })
+        return Response({'pages': pages})

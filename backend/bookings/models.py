@@ -167,3 +167,31 @@ class Booking(models.Model):
 
     def __str__(self):
         return f"{self.event_name} - {self.customer.last_name}"
+
+
+class MarriageHallPageVisibility(models.Model):
+    """Per-tenant maintenance toggle for Marriage Hall sidebar pages."""
+
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name='hall_page_visibility',
+    )
+    page_key = models.CharField(max_length=32)
+    label = models.CharField(max_length=64)
+    is_visible = models.BooleanField(
+        'Page live',
+        default=True,
+        help_text='Uncheck to put this page in maintenance mode (hidden from staff and managers).',
+    )
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'page_key']
+        unique_together = [('tenant', 'page_key')]
+        verbose_name = 'MH page maintenance'
+        verbose_name_plural = 'MH pages — maintenance mode'
+
+    def __str__(self):
+        status = 'Live' if self.is_visible else 'Maintenance'
+        return f'{self.label} ({self.tenant.name}) - {status}'

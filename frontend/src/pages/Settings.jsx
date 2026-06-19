@@ -33,7 +33,9 @@ import GuestHouseRooms from './guesthouse/Rooms';
 import Staff from './Staff';
 import AllRecords from './guesthouse/AllRecords';
 import { useGhPageVisibility } from '../context/GhPageVisibilityContext';
+import { useHallPageVisibility } from '../context/HallPageVisibilityContext';
 import { GH_PAGE_KEYS } from '../constants/ghPages';
+import { HALL_PAGE_KEYS } from '../constants/hallPages';
 import { resolveMediaUrl } from '../utils/media';
 import StatusBadge from '../components/ui/StatusBadge';
 
@@ -100,7 +102,8 @@ const Settings = () => {
   const { isAdmin } = usePermissions();
   const avatarInputRef = useRef(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const { isPageVisible } = useGhPageVisibility();
+  const { isPageVisible: isGhPageVisible } = useGhPageVisibility();
+  const { isPageVisible: isHallPageVisible } = useHallPageVisibility();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const tabParam = searchParams.get('tab');
@@ -188,11 +191,17 @@ const Settings = () => {
     }
   }, [tabParam, isGuestHouse, navigate]);
 
-  const ghTabAllowed = (tabName) => {
-    if (!isGuestHouse) return true;
-    if (tabName === 'Rooms') return isPageVisible(GH_PAGE_KEYS.ROOMS);
-    if (tabName === 'All Records') return isPageVisible(GH_PAGE_KEYS.RECORDS);
-    if (tabName === 'Staff') return isAdmin && isPageVisible(GH_PAGE_KEYS.STAFF);
+  const tabAllowed = (tabName) => {
+    if (isGuestHouse) {
+      if (tabName === 'Rooms') return isGhPageVisible(GH_PAGE_KEYS.ROOMS);
+      if (tabName === 'All Records') return isGhPageVisible(GH_PAGE_KEYS.RECORDS);
+      if (tabName === 'Staff') return isAdmin && isGhPageVisible(GH_PAGE_KEYS.STAFF);
+      return true;
+    }
+    if (isMarriageHall) {
+      if (tabName === 'Halls') return isHallPageVisible(HALL_PAGE_KEYS.HALLS);
+      if (tabName === 'Staff') return isAdmin && isHallPageVisible(HALL_PAGE_KEYS.STAFF);
+    }
     return true;
   };
 
@@ -204,13 +213,13 @@ const Settings = () => {
       setSearchParams({});
       return;
     }
-    if (!ghTabAllowed(mapped)) {
+    if (!tabAllowed(mapped)) {
       setActiveTab('Profile');
       setSearchParams({});
       return;
     }
     setActiveTab(mapped);
-  }, [tabParam, isAdmin, setSearchParams, isGuestHouse, isPageVisible]);
+  }, [tabParam, isAdmin, setSearchParams, isGuestHouse, isMarriageHall, isGhPageVisible, isHallPageVisible]);
 
   const handleTabChange = (tabName) => {
     setActiveTab(tabName);
@@ -344,10 +353,13 @@ const Settings = () => {
 
   const tabs = [
     { name: 'Profile', icon: User },
-    ...(isMarriageHall ? [{ name: 'Halls', icon: LayoutGrid }] : []),
-    ...(isGuestHouse && isPageVisible(GH_PAGE_KEYS.ROOMS) ? [{ name: 'Rooms', icon: BedDouble }] : []),
-    ...(isGuestHouse && isPageVisible(GH_PAGE_KEYS.RECORDS) ? [{ name: 'All Records', icon: Archive }] : []),
-    ...(isAdmin && (!isGuestHouse || isPageVisible(GH_PAGE_KEYS.STAFF)) ? [{ name: 'Staff', icon: BadgeCheck }] : []),
+    ...(isMarriageHall && isHallPageVisible(HALL_PAGE_KEYS.HALLS) ? [{ name: 'Halls', icon: LayoutGrid }] : []),
+    ...(isGuestHouse && isGhPageVisible(GH_PAGE_KEYS.ROOMS) ? [{ name: 'Rooms', icon: BedDouble }] : []),
+    ...(isGuestHouse && isGhPageVisible(GH_PAGE_KEYS.RECORDS) ? [{ name: 'All Records', icon: Archive }] : []),
+    ...(isAdmin && (
+      (isGuestHouse && isGhPageVisible(GH_PAGE_KEYS.STAFF))
+      || (isMarriageHall && isHallPageVisible(HALL_PAGE_KEYS.STAFF))
+    ) ? [{ name: 'Staff', icon: BadgeCheck }] : []),
     { name: 'Venue Info', icon: Building2 },
     { name: 'Notifications', icon: Bell },
     { name: 'Security', icon: Shield },

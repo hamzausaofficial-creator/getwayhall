@@ -12,6 +12,7 @@ import { guestHouseSearch } from '../api/guesthouse';
 import { useAppType } from '../hooks/useAppType';
 import { usePermissions } from '../hooks/usePermissions';
 import { GhPageVisibilityProvider, useGhPageVisibility } from '../context/GhPageVisibilityContext';
+import { HallPageVisibilityProvider } from '../context/HallPageVisibilityContext';
 import { PageTitleProvider, usePageTitleContext } from '../context/PageTitleContext';
 import { GH_PAGE_KEYS } from '../constants/ghPages';
 import { resolveMediaUrl } from '../utils/media';
@@ -542,7 +543,9 @@ const DashboardLayout = () => {
   const { isGuestHouse } = useAppType();
   return (
     <GhPageVisibilityProvider enabled={isGuestHouse}>
-      <DashboardLayoutContent />
+      <HallPageVisibilityProvider enabled={!isGuestHouse}>
+        <DashboardLayoutContent />
+      </HallPageVisibilityProvider>
     </GhPageVisibilityProvider>
   );
 };

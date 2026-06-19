@@ -303,17 +303,18 @@ class GuestHousePageVisibility(models.Model):
     page_key = models.CharField(max_length=32)
     label = models.CharField(max_length=64)
     is_visible = models.BooleanField(
+        'Page live',
         default=True,
-        help_text='Uncheck to hide this page or in-app module from the Guest House app.',
+        help_text='Uncheck to put this page or module in maintenance mode (hidden from users).',
     )
     sort_order = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         ordering = ['sort_order', 'page_key']
         unique_together = [('tenant', 'page_key')]
-        verbose_name = 'GH page / module hide/show'
-        verbose_name_plural = 'GH pages & modules hide/show'
+        verbose_name = 'GH page maintenance'
+        verbose_name_plural = 'GH pages — maintenance mode'
 
     def __str__(self):
-        status = 'Visible' if self.is_visible else 'Hidden'
+        status = 'Live' if self.is_visible else 'Maintenance'
         return f'{self.label} ({self.tenant.name}) - {status}'

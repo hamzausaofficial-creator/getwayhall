@@ -1,0 +1,68 @@
+/** Marriage Hall page keys — must match backend `DEFAULT_HALL_PAGES`. */
+export const HALL_PAGE_KEYS = {
+  DASHBOARD: 'dashboard',
+  BOOKINGS: 'bookings',
+  CALENDAR: 'calendar',
+  CUSTOMERS: 'customers',
+  PAYMENTS: 'payments',
+  EXPENSES: 'expenses',
+  INVENTORY: 'inventory',
+  DECORATIONS: 'decorations',
+  REPORTS: 'reports',
+  NOTIFICATIONS: 'notifications',
+  HALLS: 'halls',
+  STAFF: 'staff',
+  PROFILE: 'profile',
+  SETTINGS: 'settings',
+};
+
+export const HALL_PAGE_LABELS = {
+  [HALL_PAGE_KEYS.DASHBOARD]: 'Accountant / Dashboard',
+  [HALL_PAGE_KEYS.BOOKINGS]: 'Bookings',
+  [HALL_PAGE_KEYS.CALENDAR]: 'Calendar',
+  [HALL_PAGE_KEYS.CUSTOMERS]: 'Customers',
+  [HALL_PAGE_KEYS.PAYMENTS]: 'Payments',
+  [HALL_PAGE_KEYS.EXPENSES]: 'Expenses',
+  [HALL_PAGE_KEYS.INVENTORY]: 'Inventory',
+  [HALL_PAGE_KEYS.DECORATIONS]: 'Decoration Packages',
+  [HALL_PAGE_KEYS.REPORTS]: 'Reports',
+  [HALL_PAGE_KEYS.NOTIFICATIONS]: 'Notifications',
+  [HALL_PAGE_KEYS.HALLS]: 'Hall Management',
+  [HALL_PAGE_KEYS.STAFF]: 'Staff',
+  [HALL_PAGE_KEYS.PROFILE]: 'Profile',
+  [HALL_PAGE_KEYS.SETTINGS]: 'Settings',
+};
+
+export const HALL_PAGE_PATHS = {
+  [HALL_PAGE_KEYS.DASHBOARD]: '/dashboard',
+  [HALL_PAGE_KEYS.BOOKINGS]: '/bookings',
+  [HALL_PAGE_KEYS.CALENDAR]: '/calendar',
+  [HALL_PAGE_KEYS.CUSTOMERS]: '/customers',
+  [HALL_PAGE_KEYS.PAYMENTS]: '/payments',
+  [HALL_PAGE_KEYS.EXPENSES]: '/expenses',
+  [HALL_PAGE_KEYS.INVENTORY]: '/inventory',
+  [HALL_PAGE_KEYS.DECORATIONS]: '/decoration-packages',
+  [HALL_PAGE_KEYS.REPORTS]: '/reports',
+  [HALL_PAGE_KEYS.NOTIFICATIONS]: '/notifications',
+  [HALL_PAGE_KEYS.HALLS]: '/settings?tab=halls',
+  [HALL_PAGE_KEYS.STAFF]: '/settings?tab=staff',
+  [HALL_PAGE_KEYS.PROFILE]: '/profile',
+  [HALL_PAGE_KEYS.SETTINGS]: '/settings',
+};
+
+export const HALL_PAGE_ORDER = [
+  HALL_PAGE_KEYS.DASHBOARD,
+  HALL_PAGE_KEYS.BOOKINGS,
+  HALL_PAGE_KEYS.CALENDAR,
+  HALL_PAGE_KEYS.CUSTOMERS,
+  HALL_PAGE_KEYS.PAYMENTS,
+  HALL_PAGE_KEYS.EXPENSES,
+  HALL_PAGE_KEYS.INVENTORY,
+  HALL_PAGE_KEYS.DECORATIONS,
+  HALL_PAGE_KEYS.REPORTS,
+  HALL_PAGE_KEYS.NOTIFICATIONS,
+  HALL_PAGE_KEYS.HALLS,
+  HALL_PAGE_KEYS.STAFF,
+  HALL_PAGE_KEYS.PROFILE,
+  HALL_PAGE_KEYS.SETTINGS,
+];

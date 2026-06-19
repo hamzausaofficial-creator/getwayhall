@@ -47,10 +47,16 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { AdminRoute, ManagerRoute, StaffBlockedRoute } from './components/RoleRoute';
 import { MarriageHallRoute, GuestHouseRoute } from './components/AppTypeRoute';
 import { GhPageRoute } from './components/GhPageRoute';
+import { HallPageRoute } from './components/HallPageRoute';
 import { GH_PAGE_KEYS } from './constants/ghPages';
+import { HALL_PAGE_KEYS } from './constants/hallPages';
 
 const ghPage = (pageKey, element) => (
   <GhPageRoute pageKey={pageKey}>{element}</GhPageRoute>
+);
+
+const hallPage = (pageKey, element) => (
+  <HallPageRoute pageKey={pageKey}>{element}</HallPageRoute>
 );
 
 function App() {
@@ -83,27 +89,27 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route path="/dashboard" element={<StaffBlockedRoute><Overview /></StaffBlockedRoute>} />
-          <Route path="/bookings" element={<Bookings />} />
-          <Route path="/bookings/:bookingId" element={<BookingDetail />} />
-          <Route path="/calendar" element={<BookingCalendar />} />
-          <Route path="/halls/new" element={<ManagerRoute><HallFormPage /></ManagerRoute>} />
-          <Route path="/halls/:hallId/edit" element={<ManagerRoute><HallFormPage /></ManagerRoute>} />
+          <Route path="/dashboard" element={hallPage(HALL_PAGE_KEYS.DASHBOARD, <StaffBlockedRoute><Overview /></StaffBlockedRoute>)} />
+          <Route path="/bookings" element={hallPage(HALL_PAGE_KEYS.BOOKINGS, <Bookings />)} />
+          <Route path="/bookings/:bookingId" element={hallPage(HALL_PAGE_KEYS.BOOKINGS, <BookingDetail />)} />
+          <Route path="/calendar" element={hallPage(HALL_PAGE_KEYS.CALENDAR, <BookingCalendar />)} />
+          <Route path="/halls/new" element={hallPage(HALL_PAGE_KEYS.HALLS, <ManagerRoute><HallFormPage /></ManagerRoute>)} />
+          <Route path="/halls/:hallId/edit" element={hallPage(HALL_PAGE_KEYS.HALLS, <ManagerRoute><HallFormPage /></ManagerRoute>)} />
           <Route path="/halls" element={<Navigate to="/settings?tab=halls" replace />} />
-          <Route path="/customers" element={<CustomerManagement />} />
-          <Route path="/customers/:customerId" element={<CustomerManagement />} />
-          <Route path="/payments" element={<ManagerRoute><Payments /></ManagerRoute>} />
-          <Route path="/expenses" element={<ManagerRoute><Expenses /></ManagerRoute>} />
-          <Route path="/expenses/:expenseId" element={<ManagerRoute><ExpenseDetail /></ManagerRoute>} />
+          <Route path="/customers" element={hallPage(HALL_PAGE_KEYS.CUSTOMERS, <CustomerManagement />)} />
+          <Route path="/customers/:customerId" element={hallPage(HALL_PAGE_KEYS.CUSTOMERS, <CustomerManagement />)} />
+          <Route path="/payments" element={hallPage(HALL_PAGE_KEYS.PAYMENTS, <ManagerRoute><Payments /></ManagerRoute>)} />
+          <Route path="/expenses" element={hallPage(HALL_PAGE_KEYS.EXPENSES, <ManagerRoute><Expenses /></ManagerRoute>)} />
+          <Route path="/expenses/:expenseId" element={hallPage(HALL_PAGE_KEYS.EXPENSES, <ManagerRoute><ExpenseDetail /></ManagerRoute>)} />
           <Route path="/staff" element={<Navigate to="/settings?tab=staff" replace />} />
-          <Route path="/inventory" element={<Inventory />} />
-          <Route path="/inventory/:itemId" element={<InventoryDetail />} />
-          <Route path="/decoration-packages" element={<DecorationPackages />} />
-          <Route path="/decoration-packages/:packageId" element={<DecorationPackageDetail />} />
-          <Route path="/reports" element={<ManagerRoute><Reports /></ManagerRoute>} />
-          <Route path="/notifications" element={<ManagerRoute><Notifications /></ManagerRoute>} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/settings" element={<ManagerRoute><Settings /></ManagerRoute>} />
+          <Route path="/inventory" element={hallPage(HALL_PAGE_KEYS.INVENTORY, <Inventory />)} />
+          <Route path="/inventory/:itemId" element={hallPage(HALL_PAGE_KEYS.INVENTORY, <InventoryDetail />)} />
+          <Route path="/decoration-packages" element={hallPage(HALL_PAGE_KEYS.DECORATIONS, <DecorationPackages />)} />
+          <Route path="/decoration-packages/:packageId" element={hallPage(HALL_PAGE_KEYS.DECORATIONS, <DecorationPackageDetail />)} />
+          <Route path="/reports" element={hallPage(HALL_PAGE_KEYS.REPORTS, <ManagerRoute><Reports /></ManagerRoute>)} />
+          <Route path="/notifications" element={hallPage(HALL_PAGE_KEYS.NOTIFICATIONS, <ManagerRoute><Notifications /></ManagerRoute>)} />
+          <Route path="/profile" element={hallPage(HALL_PAGE_KEYS.PROFILE, <Profile />)} />
+          <Route path="/settings" element={hallPage(HALL_PAGE_KEYS.SETTINGS, <ManagerRoute><Settings /></ManagerRoute>)} />
         </Route>
 
         {/* Guest House app - same shell UI as Marriage Hall */}

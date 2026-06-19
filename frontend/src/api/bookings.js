@@ -29,3 +29,6 @@ export const cancelBooking = async (id, data = {}) => {
   const response = await client.post(`/bookings/${id}/cancel/`, data);
   return response.data;
 };
+
+export const getHallPageVisibility = () =>
+  client.get('/bookings/page-visibility/').then((r) => r.data);

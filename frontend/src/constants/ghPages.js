@@ -26,6 +26,24 @@ export const GH_MODULE_ORDER = [
   GH_MODULE_KEYS.ID_SCANNER,
 ];
 
+export const GH_PAGE_LABELS = {
+  [GH_PAGE_KEYS.BOOK]: 'Book Stay',
+  [GH_PAGE_KEYS.STAYS]: 'Stays',
+  [GH_PAGE_KEYS.CALENDAR]: 'Calendar',
+  [GH_PAGE_KEYS.ROOMS]: 'Rooms',
+  [GH_PAGE_KEYS.SERVICES]: 'Add-on Services',
+  [GH_PAGE_KEYS.CUSTOMERS]: 'Guest Directory',
+  [GH_PAGE_KEYS.RECORDS]: 'All Records',
+  [GH_PAGE_KEYS.PAYMENTS]: 'Payments',
+  [GH_PAGE_KEYS.EXPENSES]: 'Expenses',
+  [GH_PAGE_KEYS.STAFF]: 'Staff',
+  [GH_PAGE_KEYS.REPORTS]: 'Reports',
+  [GH_PAGE_KEYS.NOTIFICATIONS]: 'Notifications',
+  [GH_PAGE_KEYS.DASHBOARD]: 'Dashboard',
+  [GH_PAGE_KEYS.PROFILE]: 'Profile',
+  [GH_PAGE_KEYS.SETTINGS]: 'Settings',
+};
+
 /** Default route when a page is hidden. */
 export const GH_PAGE_PATHS = {
   [GH_PAGE_KEYS.BOOK]: '/gh/book',
