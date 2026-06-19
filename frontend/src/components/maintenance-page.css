@@ -26,7 +26,6 @@
   text-align: center;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-top: 3px solid var(--primary);
   border-radius: 20px;
   box-shadow:
     var(--shadow-premium),
