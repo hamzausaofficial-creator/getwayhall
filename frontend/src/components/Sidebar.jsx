@@ -60,7 +60,6 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
   const dashboardNavItem = isGuestHouse
     ? { name: 'Dashboard', icon: Calculator, path: '/gh/dashboard', pageKey: GH_PAGE_KEYS.DASHBOARD }
     : { name: 'Accountant', icon: Calculator, path: '/dashboard', pageKey: HALL_PAGE_KEYS.DASHBOARD };
-  const brandSubtitle = isGuestHouse ? 'Guest House Management' : 'Marriage Hall Management';
 
   const mainNavItems = isGuestHouse ? guestHouseNavItems : hallNavItems;
 
@@ -139,7 +138,6 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
           tone="light"
           showName={!isCollapsed || isMobile}
           nameAccent={(!isCollapsed || isMobile) ? 'Centre' : undefined}
-          subtitle={(!isCollapsed || isMobile) ? brandSubtitle : undefined}
           className={isCollapsed && !isMobile ? 'app-logo--sidebar-collapsed' : 'app-logo--sidebar'}
         />
       </div>
