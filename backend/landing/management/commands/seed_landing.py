@@ -12,8 +12,8 @@ class Command(BaseCommand):
             self.stdout.write('Hero slides already exist - skipping hero seed.')
         else:
             HeroSlide.objects.create(
-                title='Manage Marriage Halls & Guest Houses With Ease',
-                subtitle='Complete venue management solution for bookings, guests, events, finances and operations.',
+                title='Manage Your Centre & Operations With Ease',
+                subtitle='Complete management for bookings, guests, finances, and day-to-day operations.',
                 button_text='Get Started',
                 button_link='/login',
                 sort_order=0,

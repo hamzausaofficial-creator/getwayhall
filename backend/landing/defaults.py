@@ -8,10 +8,10 @@ def get_default_landing_payload(request=None):
         'hero_slides': [
             {
                 'id': 0,
-                'title': 'Manage Marriage Halls & Guest Houses With Ease',
+                'title': 'Manage Your Centre & Operations With Ease',
                 'subtitle': (
-                    'Complete venue management solution for bookings, guests, '
-                    'events, finances and operations.'
+                    'Complete management for bookings, guests, finances, '
+                    'and day-to-day operations.'
                 ),
                 'background_image_url': None,
                 'button_text': 'Get Started',

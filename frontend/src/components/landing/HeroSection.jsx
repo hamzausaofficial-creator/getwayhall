@@ -7,15 +7,15 @@ import AnimatedCounter from './AnimatedCounter';
 
 const DEFAULT_TAGLINE_TEXTS = [
   'Trusted by venue owners across Pakistan',
-  'Manage halls & guest houses with ease',
+  'Manage your centre with confidence',
   'Built for Pakistani venues',
 ];
 
 export default function HeroSection({ slides = [], heroStats = [] }) {
   const navigate = useNavigate();
   const items = slides.length ? slides : [{
-    title: 'Manage Marriage Halls & Guest Houses With Ease',
-    subtitle: 'Complete venue management solution for bookings, guests, events, finances and operations.',
+    title: 'Manage Your Centre & Operations With Ease',
+    subtitle: 'Complete management for bookings, guests, finances, and day-to-day operations.',
     button_text: 'Get Started',
     button_link: '/login',
   }];
