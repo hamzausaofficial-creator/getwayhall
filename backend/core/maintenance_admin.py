@@ -17,7 +17,7 @@ class MaintenanceUntilAdminMixin:
         return format_maintenance_until_display(obj.maintenance_until)
 
     def get_changelist_form(self, request, **kwargs):
-        model = self.model
+        admin_model = self.model
 
         class ChangelistMaintenanceForm(forms.ModelForm):
             maintenance_until = MaintenanceUntilField(
@@ -26,7 +26,7 @@ class MaintenanceUntilAdminMixin:
             )
 
             class Meta:
-                model = model
+                model = admin_model
                 fields = ['in_maintenance', 'maintenance_until']
 
         return ChangelistMaintenanceForm
