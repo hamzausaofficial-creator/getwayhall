@@ -12,7 +12,7 @@ export function GhPageRoute({ pageKey, children }) {
     isPageInMaintenance,
     getPageMaintenanceUntil,
     firstVisiblePath,
-    reload,
+    syncVisibility,
   } = useGhPageVisibility();
 
   if (loading) return <AppLoader fullScreen />;
@@ -27,7 +27,7 @@ export function GhPageRoute({ pageKey, children }) {
         pageName={GH_PAGE_LABELS[pageKey]}
         homePath={firstVisiblePath}
         maintenanceUntil={getPageMaintenanceUntil(pageKey)}
-        onMaintenanceEnded={reload}
+        onMaintenanceEnded={syncVisibility}
       />
     );
   }

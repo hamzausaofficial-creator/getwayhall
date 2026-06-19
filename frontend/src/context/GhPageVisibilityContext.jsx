@@ -1,7 +1,34 @@
-import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { getGhPageVisibility } from '../api/guesthouse';
 import { GH_PAGE_ORDER, GH_PAGE_PATHS } from '../constants/ghPages';
 import { isMaintenanceExpired } from '../utils/maintenanceTime';
+
+function applyGhVisibilityData(data) {
+  const map = {};
+  const maintMap = {};
+  const untilMap = {};
+  const moduleMap = {};
+  const moduleMaintMap = {};
+  const moduleUntilMap = {};
+  (data?.pages || []).forEach((page) => {
+    map[page.key] = page.is_visible === true;
+    maintMap[page.key] = page.in_maintenance === true;
+    untilMap[page.key] = page.maintenance_until || null;
+  });
+  (data?.modules || []).forEach((mod) => {
+    moduleMap[mod.key] = mod.is_visible === true;
+    moduleMaintMap[mod.key] = mod.in_maintenance === true;
+    moduleUntilMap[mod.key] = mod.maintenance_until || null;
+  });
+  return {
+    map,
+    maintMap,
+    untilMap,
+    moduleMap,
+    moduleMaintMap,
+    moduleUntilMap,
+  };
+}
 
 // null = not loaded yet, {} = loaded (use explicit true/false per key)
 const GhPageVisibilityContext = createContext({
@@ -29,9 +56,27 @@ export function GhPageVisibilityProvider({ enabled = true, children }) {
   const [moduleVisibility, setModuleVisibility] = useState(null);
   const [moduleMaintenance, setModuleMaintenance] = useState(null);
   const [moduleMaintenanceUntil, setModuleMaintenanceUntil] = useState(null);
+  const [now, setNow] = useState(() => Date.now());
   const [tick, setTick] = useState(0);
+  const expirySyncRef = useRef(false);
 
   const reload = useCallback(() => setTick((t) => t + 1), []);
+
+  const syncVisibility = useCallback(() => {
+    if (!enabled) return Promise.resolve();
+    return getGhPageVisibility()
+      .then((data) => {
+        const parsed = applyGhVisibilityData(data);
+        setVisibility(parsed.map);
+        setMaintenance(parsed.maintMap);
+        setMaintenanceUntil(parsed.untilMap);
+        setModuleVisibility(parsed.moduleMap);
+        setModuleMaintenance(parsed.moduleMaintMap);
+        setModuleMaintenanceUntil(parsed.moduleUntilMap);
+        expirySyncRef.current = false;
+      })
+      .catch(() => {});
+  }, [enabled]);
 
   useEffect(() => {
     if (!enabled) {
@@ -50,28 +95,14 @@ export function GhPageVisibilityProvider({ enabled = true, children }) {
     getGhPageVisibility()
       .then((data) => {
         if (!active) return;
-        const map = {};
-        const maintMap = {};
-        const untilMap = {};
-        const moduleMap = {};
-        const moduleMaintMap = {};
-        const moduleUntilMap = {};
-        (data?.pages || []).forEach((page) => {
-          map[page.key] = page.is_visible === true;
-          maintMap[page.key] = page.in_maintenance === true;
-          untilMap[page.key] = page.maintenance_until || null;
-        });
-        (data?.modules || []).forEach((mod) => {
-          moduleMap[mod.key] = mod.is_visible === true;
-          moduleMaintMap[mod.key] = mod.in_maintenance === true;
-          moduleUntilMap[mod.key] = mod.maintenance_until || null;
-        });
-        setVisibility(map);
-        setMaintenance(maintMap);
-        setMaintenanceUntil(untilMap);
-        setModuleVisibility(moduleMap);
-        setModuleMaintenance(moduleMaintMap);
-        setModuleMaintenanceUntil(moduleUntilMap);
+        const parsed = applyGhVisibilityData(data);
+        setVisibility(parsed.map);
+        setMaintenance(parsed.maintMap);
+        setMaintenanceUntil(parsed.untilMap);
+        setModuleVisibility(parsed.moduleMap);
+        setModuleMaintenance(parsed.moduleMaintMap);
+        setModuleMaintenanceUntil(parsed.moduleUntilMap);
+        expirySyncRef.current = false;
       })
       .catch(() => {
         if (!active) return;
@@ -87,6 +118,58 @@ export function GhPageVisibilityProvider({ enabled = true, children }) {
       });
     return () => { active = false; };
   }, [enabled, tick]);
+
+  useEffect(() => {
+    const hasScheduled = maintenanceUntil
+      && Object.values(maintenanceUntil).some((until) => until && !isMaintenanceExpired(until));
+    if (!hasScheduled) return undefined;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [maintenanceUntil]);
+
+  useEffect(() => {
+    if (!maintenance || !maintenanceUntil || expirySyncRef.current) return;
+
+    const expiredKeys = Object.keys(maintenance).filter((key) => (
+      maintenance[key] === true
+      && maintenanceUntil[key]
+      && isMaintenanceExpired(maintenanceUntil[key])
+    ));
+    const expiredModules = moduleMaintenance && moduleMaintenanceUntil
+      ? Object.keys(moduleMaintenance).filter((key) => (
+        moduleMaintenance[key] === true
+        && moduleMaintenanceUntil[key]
+        && isMaintenanceExpired(moduleMaintenanceUntil[key])
+      ))
+      : [];
+
+    if (!expiredKeys.length && !expiredModules.length) return;
+
+    expirySyncRef.current = true;
+    setMaintenance((current) => {
+      const next = { ...current };
+      expiredKeys.forEach((key) => { next[key] = false; });
+      return next;
+    });
+    setMaintenanceUntil((current) => {
+      const next = { ...current };
+      expiredKeys.forEach((key) => { next[key] = null; });
+      return next;
+    });
+    if (expiredModules.length) {
+      setModuleMaintenance((current) => {
+        const next = { ...current };
+        expiredModules.forEach((key) => { next[key] = false; });
+        return next;
+      });
+      setModuleMaintenanceUntil((current) => {
+        const next = { ...current };
+        expiredModules.forEach((key) => { next[key] = null; });
+        return next;
+      });
+    }
+    syncVisibility();
+  }, [now, maintenance, maintenanceUntil, moduleMaintenance, moduleMaintenanceUntil, syncVisibility]);
 
   const value = useMemo(() => {
     const isActiveMaintenance = (active, until) => {
@@ -143,6 +226,7 @@ export function GhPageVisibilityProvider({ enabled = true, children }) {
       isModuleInMaintenance,
       firstVisiblePath,
       reload,
+      syncVisibility,
     };
   }, [
     loading,
@@ -152,7 +236,9 @@ export function GhPageVisibilityProvider({ enabled = true, children }) {
     moduleVisibility,
     moduleMaintenance,
     moduleMaintenanceUntil,
+    now,
     reload,
+    syncVisibility,
   ]);
 
   return (

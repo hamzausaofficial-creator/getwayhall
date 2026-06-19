@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Construction, ArrowLeft, Clock3, Timer } from 'lucide-react';
 import {
   formatMaintenanceEnd,
@@ -15,8 +15,13 @@ export default function MaintenancePage({
   onMaintenanceEnded,
 }) {
   const navigate = useNavigate();
+  const endedRef = useRef(false);
   const [remaining, setRemaining] = useState(() => formatMaintenanceRemaining(maintenanceUntil));
   const endLabel = formatMaintenanceEnd(maintenanceUntil);
+
+  useEffect(() => {
+    endedRef.current = false;
+  }, [maintenanceUntil]);
 
   useEffect(() => {
     if (!maintenanceUntil) {
@@ -26,7 +31,11 @@ export default function MaintenancePage({
 
     const tick = () => {
       if (isMaintenanceExpired(maintenanceUntil)) {
-        onMaintenanceEnded?.();
+        setRemaining(null);
+        if (!endedRef.current) {
+          endedRef.current = true;
+          onMaintenanceEnded?.();
+        }
         return;
       }
       setRemaining(formatMaintenanceRemaining(maintenanceUntil));
