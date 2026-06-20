@@ -34,7 +34,6 @@ export function GhPageRoute({ pageKey, children }) {
     return (
       <MaintenancePage
         pageName={GH_PAGE_LABELS[pageKey]}
-        homePath={firstVisiblePath}
         maintenanceUntil={getPageMaintenanceUntil(pageKey)}
         onMaintenanceEnded={syncVisibility}
       />

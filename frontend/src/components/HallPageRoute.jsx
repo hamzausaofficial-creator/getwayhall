@@ -33,7 +33,6 @@ export function HallPageRoute({ pageKey, children }) {
     return (
       <MaintenancePage
         pageName={HALL_PAGE_LABELS[pageKey]}
-        homePath={firstVisiblePath}
         maintenanceUntil={getPageMaintenanceUntil(pageKey)}
         onMaintenanceEnded={syncVisibility}
       />
