@@ -309,7 +309,7 @@ const GuestHouseStays = () => {
           </button>
           {canOperate && (
             <button type="button" className="btn-primary" onClick={openCreate}>
-              <Plus size={18} /> Book Stay
+              <Plus size={18} /> Reservation
             </button>
           )}
         </div>
@@ -428,7 +428,7 @@ const GuestHouseStays = () => {
                 </button>
                 {canOperate && (
                   <button type="button" className="btn-primary" onClick={openCreate}>
-                    <Plus size={16} /> Book Stay
+                    <Plus size={16} /> Reservation
                   </button>
                 )}
               </div>

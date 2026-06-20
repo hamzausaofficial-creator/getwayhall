@@ -48,7 +48,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
   ].filter((item) => !item.pageKey || isHallPageVisible(item.pageKey));
 
   const guestHouseNavItems = [
-    { name: 'Book Stay', icon: Plus, path: '/gh/book', pageKey: GH_PAGE_KEYS.BOOK },
+    { name: 'Reservation', icon: Plus, path: '/gh/book', pageKey: GH_PAGE_KEYS.BOOK },
     { name: 'Stays', icon: CalendarCheck, path: '/gh/stays', pageKey: GH_PAGE_KEYS.STAYS },
     { name: 'Calendar', icon: CalendarDays, path: '/gh/calendar', pageKey: GH_PAGE_KEYS.CALENDAR },
     { name: 'Guests', icon: Users, path: '/gh/customers', pageKey: GH_PAGE_KEYS.CUSTOMERS },

@@ -20,7 +20,7 @@ const ROUTE_TITLES = [
   [/^\/gh\/rooms\/[^/]+\/edit$/, 'Edit Room'],
   [/^\/gh\/stays\/[^/]+\/edit$/, 'Edit Stay'],
   [/^\/gh\/stays\/[^/]+$/, 'Stay Detail'],
-  [/^\/gh\/book$/, 'Book Stay'],
+  [/^\/gh\/book$/, 'Reservation'],
   [/^\/gh\/dashboard$/, 'Dashboard'],
   [/^\/gh\/stays$/, 'Stays'],
   [/^\/gh\/calendar$/, 'Calendar'],

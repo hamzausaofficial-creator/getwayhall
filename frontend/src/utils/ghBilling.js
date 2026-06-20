@@ -66,6 +66,14 @@ export function computeStayBilling({ room, guestsCount, nights, services = [], s
   };
 }
 
+export function formatReservationRoomLabel(room, nights, guestsCount) {
+  if (!room) return '';
+  const nightsN = Math.max(Number(nights) || 1, 1);
+  const guests = Math.max(Number(guestsCount) || 1, 1);
+  const rate = Number(room.price_per_night).toLocaleString();
+  return `Room ${room.room_number} (${rate}/night × ${nightsN} night${nightsN !== 1 ? 's' : ''}) (${guests} adult${guests !== 1 ? 's' : ''})`;
+}
+
 export function formatRoomGuestChargeLabel(billing) {
   if (!billing) return '';
   const { guests, nightly, nights } = billing;

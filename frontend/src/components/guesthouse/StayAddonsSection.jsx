@@ -91,17 +91,17 @@ export function StayAddonsPicker({ services, selectedIds, onToggle, nights, gues
   );
 }
 
-export function StayBillingBreakdown({ billing, advance = 0, compact = false }) {
+export function StayBillingBreakdown({ billing, advance = 0, compact = false, roomLabel }) {
   if (!billing) return null;
 
   const due = Math.max(0, billing.total - (Number(advance) || 0));
-  const rowStyle = { display: 'flex', justifyContent: 'space-between', fontSize: compact ? '12px' : '13px' };
+  const rowStyle = { display: 'flex', justifyContent: 'space-between', fontSize: compact ? '12px' : '13px', gap: '12px' };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '8px' : '10px' }}>
       <div style={rowStyle}>
-        <span style={{ color: 'var(--text-muted)' }}>{formatRoomGuestChargeLabel(billing)}</span>
-        <span style={{ fontWeight: '700' }}>{formatRs(billing.roomGuestTotal ?? billing.roomBase)}</span>
+        <span style={{ color: 'var(--text-muted)', flex: 1, minWidth: 0 }}>{roomLabel || formatRoomGuestChargeLabel(billing)}</span>
+        <span style={{ fontWeight: '700', flexShrink: 0 }}>{formatRs(billing.roomGuestTotal ?? billing.roomBase)}</span>
       </div>
       {billing.serviceLines.map((line) => (
         <div key={line.id} style={rowStyle}>

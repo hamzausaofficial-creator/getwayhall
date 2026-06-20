@@ -2,12 +2,11 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { format, addDays, parseISO } from 'date-fns';
 import {
-  ChevronLeft, Calendar, User, BedDouble, Wallet, FileText,
+  ChevronLeft, Calendar, User, BedDouble, FileText,
   CheckCircle, X, HelpCircle, Sparkles, Users,
-  Banknote, Globe,
 } from 'lucide-react';
 import { createStay, getAvailableRooms, listGhServices } from '../../api/guesthouse';
-import { computeStayBilling } from '../../utils/ghBilling';
+import { computeStayBilling, formatReservationRoomLabel } from '../../utils/ghBilling';
 import useLiveStayBill, { getBookingNights } from '../../hooks/useLiveStayBill';
 import { StayAddonsPicker, StayBillingBreakdown, GuestsCountHint } from '../../components/guesthouse/StayAddonsSection';
 import LiveBookingEstimate from '../../components/guesthouse/LiveBookingEstimate';
@@ -33,11 +32,6 @@ import {
   saveGuestFromDraft,
 } from '../../utils/idCardCustomer';
 
-const METHOD_OPTIONS = [
-  { value: 'CASH', label: 'Cash', icon: Banknote },
-  { value: 'ONLINE', label: 'Online', icon: Globe },
-];
-
 const SectionHeader = ({ icon: Icon, title, subtitle }) => (
   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '20px' }}>
     <div
@@ -62,6 +56,12 @@ const SectionHeader = ({ icon: Icon, title, subtitle }) => (
     </div>
   </div>
 );
+
+function createReservationPreviewId() {
+  const datePart = format(new Date(), 'yyMMdd');
+  const randPart = String(Math.floor(1000 + Math.random() * 9000));
+  return `GH${datePart}${randPart}`;
+}
 
 export default function BookFutureStayPage() {
   const navigate = useNavigate();
@@ -101,6 +101,7 @@ export default function BookFutureStayPage() {
   const [creatingGuest, setCreatingGuest] = useState(false);
   const [companions, setCompanions] = useState([]);
   const savingGuestRef = useRef(false);
+  const reservationPreviewId = useRef(createReservationPreviewId()).current;
 
   const toggleAddon = (id) => {
     setSelectedAddonIds((prev) =>
@@ -207,18 +208,6 @@ export default function BookFutureStayPage() {
   });
 
   const bookingNights = stayEstimate.nights || getBookingNights(form.check_in, form.check_out);
-
-  const formattedDates = useMemo(() => {
-    if (!form.check_in || !form.check_out) return null;
-    try {
-      return {
-        checkIn: format(parseISO(form.check_in), 'EEE, MMM d, yyyy'),
-        checkOut: format(parseISO(form.check_out), 'EEE, MMM d, yyyy'),
-      };
-    } catch {
-      return null;
-    }
-  }, [form.check_in, form.check_out]);
 
   const reloadCustomers = async () => {
     const custRes = await client.get('/customers/');
@@ -469,42 +458,103 @@ export default function BookFutureStayPage() {
               </span>
             </div>
             <h1 style={{ fontSize: '28px', fontWeight: '900', letterSpacing: '-0.03em', margin: 0, color: 'var(--secondary)' }}>
-              Book a Stay
+              Reservation
             </h1>
             <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: '6px 0 0 0' }}>
               Reserve a room, collect advance, and secure the dates.
             </p>
         </div>
-        {formattedDates && (
-          <div
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: '14px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px',
-            }}
-          >
-            <Calendar size={18} color="var(--primary)" />
-            <div style={{ fontSize: '13px' }}>
-              <span style={{ fontWeight: '700' }}>{formattedDates.checkIn}</span>
-              <span style={{ color: 'var(--text-muted)', margin: '0 8px' }}>→</span>
-              <span style={{ fontWeight: '700' }}>{formattedDates.checkOut}</span>
-              {stayEstimate?.nights > 0 && (
-                <span style={{ marginLeft: '10px', color: 'var(--primary)', fontWeight: '700', fontSize: '12px' }}>
-                  {stayEstimate.nights} night{stayEstimate.nights !== 1 ? 's' : ''}
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: '14px',
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            flexWrap: 'wrap',
+          }}
+        >
+          <Calendar size={18} color="var(--primary)" style={{ flexShrink: 0 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <input
+              type="date"
+              required
+              value={form.check_in}
+              onChange={(e) => {
+                const checkIn = e.target.value;
+                setForm((f) => ({
+                  ...f,
+                  check_in: checkIn,
+                  check_out: f.check_out && f.check_out <= checkIn
+                    ? format(addDays(parseISO(checkIn), 1), 'yyyy-MM-dd')
+                    : f.check_out,
+                }));
+              }}
+              style={{
+                padding: '8px 10px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                fontSize: '13px',
+                fontWeight: '700',
+                minWidth: '10.5rem',
+              }}
+            />
+            <span style={{ color: 'var(--text-muted)', fontWeight: '700' }}>→</span>
+            <input
+              type="date"
+              required
+              value={form.check_out}
+              min={form.check_in ? format(addDays(parseISO(form.check_in), 1), 'yyyy-MM-dd') : undefined}
+              onChange={(e) => setForm({ ...form, check_out: e.target.value })}
+              style={{
+                padding: '8px 10px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                fontSize: '13px',
+                fontWeight: '700',
+                minWidth: '10.5rem',
+              }}
+            />
+            {form.check_in && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={bookingNights > 0 ? bookingNights : 1}
+                  onChange={(e) => {
+                    const nights = Math.max(1, Math.min(365, parseInt(e.target.value, 10) || 1));
+                    setForm((f) => ({
+                      ...f,
+                      check_out: format(addDays(parseISO(f.check_in), nights), 'yyyy-MM-dd'),
+                    }));
+                  }}
+                  style={{
+                    width: '3rem',
+                    padding: '6px 6px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border)',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    color: 'var(--primary)',
+                    textAlign: 'center',
+                  }}
+                  aria-label="Number of nights"
+                />
+                <span style={{ color: 'var(--primary)', fontWeight: '700', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                  night{(bookingNights > 0 ? bookingNights : 1) !== 1 ? 's' : ''}
                 </span>
-              )}
-              {stayEstimate?.ready && (
-                <span style={{ marginLeft: '10px', color: 'var(--secondary)', fontWeight: '800', fontSize: '12px' }}>
-                  · {formatRs(stayEstimate.total)}
-                </span>
-              )}
-            </div>
+              </div>
+            )}
+            {stayEstimate?.ready && (
+              <span style={{ color: 'var(--secondary)', fontWeight: '800', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                · {formatRs(stayEstimate.total)}
+              </span>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {(formError || stayEstimate?.error) && (
@@ -528,58 +578,15 @@ export default function BookFutureStayPage() {
         <div className="booking-layout">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
 
-            {/* Dates first — billing starts here */}
-            <div className="premium-card" style={{ padding: '28px' }}>
-              <SectionHeader icon={Calendar} title="Stay period" subtitle="Check-in and check-out — nights calculate instantly" />
-              <div className="form-grid-2 form-grid-2--gap-24">
-                <div className="input-group">
-                  <label>Check-in date</label>
-                  <input
-                    required
-                    type="date"
-                    value={form.check_in}
-                    onChange={(e) => {
-                      const checkIn = e.target.value;
-                      setForm((f) => ({
-                        ...f,
-                        check_in: checkIn,
-                        check_out: f.check_out && f.check_out <= checkIn
-                          ? format(addDays(parseISO(checkIn), 1), 'yyyy-MM-dd')
-                          : f.check_out,
-                      }));
-                    }}
-                    style={{ padding: '12px 14px', borderRadius: '10px' }}
-                  />
-                </div>
-                <div className="input-group">
-                  <label>Check-out date</label>
-                  <input
-                    required
-                    type="date"
-                    value={form.check_out}
-                    min={form.check_in ? format(addDays(parseISO(form.check_in), 1), 'yyyy-MM-dd') : undefined}
-                    onChange={(e) => setForm({ ...form, check_out: e.target.value })}
-                    style={{ padding: '12px 14px', borderRadius: '10px' }}
-                  />
-                </div>
-                {bookingNights > 0 && (
-                  <div className="input-group">
-                    <label>Nights</label>
-                    <div style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border)', fontWeight: '800', background: 'var(--primary-light)', color: 'var(--primary)' }}>
-                      {bookingNights} night{bookingNights !== 1 ? 's' : ''}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
             {/* Room selection */}
             <div className="premium-card" style={{ padding: '28px' }}>
               <SectionHeader icon={BedDouble} title="Select room" subtitle="Total for your guests shows on each room card" />
               {availabilityLoading ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Checking availability…</p>
               ) : !form.check_in || !form.check_out ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Select check-in and check-out dates first.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
+                  Set check-in and check-out dates in the header above to see available rooms.
+                </p>
               ) : rooms.length === 0 ? (
                 <div style={{ padding: '20px', background: '#fef2f2', borderRadius: '12px', border: '1px solid #fecaca', color: '#b91c1c', fontSize: '14px' }}>
                   No active rooms found. Add rooms from Room Management first.
@@ -719,99 +726,6 @@ export default function BookFutureStayPage() {
               guestsCount={effectiveGuestsCount}
             />
 
-            {/* Advance payment */}
-            <div
-              className="premium-card"
-              style={{
-                padding: '28px',
-                background: 'linear-gradient(180deg, var(--surface) 0%, var(--primary-light) 100%)',
-                border: '1px solid rgba(91, 213, 30, 0.25)',
-              }}
-            >
-              <SectionHeader icon={Wallet} title="Advance payment" subtitle="Deposit now — balance due updates live below" />
-              {stayEstimate?.ready && (
-                <div style={{ marginBottom: '20px' }}>
-                  <LiveBookingEstimate
-                    bill={stayEstimate}
-                    advance={Number(form.advance_paid) || 0}
-                    title="Payment summary"
-                  />
-                </div>
-              )}
-              <div className="form-grid-2 form-grid-2--gap-24">
-                <div className="input-group">
-                  <label>Advance amount (Rs)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    step="100"
-                    placeholder="0"
-                    value={form.advance_paid}
-                    onChange={(e) => setForm({ ...form, advance_paid: e.target.value })}
-                    style={{ padding: '14px 16px', borderRadius: '10px', fontSize: '18px', fontWeight: '700' }}
-                  />
-                  {stayEstimate && !stayEstimate.error && (
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
-                      {[0, 25, 50, 100].map((pct) => {
-                        const amt = pct === 0 ? 0 : Math.round(stayEstimate.total * pct / 100);
-                        const label = pct === 0 ? 'None' : `${pct}%`;
-                        return (
-                          <button
-                            key={pct}
-                            type="button"
-                            onClick={() => setForm({ ...form, advance_paid: amt ? String(amt) : '' })}
-                            style={{
-                              padding: '6px 12px',
-                              borderRadius: '8px',
-                              fontSize: '12px',
-                              fontWeight: '700',
-                              border: '1px solid var(--border)',
-                              background: Number(form.advance_paid) === amt ? 'var(--primary)' : 'var(--surface)',
-                              color: Number(form.advance_paid) === amt ? '#fff' : 'var(--text-main)',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            {label}{amt > 0 ? ` (${formatRs(amt)})` : ''}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-                <div className="input-group">
-                  <label>Payment method</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-                    {METHOD_OPTIONS.map(({ value, label, icon: Icon }) => {
-                      const active = form.advance_payment_method === value;
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => setForm({ ...form, advance_payment_method: value })}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            padding: '12px 14px',
-                            borderRadius: '10px',
-                            border: active ? '2px solid var(--primary)' : '1px solid var(--border)',
-                            background: active ? 'var(--primary-light)' : 'var(--surface)',
-                            fontWeight: '700',
-                            fontSize: '13px',
-                            cursor: 'pointer',
-                            color: active ? 'var(--primary)' : 'var(--text-main)',
-                          }}
-                        >
-                          <Icon size={16} />
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Notes */}
             <div className="premium-card" style={{ padding: '28px' }}>
               <SectionHeader icon={FileText} title="Notes" subtitle="Special requests or arrival details (optional)" />
@@ -836,61 +750,97 @@ export default function BookFutureStayPage() {
                 }}
               >
                 <p style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px 0', opacity: 0.85 }}>
-                  Booking summary
+                  Reservation ID
                 </p>
-                <p style={{ fontSize: '22px', fontWeight: '900', margin: 0 }}>
-                  {stayEstimate?.ready ? formatRs(stayEstimate.total) : '—'}
+                <p style={{ fontSize: '18px', fontWeight: '900', margin: '0 0 14px 0', letterSpacing: '0.04em' }}>
+                  {reservationPreviewId}
+                </p>
+                <p style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px 0', opacity: 0.85 }}>
+                  Name
+                </p>
+                <p style={{ fontSize: '22px', fontWeight: '900', margin: '0 0 12px 0', lineHeight: 1.2 }}>
+                  {primaryCustomer ? customerDisplayName(primaryCustomer) : '—'}
+                </p>
+                <p style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px 0', opacity: 0.85 }}>
+                  Number
+                </p>
+                <p style={{ fontSize: '16px', fontWeight: '700', margin: 0, opacity: 0.95 }}>
+                  {primaryCustomer?.phone?.trim() || '—'}
                 </p>
               </div>
 
               <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {primaryCustomer && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '14px', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <User size={18} color="var(--primary)" />
-                    </div>
-                    <div>
-                      <p style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--text-muted)', margin: 0 }}>Primary booker</p>
-                      <p style={{ fontSize: '14px', fontWeight: '800', margin: '2px 0 0 0' }}>{customerDisplayName(primaryCustomer)}</p>
-                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
-                        {effectiveGuestsCount} guest{effectiveGuestsCount !== 1 ? 's' : ''} · total auto-calculated
-                      </p>
-                    </div>
-                  </div>
-                )}
-                {selectedRoom ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '14px', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <BedDouble size={18} color="var(--primary)" />
-                    </div>
-                    <div>
-                      <p style={{ fontSize: '14px', fontWeight: '800', margin: 0 }}>Room {selectedRoom.room_number}</p>
-                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
-                        {formatRs(selectedRoom.price_per_night)} / night
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0, paddingBottom: '14px', borderBottom: '1px solid var(--border)' }}>
-                    Select a room to see pricing
-                  </p>
-                )}
-
                 {stayEstimate?.ready ? (
                   <>
                     <StayBillingBreakdown
                       billing={stayEstimate}
-                      advance={Number(form.advance_paid) || 0}
                       compact
+                      roomLabel={
+                        selectedRoom
+                          ? formatReservationRoomLabel(selectedRoom, bookingNights, effectiveGuestsCount)
+                          : undefined
+                      }
                     />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '8px', borderTop: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                        <span style={{ fontWeight: 800, fontSize: 13 }}>Advance</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step="100"
+                          placeholder="0"
+                          value={form.advance_paid}
+                          onChange={(e) => setForm({ ...form, advance_paid: e.target.value })}
+                          style={{
+                            width: '110px',
+                            padding: '8px 10px',
+                            borderRadius: '8px',
+                            fontSize: '13px',
+                            fontWeight: '700',
+                            textAlign: 'right',
+                            border: '1px solid var(--border)',
+                          }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {[0, 25, 50, 100].map((pct) => {
+                          const amt = pct === 0 ? 0 : Math.round(stayEstimate.total * pct / 100);
+                          const label = pct === 0 ? 'None' : `${pct}%`;
+                          const active = Number(form.advance_paid) === amt;
+                          return (
+                            <button
+                              key={pct}
+                              type="button"
+                              onClick={() => setForm({ ...form, advance_paid: amt ? String(amt) : '' })}
+                              style={{
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: '700',
+                                border: '1px solid var(--border)',
+                                background: active ? 'var(--primary)' : 'var(--surface)',
+                                color: active ? '#fff' : 'var(--text-main)',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 14, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-                      <span>Balance due now</span>
+                      <span>Balance due</span>
                       <span style={{ color: stayEstimate.due > 0 ? 'var(--error)' : 'var(--primary)' }}>{formatRs(stayEstimate.due)}</span>
                     </div>
                   </>
                 ) : (
                   <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
-                    {stayEstimate?.hint || 'Select dates and a room to see the full bill.'}
+                    {!form.customer
+                      ? 'Select a guest to see name and number.'
+                      : !selectedRoom
+                        ? 'Select a room to see pricing.'
+                        : (stayEstimate?.hint || 'Select dates from the calendar to see the full bill.')}
                   </p>
                 )}
 
@@ -912,7 +862,7 @@ export default function BookFutureStayPage() {
                   }}
                 >
                   <CheckCircle size={20} />
-                  {submitting ? 'Booking…' : 'Confirm & Book Stay'}
+                  {submitting ? 'Booking…' : 'Confirm reservation'}
                 </button>
 
                 <button
@@ -960,7 +910,7 @@ export default function BookFutureStayPage() {
             className="btn-primary"
             disabled={submitting || !form.room || !form.customer}
           >
-            {submitting ? 'Booking…' : 'Book stay'}
+            {submitting ? 'Booking…' : 'Confirm reservation'}
           </button>
         </div>
       </form>

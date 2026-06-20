@@ -32,12 +32,12 @@ GH_PAGE_KEYS = frozenset(key for key, _label, _order in DEFAULT_GH_PAGES)
 
 
 def ensure_tenant_gh_pages(tenant):
-    """Create missing page and module visibility rows for a tenant (all visible by default)."""
+    """Create missing page and module visibility rows for a tenant."""
     from .models import GuestHousePageVisibility
 
     if not tenant:
         return
-    for page_key, label, sort_order in (*DEFAULT_GH_PAGES, *DEFAULT_GH_MODULES):
+    for page_key, label, sort_order in DEFAULT_GH_PAGES:
         GuestHousePageVisibility.objects.get_or_create(
             tenant=tenant,
             page_key=page_key,
@@ -45,5 +45,15 @@ def ensure_tenant_gh_pages(tenant):
                 'label': label,
                 'sort_order': sort_order,
                 'is_visible': True,
+            },
+        )
+    for page_key, label, sort_order in DEFAULT_GH_MODULES:
+        GuestHousePageVisibility.objects.get_or_create(
+            tenant=tenant,
+            page_key=page_key,
+            defaults={
+                'label': label,
+                'sort_order': sort_order,
+                'is_visible': False,
             },
         )

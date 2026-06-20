@@ -27,7 +27,7 @@ export const GH_MODULE_ORDER = [
 ];
 
 export const GH_PAGE_LABELS = {
-  [GH_PAGE_KEYS.BOOK]: 'Book Stay',
+  [GH_PAGE_KEYS.BOOK]: 'Reservation',
   [GH_PAGE_KEYS.STAYS]: 'Stays',
   [GH_PAGE_KEYS.CALENDAR]: 'Calendar',
   [GH_PAGE_KEYS.ROOMS]: 'Rooms',

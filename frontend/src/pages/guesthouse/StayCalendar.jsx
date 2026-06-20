@@ -93,7 +93,7 @@ export default function StayCalendar() {
                   onClick={() => goToBook()}
                 >
                   <Plus size={16} aria-hidden />
-                  <span>Book stay</span>
+                  <span>Reservation</span>
                 </button>
               )}
               <button type="button" className="btn-secondary" onClick={() => setCurrentDate(addMonths(currentDate, 1))} aria-label="Next month"><ChevronRight /></button>
