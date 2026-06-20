@@ -3,6 +3,7 @@ const SETTINGS_TABS = {
   rooms: 'Rooms',
   staff: 'Staff',
   records: 'All Records',
+  services: 'Add-on Services',
   profile: 'Settings',
   venue: 'Venue Info',
   notifications: 'Notifications',

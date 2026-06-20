@@ -40,7 +40,6 @@ import GuestHouseReports from './pages/guesthouse/Reports';
 import GhPrintStay from './pages/guesthouse/GhPrintStay';
 import GhPrintPayment from './pages/guesthouse/GhPrintPayment';
 import BookFutureStayPage from './pages/guesthouse/BookFutureStayPage';
-import GhServices from './pages/guesthouse/GhServices';
 import HallFormPage from './pages/HallFormPage';
 
 import ProtectedRoute from './components/ProtectedRoute';
@@ -132,7 +131,7 @@ function App() {
           <Route path="/gh/rooms/new" element={ghPage(GH_PAGE_KEYS.ROOMS, <RoomFormPage />)} />
           <Route path="/gh/rooms/:roomId/edit" element={ghPage(GH_PAGE_KEYS.ROOMS, <RoomFormPage />)} />
           <Route path="/gh/rooms" element={<Navigate to="/gh/settings?tab=rooms" replace />} />
-          <Route path="/gh/services" element={ghPage(GH_PAGE_KEYS.SERVICES, <ManagerRoute><GhServices /></ManagerRoute>)} />
+          <Route path="/gh/services" element={<Navigate to="/gh/settings?tab=services" replace />} />
           <Route path="/gh/customers" element={ghPage(GH_PAGE_KEYS.CUSTOMERS, <GhCustomers />)} />
           <Route path="/gh/customers/:customerId" element={ghPage(GH_PAGE_KEYS.CUSTOMERS, <GhCustomers />)} />
           <Route path="/gh/records" element={<Navigate to="/gh/settings?tab=records" replace />} />

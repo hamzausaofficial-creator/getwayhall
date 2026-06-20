@@ -16,9 +16,12 @@ const roomRequestConfig = (payload, imageFile) => {
   if (imageFile instanceof File) {
     const formData = new FormData();
     Object.entries(payload).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        formData.append(key, value);
+      if (value === undefined || value === null) return;
+      if (Array.isArray(value)) {
+        value.forEach((item) => formData.append(key, item));
+        return;
       }
+      formData.append(key, value);
     });
     formData.append('image', imageFile);
     return {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { 
   User, 
   Building2, 
@@ -17,6 +17,7 @@ import {
   Mail,
   AtSign,
   Lock,
+  Snowflake,
 } from 'lucide-react';
 import client from '../api/client';
 import { changePassword, updateMe, uploadAvatar } from '../api/auth';
@@ -30,6 +31,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import AppLoader from '../components/AppLoader';
 import HallManagement from './HallManagement';
 import GuestHouseRooms from './guesthouse/Rooms';
+import GhServices from './guesthouse/GhServices';
 import Staff from './Staff';
 import AllRecords from './guesthouse/AllRecords';
 import { useGhPageVisibility } from '../context/GhPageVisibilityContext';
@@ -64,6 +66,7 @@ const TAB_HEADINGS = {
   Profile: { title: 'My profile', subtitle: 'Update your photo, display name, and view account details.' },
   Halls: { title: 'Hall management', subtitle: 'Venues, capacity, and pricing for Marriage Hall bookings.' },
   Rooms: { title: 'Room management', subtitle: 'Rooms, rates, and availability for guest stays.' },
+  'Add-on Services': { title: 'Add-on services', subtitle: 'Manage AC, breakfast, laundry, and other extras for stays.' },
   Staff: { title: 'Staff management', subtitle: 'Team accounts, roles, and access for your organization.' },
   'All Records': { title: 'All records', subtitle: 'Reservations, payments, and expense vouchers in one ledger.' },
   'Venue Info': { title: 'Venue information', subtitle: 'Official name, contact details, and plan for your organization.' },
@@ -86,6 +89,7 @@ const parseApiError = (err) => {
 const TAB_FROM_PARAM = {
   halls: 'Halls',
   rooms: 'Rooms',
+  services: 'Add-on Services',
   staff: 'Staff',
   records: 'All Records',
   profile: 'Profile',
@@ -105,7 +109,6 @@ const Settings = () => {
   const { isPageVisible: isGhPageVisible } = useGhPageVisibility();
   const { isPageVisible: isHallPageVisible } = useHallPageVisibility();
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
   const tabParam = searchParams.get('tab');
   const initialTab = TAB_FROM_PARAM[tabParam] || 'Profile';
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -185,15 +188,10 @@ const Settings = () => {
     loadSettings();
   }, []);
 
-  useEffect(() => {
-    if (isGuestHouse && tabParam === 'services') {
-      navigate('/gh/services', { replace: true });
-    }
-  }, [tabParam, isGuestHouse, navigate]);
-
   const tabAllowed = (tabName) => {
     if (isGuestHouse) {
       if (tabName === 'Rooms') return isGhPageVisible(GH_PAGE_KEYS.ROOMS);
+      if (tabName === 'Add-on Services') return isGhPageVisible(GH_PAGE_KEYS.SERVICES);
       if (tabName === 'All Records') return isGhPageVisible(GH_PAGE_KEYS.RECORDS);
       if (tabName === 'Staff') return isAdmin && isGhPageVisible(GH_PAGE_KEYS.STAFF);
       return true;
@@ -355,6 +353,7 @@ const Settings = () => {
     { name: 'Profile', icon: User },
     ...(isMarriageHall && isHallPageVisible(HALL_PAGE_KEYS.HALLS) ? [{ name: 'Halls', icon: LayoutGrid }] : []),
     ...(isGuestHouse && isGhPageVisible(GH_PAGE_KEYS.ROOMS) ? [{ name: 'Rooms', icon: BedDouble }] : []),
+    ...(isGuestHouse && isGhPageVisible(GH_PAGE_KEYS.SERVICES) ? [{ name: 'Add-on Services', icon: Snowflake }] : []),
     ...(isGuestHouse && isGhPageVisible(GH_PAGE_KEYS.RECORDS) ? [{ name: 'All Records', icon: Archive }] : []),
     ...(isAdmin && (
       (isGuestHouse && isGhPageVisible(GH_PAGE_KEYS.STAFF))
@@ -428,7 +427,7 @@ const Settings = () => {
         </nav>
 
         {/* Content Area */}
-        <div className={`card settings-panel-card${['Halls', 'Rooms', 'Staff', 'All Records'].includes(activeTab) ? ' settings-panel-card--wide' : ''}${activeTab === 'Profile' ? ' settings-panel-card--profile' : ''}`}>
+        <div className={`card settings-panel-card${['Halls', 'Rooms', 'Add-on Services', 'Staff', 'All Records'].includes(activeTab) ? ' settings-panel-card--wide' : ''}${activeTab === 'Profile' ? ' settings-panel-card--profile' : ''}`}>
           <div className="settings-panel-card__head">
             <div style={{ minWidth: 0 }}>
               <h3 className="settings-panel-card__title">{panelHeading.title}</h3>
@@ -449,13 +448,17 @@ const Settings = () => {
             )}
           </div>
 
-          <div className={`settings-panel-card__body${['Halls', 'Rooms', 'Staff', 'All Records'].includes(activeTab) ? ' settings-panel-card__body--wide' : ''}`}>
+          <div className={`settings-panel-card__body${['Halls', 'Rooms', 'Add-on Services', 'Staff', 'All Records'].includes(activeTab) ? ' settings-panel-card__body--wide' : ''}`}>
             {activeTab === 'Halls' && isMarriageHall && (
               <HallManagement embedded />
             )}
 
             {activeTab === 'Rooms' && isGuestHouse && (
               <GuestHouseRooms embedded />
+            )}
+
+            {activeTab === 'Add-on Services' && isGuestHouse && (
+              <GhServices embedded />
             )}
 
             {activeTab === 'Staff' && isAdmin && (

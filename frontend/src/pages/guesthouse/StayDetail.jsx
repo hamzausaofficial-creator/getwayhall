@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import {
-  ArrowLeft, Calendar, User, BedDouble, CreditCard, Printer, Edit2,
+  ArrowLeft, User, BedDouble, CreditCard, Printer, Edit2,
   Wallet, Phone, Clock, Users, FileText, LogIn, LogOut, CheckCircle, XCircle,
   Plus, Trash2,
 } from 'lucide-react';
@@ -37,15 +37,6 @@ const TRACK_STEPS = [
 ];
 
 const STATUS_ORDER = { PENDING: 0, CONFIRMED: 1, CHECKED_IN: 2, CHECKED_OUT: 3, CANCELLED: -1 };
-
-const formatDate = (d) => {
-  if (!d) return '-';
-  try {
-    return format(parseISO(d), 'EEE, dd MMM yyyy');
-  } catch {
-    return d;
-  }
-};
 
 const formatDateShort = (d) => {
   if (!d) return '-';
@@ -347,9 +338,20 @@ export default function StayDetail() {
       )}
 
       <div className="sd-kpi-row">
+        <div className="sd-kpi sd-kpi--dates">
+          <div className="sd-kpi-dates">
+            <div className="sd-kpi-dates__cell">
+              <p className="sd-kpi__label"><LogIn size={12} /> Check-in</p>
+              <p className="sd-kpi__value">{formatDateShort(stay.check_in)}</p>
+            </div>
+            <span className="sd-kpi-dates__arrow" aria-hidden>→</span>
+            <div className="sd-kpi-dates__cell">
+              <p className="sd-kpi__label"><LogOut size={12} /> Check-out</p>
+              <p className="sd-kpi__value">{formatDateShort(stay.check_out)}</p>
+            </div>
+          </div>
+        </div>
         {[
-          { label: 'Check-in', value: formatDateShort(stay.check_in), icon: LogIn },
-          { label: 'Check-out', value: formatDateShort(stay.check_out), icon: LogOut },
           { label: 'Nights / Guests', value: `${stay.nights}N · ${stay.guests_count} guest${stay.guests_count !== 1 ? 's' : ''}`, icon: Users },
           { label: 'Rate / night', value: formatRs(stay.price_per_night), icon: Wallet },
         ].map(({ label, value, icon: Icon }) => (
@@ -367,87 +369,67 @@ export default function StayDetail() {
             <StayGuestRosterDetail guests={stay.guests} charges={stay.charges} />
           </div>
 
-          <div className="premium-card sd-section" style={{ padding: '22px' }}>
-            <h3 className="sd-section-title"><BedDouble size={18} /> Room</h3>
-            <div className="sd-room-badge">
-              <span className="sd-room-badge__num">{stay.room_number}</span>
-              <div>
-                <p style={{ fontWeight: 800, margin: '0 0 2px 0', color: 'var(--secondary)' }}>{stay.room_type || 'Standard room'}</p>
-                <p className="sd-room-badge__meta">{formatRs(stay.price_per_night)} / night</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="premium-card sd-section" style={{ padding: '22px' }}>
-            <h3 className="sd-section-title"><Calendar size={18} /> Stay period</h3>
-            <div className="sd-date-row">
-              <div className="sd-date-box sd-date-box--in">
-                <p className="sd-date-box__tag">Check-in</p>
-                <p className="sd-date-box__val">{formatDate(stay.check_in)}</p>
-              </div>
-              <div className="sd-date-mid">{stay.nights}N</div>
-              <div className="sd-date-box">
-                <p className="sd-date-box__tag">Check-out</p>
-                <p className="sd-date-box__val">{formatDate(stay.check_out)}</p>
-              </div>
-            </div>
-            {stay.notes && <div className="sd-notes">{stay.notes}</div>}
-          </div>
-
-          {canAccessPayments && (
-            <div className="premium-card sd-section" style={{ padding: '22px' }}>
-              <h3 className="sd-section-title"><Wallet size={18} /> Payment history</h3>
-              {payments.length === 0 ? (
-                <div className="sd-empty">
-                  <CreditCard size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
-                  <p style={{ margin: '0 0 12px 0', fontWeight: 600 }}>No payments yet</p>
-                  {hasCollectDue(due) && (
-                    <button type="button" className="btn-primary" onClick={() => navigate(`/gh/payments/new?stay=${stay.id}`)}>
-                      Record payment
-                    </button>
-                  )}
+          <div className={`sd-grid-2 sd-compact-pair${canAccessPayments ? '' : ' sd-compact-pair--single'}`}>
+            <div className="premium-card sd-section sd-section--compact">
+              <h3 className="sd-section-title"><BedDouble size={16} /> Room</h3>
+              <div className="sd-room-badge sd-room-badge--compact">
+                <span className="sd-room-badge__num">{stay.room_number}</span>
+                <div>
+                  <p className="sd-room-badge__type">{stay.room_type || 'Standard room'}</p>
+                  <p className="sd-room-badge__meta">{formatRs(stay.price_per_night)} / night</p>
                 </div>
-              ) : (
-                <div className="sd-pay-row">
-                  {payments.map((p) => {
-                    const isRefund = Number(p.amount) < 0 || (p.notes || '').includes('Refund');
-                    const isAdvance = (p.notes || '').includes('Initial advance');
-                    return (
-                      <div key={p.id} className={`sd-pay-card${isRefund ? ' sd-pay-card--refund' : ''}`}>
-                        <div className="sd-pay-card__top">
-                          <div style={{ minWidth: 0 }}>
-                            <p className="sd-pay-card__amt" style={{ color: isRefund ? '#b91c1c' : '#166534' }}>
-                              {formatRs(p.amount)}
-                              {isRefund && <span className="sd-tag sd-tag--refund">Refund</span>}
-                              {isAdvance && <span className="sd-tag sd-tag--advance">Advance</span>}
-                            </p>
-                            <p className="sd-pay-card__meta">
-                              {METHOD_LABELS[p.payment_method] || p.payment_method}
-                              {p.payment_date && ` · ${new Date(p.payment_date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`}
-                            </p>
-                            {p.notes && !isAdvance && !isRefund && (
-                              <p className="sd-pay-card__meta">{p.notes}</p>
-                            )}
-                          </div>
-                          <div className="sd-pay-card__actions">
+              </div>
+            </div>
+
+            {canAccessPayments && (
+              <div className="premium-card sd-section sd-section--compact">
+                <h3 className="sd-section-title"><Wallet size={16} /> Payment history</h3>
+                {payments.length === 0 ? (
+                  <div className="sd-empty sd-empty--compact">
+                    <CreditCard size={22} style={{ opacity: 0.3, marginBottom: 6 }} />
+                    <p className="sd-empty__text">No payments yet</p>
+                    {hasCollectDue(due) && (
+                      <button type="button" className="btn-primary sd-empty__btn" onClick={() => navigate(`/gh/payments/new?stay=${stay.id}`)}>
+                        Record payment
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="sd-pay-row sd-pay-row--compact">
+                    {payments.map((p) => {
+                      const isRefund = Number(p.amount) < 0 || (p.notes || '').includes('Refund');
+                      const isAdvance = (p.notes || '').includes('Initial advance');
+                      return (
+                        <div key={p.id} className={`sd-pay-card sd-pay-card--compact${isRefund ? ' sd-pay-card--refund' : ''}`}>
+                          <div className="sd-pay-card__top">
+                            <div className="sd-pay-card__main">
+                              <p className="sd-pay-card__amt" style={{ color: isRefund ? '#b91c1c' : '#166534' }}>
+                                {formatRs(p.amount)}
+                                {isRefund && <span className="sd-tag sd-tag--refund">Refund</span>}
+                                {isAdvance && <span className="sd-tag sd-tag--advance">Advance</span>}
+                              </p>
+                              <p className="sd-pay-card__meta">
+                                {METHOD_LABELS[p.payment_method] || p.payment_method}
+                                {p.payment_date && ` · ${new Date(p.payment_date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`}
+                              </p>
+                            </div>
                             <button
                               type="button"
-                              className="btn-secondary"
+                              className="btn-secondary sd-pay-card__receipt-btn"
                               onClick={() => navigate(`/gh/print/payment/${p.id}`)}
-                              style={{ padding: '8px 12px', fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}
                             >
-                              <Printer size={14} /> Receipt
+                              <Printer size={13} /> Receipt
                             </button>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              <Link to="/gh/payments" className="sd-link">All payments →</Link>
-            </div>
-          )}
+                      );
+                    })}
+                  </div>
+                )}
+                <Link to="/gh/payments" className="sd-link sd-link--compact">All payments →</Link>
+              </div>
+            )}
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

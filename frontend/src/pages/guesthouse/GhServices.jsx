@@ -1,33 +1,22 @@
 import { useEffect, useState } from 'react';
-import { Plus, Snowflake, Edit2, Trash2, X } from 'lucide-react';
-import { createPortal } from 'react-dom';
+import { Plus, Snowflake, Edit2, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AppLoader from '../../components/AppLoader';
+import GhServiceFormModal, {
+  emptyGhServiceForm, ghServiceSlugCode, GH_SERVICE_PRICING_OPTIONS,
+} from '../../components/guesthouse/GhServiceFormModal';
 import {
   listGhServicesAll, createGhService, updateGhService, deleteGhService,
 } from '../../api/guesthouse';
 import { usePermissions } from '../../hooks/usePermissions';
 import { formatRs } from '../../utils/currency';
+import './gh-services.css';
 
-const PRICING_OPTIONS = [
-  { value: 'PER_NIGHT', label: 'Per night' },
-  { value: 'PER_STAY', label: 'Per stay (one-time)' },
-  { value: 'PER_GUEST', label: 'Per guest per night' },
-];
+const PRICING_OPTIONS = GH_SERVICE_PRICING_OPTIONS;
 
-const slugCode = (label) => String(label || '')
-  .trim()
-  .toUpperCase()
-  .replace(/[^A-Z0-9]+/g, '_')
-  .replace(/^_|_$/g, '')
-  .slice(0, 32) || `SVC_${Date.now()}`;
-
-const emptyForm = {
-  label: '',
-  price: '',
-  pricing_unit: 'PER_NIGHT',
-  sort_order: 0,
-};
+function pricingMeta(unit) {
+  return PRICING_OPTIONS.find((o) => o.value === unit) || { label: unit, short: unit };
+}
 
 export default function GhServices({ embedded = false }) {
   const { canManage } = usePermissions();
@@ -35,7 +24,7 @@ export default function GhServices({ embedded = false }) {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(emptyGhServiceForm);
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
@@ -57,7 +46,7 @@ export default function GhServices({ embedded = false }) {
       return;
     }
     setEditing(null);
-    setForm(emptyForm);
+    setForm(emptyGhServiceForm);
     setModalOpen(true);
   };
 
@@ -97,7 +86,7 @@ export default function GhServices({ embedded = false }) {
         await updateGhService(editing.id, payload);
         toast.success('Service updated');
       } else {
-        await createGhService({ ...payload, code: slugCode(form.label) });
+        await createGhService({ ...payload, code: ghServiceSlugCode(form.label) });
         toast.success('Service added');
       }
       setModalOpen(false);
@@ -126,93 +115,103 @@ export default function GhServices({ embedded = false }) {
   const activeServices = services.filter((s) => s.is_active !== false);
   const inactiveServices = services.filter((s) => s.is_active === false);
 
-  return (
-    <div className="animate-fade-in">
-      {!embedded && (
-        <div className="page-header">
-          <div>
-            <p style={{ color: 'var(--text-muted)', margin: 0 }}>
-              Manage AC, breakfast, laundry, and other extras shown when booking stays.
-            </p>
+  const renderServiceCard = (svc) => {
+    const unit = pricingMeta(svc.pricing_unit);
+    return (
+      <article key={svc.id} className="gh-services__card">
+        <div className="gh-services__card-top">
+          <div className="gh-services__icon" aria-hidden>
+            <Snowflake size={16} />
           </div>
-          {canManage && (
-            <button type="button" className="btn-primary" onClick={openCreate} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Plus size={18} /> Add service
+          <div className="gh-services__info">
+            <p className="gh-services__name">{svc.label}</p>
+            <div className="gh-services__price-row">
+              <p className="gh-services__price">{formatRs(svc.price)}</p>
+              <span className="gh-services__unit">{unit.short}</span>
+            </div>
+            {svc.code && <p className="gh-services__code">{svc.code}</p>}
+          </div>
+        </div>
+        {canManage && (
+          <div className="gh-services__actions">
+            <button
+              type="button"
+              className="btn-secondary gh-services__action-btn"
+              onClick={() => openEdit(svc)}
+              aria-label={`Edit ${svc.label}`}
+            >
+              <Edit2 size={14} />
             </button>
-          )}
-        </div>
-      )}
+            <button
+              type="button"
+              className="btn-secondary gh-services__action-btn gh-services__action-btn--danger"
+              onClick={() => handleDeactivate(svc)}
+              aria-label={`Remove ${svc.label}`}
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        )}
+      </article>
+    );
+  };
 
-      {embedded && canManage && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-          <button type="button" className="btn-primary" onClick={openCreate} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-            <Plus size={16} /> Add service
+  return (
+    <div className={`gh-services animate-fade-in${embedded ? ' gh-services--embedded' : ''}`}>
+      <div className="gh-services__toolbar">
+        {!embedded && (
+          <p className="gh-services__meta">
+            Manage AC, breakfast, laundry, and other extras shown when booking stays.
+          </p>
+        )}
+        {embedded && (
+          <p className="gh-services__meta">
+            {activeServices.length} active service{activeServices.length !== 1 ? 's' : ''}
+          </p>
+        )}
+        {canManage && (
+          <button type="button" className="btn-primary gh-services__add-btn" onClick={openCreate}>
+            <Plus size={16} aria-hidden />
+            Add service
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {loading ? (
         <AppLoader inline message="Loading services…" />
       ) : activeServices.length === 0 ? (
-        <div className="premium-card" style={{ padding: '32px', textAlign: 'center' }}>
-          <Snowflake size={36} style={{ opacity: 0.35, marginBottom: 12 }} />
-          <p style={{ fontWeight: 700, marginBottom: 8 }}>No add-on services yet</p>
-          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 16 }}>
-            Add services like AC, breakfast, or laundry for guests to select when booking.
+        <div className="gh-services__empty">
+          <Snowflake size={28} style={{ opacity: 0.35, marginBottom: 10 }} />
+          <p className="gh-services__empty-title">No add-on services yet</p>
+          <p className="gh-services__empty-text">
+            Add AC, breakfast, laundry, or other extras for guests when booking.
           </p>
           {canManage && (
-            <button type="button" className="btn-primary" onClick={openCreate}>
-              <Plus size={16} /> Add first service
+            <button type="button" className="btn-primary gh-services__add-btn" onClick={openCreate}>
+              <Plus size={16} aria-hidden />
+              Add first service
             </button>
           )}
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 12 }}>
-          {activeServices.map((svc) => {
-            const unit = PRICING_OPTIONS.find((o) => o.value === svc.pricing_unit)?.label || svc.pricing_unit;
-            return (
-              <div
-                key={svc.id}
-                className="premium-card"
-                style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ fontWeight: 800, margin: '0 0 4px 0', color: 'var(--secondary)' }}>{svc.label}</p>
-                  <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
-                    {formatRs(svc.price)} · {unit}
-                    {svc.code && <span style={{ marginLeft: 8, fontFamily: 'monospace', fontSize: 11 }}>{svc.code}</span>}
-                  </p>
-                </div>
-                {canManage && (
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button type="button" className="btn-secondary" onClick={() => openEdit(svc)} style={{ padding: '8px 12px', fontSize: 12 }}>
-                      <Edit2 size={14} />
-                    </button>
-                    <button type="button" className="btn-secondary" onClick={() => handleDeactivate(svc)} style={{ padding: '8px 12px', fontSize: 12, color: '#b91c1c' }}>
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div className="gh-services__grid">
+          {activeServices.map(renderServiceCard)}
         </div>
       )}
 
       {inactiveServices.length > 0 && (
-        <div style={{ marginTop: 24 }}>
-          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+        <div className="gh-services__inactive">
+          <p className="gh-services__inactive-title">
             Inactive ({inactiveServices.length})
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="gh-services__inactive-list">
             {inactiveServices.map((svc) => (
-              <div key={svc.id} className="premium-card" style={{ padding: '12px 16px', opacity: 0.65, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 14 }}>{svc.label}</span>
+              <div key={svc.id} className="gh-services__inactive-row">
+                <span>{svc.label}</span>
                 {canManage && (
                   <button
                     type="button"
-                    className="btn-secondary"
-                    style={{ fontSize: 12, padding: '6px 10px' }}
+                    className="btn-secondary gh-services__restore-btn"
                     onClick={async () => {
                       try {
                         await updateGhService(svc.id, { is_active: true });
@@ -232,105 +231,17 @@ export default function GhServices({ embedded = false }) {
         </div>
       )}
 
-      {modalOpen && createPortal(
-        <div className="modal-overlay" onClick={() => !saving && setModalOpen(false)}>
-          <div
-            className="card modal-panel modal-panel--sm"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="gh-service-modal-title"
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                marginBottom: 24,
-              }}
-            >
-              <div>
-                <h3 id="gh-service-modal-title" style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
-                  {editing ? 'Edit service' : 'Add service'}
-                </h3>
-                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4, marginBottom: 0 }}>
-                  {editing
-                    ? 'Update price and how this extra is charged on stays.'
-                    : 'Add AC, breakfast, laundry, or other extras for booking.'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => !saving && setModalOpen(false)}
-                disabled={saving}
-                style={{ backgroundColor: 'transparent', color: 'var(--text-muted)', flexShrink: 0 }}
-                aria-label="Close"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div className="input-group">
-                <label>Service name</label>
-                <input
-                  required
-                  autoFocus
-                  value={form.label}
-                  onChange={(e) => setForm({ ...form, label: e.target.value })}
-                  placeholder="e.g. Breakfast, AC, Laundry"
-                />
-              </div>
-              <div className="form-grid-2">
-                <div className="input-group">
-                  <label>Price (Rs)</label>
-                  <input
-                    required
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={form.price}
-                    onChange={(e) => setForm({ ...form, price: e.target.value })}
-                    placeholder="500"
-                  />
-                </div>
-                <div className="input-group">
-                  <label>Pricing</label>
-                  <select
-                    value={form.pricing_unit}
-                    onChange={(e) => setForm({ ...form, pricing_unit: e.target.value })}
-                  >
-                    {PRICING_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="input-group">
-                <label>Sort order</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.sort_order}
-                  onChange={(e) => setForm({ ...form, sort_order: e.target.value })}
-                  placeholder="0"
-                />
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>
-                  Lower numbers appear first when booking a stay.
-                </p>
-              </div>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 4 }}>
-                <button type="button" className="btn-secondary" onClick={() => setModalOpen(false)} disabled={saving}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary" disabled={saving}>
-                  {saving ? 'Saving…' : editing ? 'Update' : 'Add service'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body,
+      {modalOpen && (
+        <GhServiceFormModal
+          open={modalOpen}
+          editing={editing}
+          form={form}
+          saving={saving}
+          createTitle="Add service"
+          onClose={() => !saving && setModalOpen(false)}
+          onChange={setForm}
+          onSubmit={handleSave}
+        />
       )}
     </div>
   );

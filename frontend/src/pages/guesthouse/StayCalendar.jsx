@@ -81,11 +81,14 @@ export default function StayCalendar() {
   return (
     <div className="animate-fade-in">
       <div className="calendar-layout calendar-layout--full">
-        <div className="premium-card stay-calendar" style={{ padding: '24px' }}>
+        <div className="premium-card stay-calendar">
           <div className="stay-calendar__toolbar">
-            <button type="button" className="btn-secondary" onClick={() => setCurrentDate(subMonths(currentDate, 1))} aria-label="Previous month"><ChevronLeft /></button>
             <h3 className="stay-calendar__month">{format(currentDate, 'MMMM yyyy')}</h3>
             <div className="stay-calendar__toolbar-actions">
+              <div className="stay-calendar__nav">
+                <button type="button" className="btn-secondary" onClick={() => setCurrentDate(subMonths(currentDate, 1))} aria-label="Previous month"><ChevronLeft /></button>
+                <button type="button" className="btn-secondary" onClick={() => setCurrentDate(addMonths(currentDate, 1))} aria-label="Next month"><ChevronRight /></button>
+              </div>
               {canOperate && (
                 <button
                   type="button"
@@ -96,7 +99,6 @@ export default function StayCalendar() {
                   <span>Reservation</span>
                 </button>
               )}
-              <button type="button" className="btn-secondary" onClick={() => setCurrentDate(addMonths(currentDate, 1))} aria-label="Next month"><ChevronRight /></button>
             </div>
           </div>
 

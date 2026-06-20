@@ -14,7 +14,6 @@ import {
   X,
   CalendarCheck,
   Plus,
-  Snowflake,
 } from 'lucide-react';
 import AppLoader from '../components/AppLoader';
 import { usePermissions } from '../hooks/usePermissions';
@@ -52,7 +51,6 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
     { name: 'Stays', icon: CalendarCheck, path: '/gh/stays', pageKey: GH_PAGE_KEYS.STAYS },
     { name: 'Calendar', icon: CalendarDays, path: '/gh/calendar', pageKey: GH_PAGE_KEYS.CALENDAR },
     { name: 'Guests', icon: Users, path: '/gh/customers', pageKey: GH_PAGE_KEYS.CUSTOMERS },
-    { name: 'Add-on Services', icon: Snowflake, path: '/gh/services', pageKey: GH_PAGE_KEYS.SERVICES },
     ...(canAccessExpenses ? [{ name: 'Expenses', icon: Wallet, path: '/gh/expenses', pageKey: GH_PAGE_KEYS.EXPENSES }] : []),
     ...(canAccessNotifications ? [{ name: 'Notifications', icon: Bell, path: '/gh/notifications', pageKey: GH_PAGE_KEYS.NOTIFICATIONS }] : []),
   ].filter((item) => !item.pageKey || isGhPageVisible(item.pageKey));

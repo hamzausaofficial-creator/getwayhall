@@ -9,6 +9,12 @@ from .guest_roster import sync_stay_guests, ensure_primary_guest_row, _guest_ent
 
 class RoomSerializer(serializers.ModelSerializer):
     effective_included_guests = serializers.SerializerMethodField()
+    addon_service_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=GuestHouseService.objects.none(),
+        source='addon_services',
+        required=False,
+    )
 
     class Meta:
         model = Room
@@ -16,9 +22,33 @@ class RoomSerializer(serializers.ModelSerializer):
             'id', 'room_number', 'room_type', 'beds', 'included_guests',
             'extra_guest_fee_per_night', 'effective_included_guests',
             'price_per_night', 'description', 'image', 'status',
+            'addon_service_ids',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'effective_included_guests']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get('request')
+        tenant_id = getattr(getattr(request, 'user', None), 'tenant_id', None)
+        if tenant_id:
+            addon_qs = GuestHouseService.objects.filter(
+                tenant_id=tenant_id,
+                is_active=True,
+            )
+            addon_field = self.fields['addon_service_ids']
+            addon_field.queryset = addon_qs
+            # many=True wraps a child PrimaryKeyRelatedField; queryset must be set there too.
+            if getattr(addon_field, 'child_relation', None) is not None:
+                addon_field.child_relation.queryset = addon_qs
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.pk:
+            data['addon_service_ids'] = list(
+                instance.addon_services.filter(is_active=True).values_list('id', flat=True)
+            )
+        return data
 
     def get_effective_included_guests(self, obj):
         return get_included_guests(obj)
@@ -369,6 +399,15 @@ class StayBookingSerializer(serializers.ModelSerializer):
                 })
         advance = attrs.get('advance_paid')
         addon_ids = self._parse_addon_ids()
+        if addon_ids and room:
+            allowed = set(
+                room.addon_services.filter(is_active=True).values_list('id', flat=True)
+            )
+            invalid = [aid for aid in addon_ids if aid not in allowed]
+            if invalid:
+                raise serializers.ValidationError({
+                    'addon_service_ids': 'One or more add-ons are not available for this room.',
+                })
         if advance is not None and not self.instance and room and check_in and check_out:
             total = self._estimate_total(room, check_in, check_out, guests_count, addon_ids or [])
             if Decimal(str(advance)) > total:

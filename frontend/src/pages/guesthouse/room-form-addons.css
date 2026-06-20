@@ -1,0 +1,230 @@
+.room-form-addons {
+  padding: 18px 20px !important;
+}
+
+.room-form-addons__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.room-form-addons__hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.4;
+  max-width: 520px;
+}
+
+.room-form-addons__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.room-form-addons__count {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.room-form-addons__count--active {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: rgba(91, 213, 30, 0.25);
+}
+
+.room-form-addons__add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.room-form-addons__add-btn:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.room-form-addons__empty-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 28px 16px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  background: var(--background);
+  text-align: center;
+}
+
+.room-form-addons__empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.room-form-addons__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
+}
+
+.room-form-addons__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.room-form-addons__card:hover {
+  border-color: rgba(91, 213, 30, 0.35);
+  box-shadow: var(--shadow-sm);
+}
+
+.room-form-addons__card--checked {
+  border-color: var(--primary);
+  background: linear-gradient(180deg, var(--primary-light) 0%, var(--surface) 100%);
+  box-shadow: 0 0 0 1px rgba(91, 213, 30, 0.15);
+}
+
+.room-form-addons__card-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 12px 10px;
+  min-width: 0;
+}
+
+.room-form-addons__check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.room-form-addons__check input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.room-form-addons__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.room-form-addons__name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--secondary);
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.room-form-addons__price-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.room-form-addons__amount {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.room-form-addons__unit {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.room-form-addons__card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 0 8px 8px;
+  border-top: 1px solid transparent;
+}
+
+.room-form-addons__card--checked .room-form-addons__card-foot {
+  border-top-color: rgba(91, 213, 30, 0.12);
+  padding-top: 6px;
+  margin-top: 2px;
+}
+
+.room-form-addons__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.room-form-addons__icon-btn:hover {
+  background: var(--surface-muted);
+  color: var(--secondary);
+  border-color: var(--border);
+}
+
+.room-form-addons__icon-btn--danger:hover {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+@media (max-width: 640px) {
+  .room-form-addons__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .room-form-addons__head-actions {
+    justify-content: space-between;
+  }
+
+  .room-form-addons__grid {
+    grid-template-columns: 1fr;
+  }
+}

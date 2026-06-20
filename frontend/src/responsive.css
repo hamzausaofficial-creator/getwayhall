@@ -557,46 +557,60 @@
   grid-template-columns: 1fr;
 }
 
+.stay-calendar {
+  padding: 16px;
+}
+
 .stay-calendar__toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
 }
 
 .stay-calendar__month {
   margin: 0;
-  font-size: clamp(18px, 2.5vw, 22px);
+  font-size: clamp(16px, 2.2vw, 20px);
   font-weight: 800;
   letter-spacing: -0.02em;
-  text-align: center;
+  text-align: left;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .stay-calendar__toolbar-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
+}
+
+.stay-calendar__nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .stay-calendar__book-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
+  padding: 8px 14px;
   white-space: nowrap;
 }
 
 .stay-calendar__weekdays {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .stay-calendar__weekday {
   text-align: center;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -606,14 +620,14 @@
 .stay-calendar__grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  grid-auto-rows: minmax(118px, 1fr);
-  gap: 10px;
+  grid-auto-rows: minmax(88px, auto);
+  gap: 8px;
 }
 
 .stay-calendar__day {
-  min-height: 118px;
-  padding: 10px;
-  border-radius: 12px;
+  min-height: 88px;
+  padding: 8px;
+  border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--surface);
   text-align: left;
@@ -638,12 +652,12 @@
 }
 
 .stay-calendar__day-top {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .stay-calendar__day-stays {
@@ -678,12 +692,12 @@
   }
 
   .stay-calendar__grid {
-    grid-auto-rows: minmax(92px, 1fr);
+    grid-auto-rows: minmax(76px, auto);
   }
 
   .stay-calendar__day {
-    min-height: 92px;
-    padding: 8px;
+    min-height: 76px;
+    padding: 6px;
   }
 }
 

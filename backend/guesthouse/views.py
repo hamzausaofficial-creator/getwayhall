@@ -441,6 +441,7 @@ class GuestHouseServiceViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.
         return qs
 
     def perform_destroy(self, instance):
+        instance.rooms.clear()
         instance.is_active = False
         instance.save(update_fields=['is_active'])
 

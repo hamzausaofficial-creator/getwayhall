@@ -6,10 +6,9 @@ import {
   CheckCircle, X, HelpCircle, Sparkles, Users,
 } from 'lucide-react';
 import { createStay, getAvailableRooms, listGhServices } from '../../api/guesthouse';
-import { computeStayBilling, formatReservationRoomLabel } from '../../utils/ghBilling';
+import { computeStayBilling, formatReservationRoomLabel, getServicePriceLabel } from '../../utils/ghBilling';
 import useLiveStayBill, { getBookingNights } from '../../hooks/useLiveStayBill';
-import { StayAddonsPicker, StayBillingBreakdown, GuestsCountHint } from '../../components/guesthouse/StayAddonsSection';
-import LiveBookingEstimate from '../../components/guesthouse/LiveBookingEstimate';
+import { StayBillingBreakdown, GuestsCountHint } from '../../components/guesthouse/StayAddonsSection';
 import client from '../../api/client';
 import toast from 'react-hot-toast';
 import AppLoader from '../../components/AppLoader';
@@ -31,6 +30,7 @@ import {
   isPhoneCompleteForAutoSave,
   saveGuestFromDraft,
 } from '../../utils/idCardCustomer';
+import './book-future-stay.css';
 
 const SectionHeader = ({ icon: Icon, title, subtitle }) => (
   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '20px' }}>
@@ -63,6 +63,15 @@ function createReservationPreviewId() {
   return `GH${datePart}${randPart}`;
 }
 
+function getRoomAddonServiceIds(room) {
+  return (room?.addon_service_ids || []).map((id) => Number(id));
+}
+
+function getRoomAddonServices(room, allServices) {
+  const allowed = new Set(getRoomAddonServiceIds(room).map(String));
+  return allServices.filter((s) => allowed.has(String(s.id)));
+}
+
 export default function BookFutureStayPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -82,6 +91,8 @@ export default function BookFutureStayPage() {
     room: prefillRoom ? String(prefillRoom) : '',
     check_in: prefillCheckIn,
     check_out: prefillCheckOut || (prefillCheckIn ? format(addDays(parseISO(prefillCheckIn), 1), 'yyyy-MM-dd') : ''),
+    check_in_time: '14:00',
+    check_out_time: '11:00',
     guests_count: 1,
     advance_paid: '',
     advance_payment_method: 'CASH',
@@ -104,9 +115,14 @@ export default function BookFutureStayPage() {
   const reservationPreviewId = useRef(createReservationPreviewId()).current;
 
   const toggleAddon = (id) => {
-    setSelectedAddonIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setSelectedAddonIds((prev) => (
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    ));
+  };
+
+  const selectRoom = (roomId) => {
+    setForm((f) => ({ ...f, room: String(roomId) }));
+    setSelectedAddonIds([]);
   };
 
   useEffect(() => {
@@ -126,7 +142,7 @@ export default function BookFutureStayPage() {
         ]);
         const custData = custRes.data?.results || custRes.data || [];
         setCustomers(Array.isArray(custData) ? custData : []);
-        setServices(svcList);
+        setServices(Array.isArray(svcList) ? svcList : []);
       } catch {
         toast.error('Failed to load booking data');
         navigate('/gh/calendar');
@@ -142,7 +158,10 @@ export default function BookFutureStayPage() {
       setRooms([]);
       setBookedRoomIds([]);
       setAvailabilityInfo(null);
-      if (form.room) setForm((f) => ({ ...f, room: '' }));
+      if (form.room) {
+        setForm((f) => ({ ...f, room: '' }));
+        setSelectedAddonIds([]);
+      }
       return undefined;
     }
     let cancelled = false;
@@ -161,6 +180,7 @@ export default function BookFutureStayPage() {
         setAvailabilityInfo(data);
         if (form.room && booked.has(String(form.room))) {
           setForm((f) => ({ ...f, room: '' }));
+          setSelectedAddonIds([]);
         }
       } catch {
         if (!cancelled) toast.error('Could not check room availability');
@@ -197,13 +217,19 @@ export default function BookFutureStayPage() {
     return Math.max((Number(selectedRoom.beds) || 1) - 1, 0);
   }, [selectedRoom]);
 
+  const validSelectedAddonIds = useMemo(() => {
+    if (!selectedRoom) return [];
+    const allowed = new Set(getRoomAddonServiceIds(selectedRoom).map(String));
+    return selectedAddonIds.filter((id) => allowed.has(String(id)));
+  }, [selectedRoom, selectedAddonIds]);
+
   const stayEstimate = useLiveStayBill({
     checkIn: form.check_in,
     checkOut: form.check_out,
     room: selectedRoom,
     guestsCount: effectiveGuestsCount,
     services,
-    selectedAddonIds,
+    selectedAddonIds: validSelectedAddonIds,
     advancePaid: form.advance_paid,
   });
 
@@ -381,9 +407,13 @@ export default function BookFutureStayPage() {
         guests_count: effectiveGuestsCount,
         advance_paid: parseFloat(form.advance_paid) || 0,
         advance_payment_method: form.advance_payment_method,
-        addon_service_ids: selectedAddonIds,
+        addon_service_ids: validSelectedAddonIds,
         status: 'CONFIRMED',
-        notes: form.notes,
+        notes: [
+          form.check_in_time ? `Check-in time: ${form.check_in_time}` : '',
+          form.check_out_time ? `Check-out time: ${form.check_out_time}` : '',
+          form.notes.trim(),
+        ].filter(Boolean).join('\n'),
       };
       if (shouldSendGuestRoster(effectiveGuestsCount, filledCompanions)) {
         payload.guest_roster = buildGuestRosterPayload(form.customer, primaryCustomer, filledCompanions);
@@ -422,141 +452,6 @@ export default function BookFutureStayPage() {
         <ChevronLeft size={22} />
       </button>
 
-      {/* Hero header */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, var(--primary-light) 0%, var(--surface) 60%)',
-          borderRadius: '20px',
-          border: '1px solid var(--border)',
-          padding: '28px 32px',
-          marginBottom: '32px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '16px',
-        }}
-      >
-        <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span
-                style={{
-                  fontSize: '10px',
-                  fontWeight: '800',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.12em',
-                  padding: '4px 10px',
-                  borderRadius: '20px',
-                  background: 'var(--primary)',
-                  color: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                <Sparkles size={10} /> Future booking
-              </span>
-            </div>
-            <h1 style={{ fontSize: '28px', fontWeight: '900', letterSpacing: '-0.03em', margin: 0, color: 'var(--secondary)' }}>
-              Reservation
-            </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: '6px 0 0 0' }}>
-              Reserve a room, collect advance, and secure the dates.
-            </p>
-        </div>
-        <div
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: '14px',
-            padding: '12px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            flexWrap: 'wrap',
-          }}
-        >
-          <Calendar size={18} color="var(--primary)" style={{ flexShrink: 0 }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <input
-              type="date"
-              required
-              value={form.check_in}
-              onChange={(e) => {
-                const checkIn = e.target.value;
-                setForm((f) => ({
-                  ...f,
-                  check_in: checkIn,
-                  check_out: f.check_out && f.check_out <= checkIn
-                    ? format(addDays(parseISO(checkIn), 1), 'yyyy-MM-dd')
-                    : f.check_out,
-                }));
-              }}
-              style={{
-                padding: '8px 10px',
-                borderRadius: '8px',
-                border: '1px solid var(--border)',
-                fontSize: '13px',
-                fontWeight: '700',
-                minWidth: '10.5rem',
-              }}
-            />
-            <span style={{ color: 'var(--text-muted)', fontWeight: '700' }}>→</span>
-            <input
-              type="date"
-              required
-              value={form.check_out}
-              min={form.check_in ? format(addDays(parseISO(form.check_in), 1), 'yyyy-MM-dd') : undefined}
-              onChange={(e) => setForm({ ...form, check_out: e.target.value })}
-              style={{
-                padding: '8px 10px',
-                borderRadius: '8px',
-                border: '1px solid var(--border)',
-                fontSize: '13px',
-                fontWeight: '700',
-                minWidth: '10.5rem',
-              }}
-            />
-            {form.check_in && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <input
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={bookingNights > 0 ? bookingNights : 1}
-                  onChange={(e) => {
-                    const nights = Math.max(1, Math.min(365, parseInt(e.target.value, 10) || 1));
-                    setForm((f) => ({
-                      ...f,
-                      check_out: format(addDays(parseISO(f.check_in), nights), 'yyyy-MM-dd'),
-                    }));
-                  }}
-                  style={{
-                    width: '3rem',
-                    padding: '6px 6px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border)',
-                    fontSize: '12px',
-                    fontWeight: '700',
-                    color: 'var(--primary)',
-                    textAlign: 'center',
-                  }}
-                  aria-label="Number of nights"
-                />
-                <span style={{ color: 'var(--primary)', fontWeight: '700', fontSize: '12px', whiteSpace: 'nowrap' }}>
-                  night{(bookingNights > 0 ? bookingNights : 1) !== 1 ? 's' : ''}
-                </span>
-              </div>
-            )}
-            {stayEstimate?.ready && (
-              <span style={{ color: 'var(--secondary)', fontWeight: '800', fontSize: '12px', whiteSpace: 'nowrap' }}>
-                · {formatRs(stayEstimate.total)}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
       {(formError || stayEstimate?.error) && (
         <div
           style={{
@@ -567,7 +462,7 @@ export default function BookFutureStayPage() {
             color: '#b91c1c',
             fontSize: '14px',
             fontWeight: '600',
-            marginBottom: '28px',
+            marginBottom: '20px',
           }}
         >
           {formError || stayEstimate?.error}
@@ -577,6 +472,115 @@ export default function BookFutureStayPage() {
       <form onSubmit={handleSubmit}>
         <div className="booking-layout">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+            {/* Hero header */}
+            <div
+              style={{
+                background: 'linear-gradient(135deg, var(--primary-light) 0%, var(--surface) 60%)',
+                borderRadius: '14px',
+                border: '1px solid var(--border)',
+                padding: '14px 18px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <span
+                  style={{
+                    fontSize: '9px',
+                    fontWeight: '800',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.12em',
+                    padding: '3px 8px',
+                    borderRadius: '20px',
+                    background: 'var(--primary)',
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <Sparkles size={9} /> Future booking
+                </span>
+              </div>
+              <h1 style={{ fontSize: '20px', fontWeight: '900', letterSpacing: '-0.03em', margin: '0 0 10px 0', color: 'var(--secondary)' }}>
+                Reservation
+              </h1>
+              <div className="book-future-datetime-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <Calendar size={16} color="var(--primary)" style={{ flexShrink: 0 }} />
+                <input
+                  type="date"
+                  required
+                  value={form.check_in}
+                  onChange={(e) => {
+                    const checkIn = e.target.value;
+                    setForm((f) => ({
+                      ...f,
+                      check_in: checkIn,
+                      check_out: f.check_out && f.check_out <= checkIn
+                        ? format(addDays(parseISO(checkIn), 1), 'yyyy-MM-dd')
+                        : f.check_out,
+                    }));
+                  }}
+                  aria-label="Check-in date"
+                />
+                <input
+                  type="time"
+                  value={form.check_in_time}
+                  onChange={(e) => setForm({ ...form, check_in_time: e.target.value })}
+                  aria-label="Check-in time"
+                />
+                <span style={{ color: 'var(--text-muted)', fontWeight: '700', fontSize: '12px' }}>→</span>
+                <input
+                  type="date"
+                  required
+                  value={form.check_out}
+                  min={form.check_in ? format(addDays(parseISO(form.check_in), 1), 'yyyy-MM-dd') : undefined}
+                  onChange={(e) => setForm({ ...form, check_out: e.target.value })}
+                  aria-label="Check-out date"
+                />
+                <input
+                  type="time"
+                  value={form.check_out_time}
+                  onChange={(e) => setForm({ ...form, check_out_time: e.target.value })}
+                  aria-label="Check-out time"
+                />
+                {form.check_in && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <input
+                      type="number"
+                      min={1}
+                      max={365}
+                      value={bookingNights > 0 ? bookingNights : 1}
+                      onChange={(e) => {
+                        const nights = Math.max(1, Math.min(365, parseInt(e.target.value, 10) || 1));
+                        setForm((f) => ({
+                          ...f,
+                          check_out: format(addDays(parseISO(f.check_in), nights), 'yyyy-MM-dd'),
+                        }));
+                      }}
+                      style={{
+                        width: '2.75rem',
+                        padding: '5px 4px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border)',
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        color: 'var(--primary)',
+                        textAlign: 'center',
+                        background: 'var(--surface)',
+                      }}
+                      aria-label="Number of nights"
+                    />
+                    <span style={{ color: 'var(--primary)', fontWeight: '700', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                      night{(bookingNights > 0 ? bookingNights : 1) !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                )}
+                {stayEstimate?.ready && (
+                  <span style={{ color: 'var(--secondary)', fontWeight: '800', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                    · {formatRs(stayEstimate.total)}
+                  </span>
+                )}
+              </div>
+            </div>
 
             {/* Room selection */}
             <div className="premium-card" style={{ padding: '28px' }}>
@@ -607,13 +611,15 @@ export default function BookFutureStayPage() {
                   {rooms.map((r) => {
                     const selected = String(form.room) === String(r.id);
                     const isBooked = bookedRoomIds.includes(String(r.id)) || r.is_available === false;
+                    const roomAddons = getRoomAddonServices(r, services);
+                    const previewAddonIds = selected ? validSelectedAddonIds : [];
                     const preview = bookingNights > 0 && !isBooked
                       ? computeStayBilling({
                         room: r,
                         guestsCount: effectiveGuestsCount,
                         nights: bookingNights,
                         services,
-                        selectedServiceIds: selectedAddonIds,
+                        selectedServiceIds: previewAddonIds,
                       })
                       : null;
                     return (
@@ -621,7 +627,7 @@ export default function BookFutureStayPage() {
                         key={r.id}
                         type="button"
                         disabled={isBooked}
-                        onClick={() => !isBooked && setForm({ ...form, room: String(r.id) })}
+                        onClick={() => !isBooked && selectRoom(r.id)}
                         style={{
                           textAlign: 'left',
                           padding: r.image ? '0' : '18px',
@@ -666,6 +672,26 @@ export default function BookFutureStayPage() {
                           <p style={{ fontSize: '13px', fontWeight: '800', margin: '8px 0 0', color: 'var(--primary)' }}>
                             Stay total: {formatRs(preview.total)}
                           </p>
+                        )}
+                        {selected && !isBooked && roomAddons.length > 0 && (
+                          <div
+                            className="book-room-addons"
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                          >
+                            <p className="book-room-addons__label">Extra services</p>
+                            {roomAddons.map((svc) => (
+                              <label key={svc.id} className="book-room-addons__item">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedAddonIds.includes(svc.id)}
+                                  onChange={() => toggleAddon(svc.id)}
+                                />
+                                <span className="book-room-addons__name">{svc.label}</span>
+                                <span className="book-room-addons__price">{getServicePriceLabel(svc)}</span>
+                              </label>
+                            ))}
+                          </div>
                         )}
                         </div>
                       </button>
@@ -712,20 +738,6 @@ export default function BookFutureStayPage() {
               )}
             </div>
 
-            <LiveBookingEstimate
-              bill={stayEstimate}
-              advance={Number(form.advance_paid) || 0}
-              title="Current bill (updates live)"
-            />
-
-            <StayAddonsPicker
-              services={services}
-              selectedIds={selectedAddonIds}
-              onToggle={toggleAddon}
-              nights={bookingNights}
-              guestsCount={effectiveGuestsCount}
-            />
-
             {/* Notes */}
             <div className="premium-card" style={{ padding: '28px' }}>
               <SectionHeader icon={FileText} title="Notes" subtitle="Special requests or arrival details (optional)" />
@@ -740,31 +752,25 @@ export default function BookFutureStayPage() {
           </div>
 
           {/* Sticky summary sidebar */}
-          <div style={{ position: 'sticky', top: '100px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ position: 'sticky', top: '88px', display: 'flex', flexDirection: 'column', gap: '20px', alignSelf: 'start' }}>
             <div className="premium-card" style={{ padding: 0, overflow: 'hidden', borderRadius: '18px', border: '1px solid var(--border)' }}>
               <div
                 style={{
                   background: 'linear-gradient(135deg, var(--primary) 0%, #3da015 100%)',
-                  padding: '22px 24px',
+                  padding: '14px 16px',
                   color: '#fff',
                 }}
               >
-                <p style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px 0', opacity: 0.85 }}>
+                <p style={{ fontSize: '13px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 3px 0', opacity: 0.9 }}>
                   Reservation ID
                 </p>
-                <p style={{ fontSize: '18px', fontWeight: '900', margin: '0 0 14px 0', letterSpacing: '0.04em' }}>
+                <p style={{ fontSize: '10px', fontWeight: '700', margin: '0 0 8px 0', letterSpacing: '0.02em', opacity: 0.95 }}>
                   {reservationPreviewId}
                 </p>
-                <p style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px 0', opacity: 0.85 }}>
-                  Name
-                </p>
-                <p style={{ fontSize: '22px', fontWeight: '900', margin: '0 0 12px 0', lineHeight: 1.2 }}>
+                <p style={{ fontSize: '15px', fontWeight: '800', margin: '0 0 3px 0', lineHeight: 1.25 }}>
                   {primaryCustomer ? customerDisplayName(primaryCustomer) : '—'}
                 </p>
-                <p style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px 0', opacity: 0.85 }}>
-                  Number
-                </p>
-                <p style={{ fontSize: '16px', fontWeight: '700', margin: 0, opacity: 0.95 }}>
+                <p style={{ fontSize: '13px', fontWeight: '600', margin: 0, opacity: 0.9 }}>
                   {primaryCustomer?.phone?.trim() || '—'}
                 </p>
               </div>

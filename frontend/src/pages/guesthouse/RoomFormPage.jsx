@@ -6,6 +6,7 @@ import {
 import { createRoom, updateRoom, getRoom } from '../../api/guesthouse';
 import toast from 'react-hot-toast';
 import AppLoader from '../../components/AppLoader';
+import RoomFormAddonsSection from '../../components/guesthouse/RoomFormAddonsSection';
 import { usePermissions } from '../../hooks/usePermissions';
 import { formatRs } from '../../utils/currency';
 import { resolveMediaUrl } from '../../utils/media';
@@ -68,6 +69,7 @@ export default function RoomFormPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const [selectedAddonIds, setSelectedAddonIds] = useState([]);
 
   useEffect(() => {
     if (!canManage) {
@@ -92,6 +94,7 @@ export default function RoomFormPage() {
             status: room.status || 'ACTIVE',
             description: room.description || '',
           });
+          setSelectedAddonIds((room.addon_service_ids || []).map((id) => Number(id)));
           setExistingImage(room.image || '');
         }
       } catch {
@@ -155,6 +158,7 @@ export default function RoomFormPage() {
       price_per_night: Number(form.price_per_night),
       status: form.status,
       description: form.description,
+      addon_service_ids: selectedAddonIds,
     };
     try {
       if (isEdit) {
@@ -348,6 +352,14 @@ export default function RoomFormPage() {
                   </select>
                 </div>
               </div>
+            </section>
+
+            <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {sectionTitle('Extra services for this room')}
+              <RoomFormAddonsSection
+                selectedIds={selectedAddonIds}
+                onSelectedIdsChange={setSelectedAddonIds}
+              />
             </section>
 
             <section style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

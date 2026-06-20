@@ -15,7 +15,7 @@ export function StayAddonsPicker({ services, selectedIds, onToggle, nights, gues
       <div className="premium-card" style={{ padding: '20px 24px' }}>
         <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
           No add-on services configured. Add AC, breakfast, laundry, etc. in{' '}
-          <Link to="/gh/services" style={{ color: 'var(--primary)', fontWeight: 700 }}>
+          <Link to="/gh/settings?tab=services" style={{ color: 'var(--primary)', fontWeight: 700 }}>
             Add-on Services
           </Link>
           .

@@ -24,7 +24,7 @@
 /* KPI strip */
 .sd-kpi-row {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.35fr) repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 24px;
 }
@@ -35,6 +35,29 @@
   background: var(--surface);
   border: 1px solid var(--border);
   min-width: 0;
+}
+
+.sd-kpi--dates {
+  padding: 14px 16px;
+}
+
+.sd-kpi-dates {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sd-kpi-dates__cell {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.sd-kpi-dates__arrow {
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--primary);
 }
 
 .sd-kpi__label {
@@ -147,6 +170,31 @@
   gap: 16px;
 }
 
+.sd-compact-pair {
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.sd-compact-pair--single {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 420px;
+}
+
+.sd-section--compact {
+  margin-bottom: 0;
+  padding: 14px 16px;
+}
+
+.sd-section--compact .sd-section-title {
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.sd-section--compact .sd-section-title svg {
+  width: 16px;
+  height: 16px;
+}
+
 .sd-field__label {
   font-size: 11px;
   font-weight: 700;
@@ -172,6 +220,30 @@
   background: var(--primary-light);
   border: 1px solid rgba(91, 213, 30, 0.25);
   margin-bottom: 16px;
+}
+
+.sd-room-badge--compact {
+  display: flex;
+  width: 100%;
+  margin-bottom: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  gap: 8px;
+}
+
+.sd-room-badge__type {
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0 0 2px 0;
+  color: var(--secondary);
+}
+
+.sd-room-badge--compact .sd-room-badge__num {
+  font-size: 22px;
+}
+
+.sd-room-badge--compact .sd-room-badge__meta {
+  font-size: 12px;
 }
 
 .sd-room-badge__num {
@@ -245,6 +317,10 @@
   gap: 10px;
 }
 
+.sd-pay-row--compact {
+  gap: 8px;
+}
+
 .sd-pay-card {
   display: flex;
   flex-direction: column;
@@ -253,6 +329,40 @@
   border-radius: 12px;
   border: 1px solid var(--border);
   background: var(--background);
+}
+
+.sd-pay-card--compact {
+  gap: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+.sd-pay-card--compact .sd-pay-card__top {
+  align-items: center;
+}
+
+.sd-pay-card__main {
+  min-width: 0;
+  flex: 1;
+}
+
+.sd-pay-card__receipt-btn {
+  padding: 6px 10px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.sd-pay-card--compact .sd-pay-card__amt {
+  font-size: 14px;
+}
+
+.sd-pay-card--compact .sd-pay-card__meta {
+  font-size: 11px;
+  margin-top: 2px;
 }
 
 .sd-pay-card--refund {
@@ -440,6 +550,11 @@
   color: var(--primary);
 }
 
+.sd-link--compact {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
 .sd-notes {
   margin-top: 14px;
   padding: 14px;
@@ -460,6 +575,21 @@
   color: var(--text-muted);
 }
 
+.sd-empty--compact {
+  padding: 16px 12px;
+}
+
+.sd-empty__text {
+  margin: 0 0 10px 0;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.sd-empty__btn {
+  padding: 8px 12px !important;
+  font-size: 12px !important;
+}
+
 /* Mobile sticky bar for primary action */
 .sd-mobile-bar {
   display: none;
@@ -469,6 +599,14 @@
   .sd-kpi-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+  }
+
+  .sd-kpi--dates {
+    grid-column: 1 / -1;
+  }
+
+  .sd-kpi-dates {
+    justify-content: space-between;
   }
 
   .sd-kpi {
@@ -491,6 +629,10 @@
   .sd-grid-2 {
     grid-template-columns: 1fr;
     gap: 14px;
+  }
+
+  .sd-compact-pair--single {
+    max-width: none;
   }
 
   .sd-date-row {

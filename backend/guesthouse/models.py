@@ -40,6 +40,12 @@ class Room(models.Model):
     description = models.TextField(blank=True, default='')
     image = models.ImageField(upload_to='gh_rooms/', blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
+    addon_services = models.ManyToManyField(
+        'GuestHouseService',
+        blank=True,
+        related_name='rooms',
+        help_text='Extra services guests can add when booking this room.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
