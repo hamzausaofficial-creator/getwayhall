@@ -441,16 +441,31 @@ export default function StayDetail() {
             <div className="sd-bill__body">
               {stay.billing_breakdown && (
                 <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>
-                      {stay.billing_breakdown.guests
-                        ? `Room (${stay.billing_breakdown.guests} guest${stay.billing_breakdown.guests !== 1 ? 's' : ''} × ${formatRs(stay.billing_breakdown.price_per_guest_per_night || stay.price_per_night)}/guest/night × ${stay.billing_breakdown.nights} night${stay.billing_breakdown.nights !== 1 ? 's' : ''})`
-                        : `Room (${stay.billing_breakdown.nights} night${stay.billing_breakdown.nights !== 1 ? 's' : ''})`}
-                    </span>
-                    <span style={{ fontWeight: 700 }}>
-                      {formatRs(stay.billing_breakdown.room_guest_total ?? stay.billing_breakdown.room_base)}
-                    </span>
-                  </div>
+                  {Number(stay.billing_breakdown.extra_guest_total) > 0 ? (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>
+                          Room base ({stay.billing_breakdown.included_guests} guest{stay.billing_breakdown.included_guests !== 1 ? 's' : ''} incl.)
+                        </span>
+                        <span style={{ fontWeight: 700 }}>{formatRs(stay.billing_breakdown.room_base)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>
+                          Extra guests ({stay.billing_breakdown.extra_guests} × {formatRs(stay.billing_breakdown.extra_guest_fee_per_night)}/night)
+                        </span>
+                        <span style={{ fontWeight: 700 }}>{formatRs(stay.billing_breakdown.extra_guest_total)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>
+                        Room ({stay.billing_breakdown.included_guests ?? 1} guest{(stay.billing_breakdown.included_guests ?? 1) !== 1 ? 's' : ''} incl. × {formatRs(stay.price_per_night)}/night × {stay.billing_breakdown.nights} night{stay.billing_breakdown.nights !== 1 ? 's' : ''})
+                      </span>
+                      <span style={{ fontWeight: 700 }}>
+                        {formatRs(stay.billing_breakdown.room_guest_total ?? stay.billing_breakdown.room_base)}
+                      </span>
+                    </div>
+                  )}
                   {(stay.billing_breakdown.service_charges || []).map((line) => (
                     <div key={line.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--text-muted)' }}>{line.description}</span>

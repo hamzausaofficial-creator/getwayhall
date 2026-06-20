@@ -251,7 +251,6 @@ class StayBookingSerializer(serializers.ModelSerializer):
         guests = max(int(obj.guests_count or 1), 1)
         room_charges = compute_room_charges(room, nights, guests)
         room_guest_total = room_charges['room_total']
-        nightly = room_charges['price_per_guest_per_night']
 
         service_lines = []
         custom_lines = []
@@ -277,13 +276,13 @@ class StayBookingSerializer(serializers.ModelSerializer):
         return {
             'nights': nights,
             'guests': guests,
-            'price_per_guest_per_night': float(nightly),
+            'price_per_guest_per_night': float(room_charges['price_per_night']),
             'room_guest_total': float(room_guest_total),
-            'included_guests': 1,
-            'extra_guests': max(guests - 1, 0),
-            'extra_guest_fee_per_night': float(nightly),
-            'room_base': float(room_guest_total),
-            'extra_guest_total': 0.0,
+            'included_guests': room_charges['included_guests'],
+            'extra_guests': room_charges['extra_guests'],
+            'extra_guest_fee_per_night': float(room_charges['extra_guest_fee_per_night']),
+            'room_base': float(room_charges['room_base']),
+            'extra_guest_total': float(room_charges['extra_guest_total']),
             'service_charges': service_lines,
             'service_total': float(service_total),
             'custom_charges': custom_lines,

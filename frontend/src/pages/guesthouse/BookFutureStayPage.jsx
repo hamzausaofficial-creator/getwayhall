@@ -6,7 +6,7 @@ import {
   CheckCircle, X, HelpCircle, Sparkles, Users,
 } from 'lucide-react';
 import { createStay, getAvailableRooms, listGhServices } from '../../api/guesthouse';
-import { computeStayBilling, formatReservationRoomLabel, getServicePriceLabel } from '../../utils/ghBilling';
+import { computeStayBilling, formatReservationRoomLabel, getServicePriceLabel, getIncludedGuests } from '../../utils/ghBilling';
 import useLiveStayBill, { getBookingNights } from '../../hooks/useLiveStayBill';
 import { StayBillingBreakdown, GuestsCountHint } from '../../components/guesthouse/StayAddonsSection';
 import client from '../../api/client';
@@ -666,7 +666,9 @@ export default function BookFutureStayPage() {
                         </p>
                         <p style={{ fontSize: '15px', fontWeight: '800', margin: 0, color: isBooked ? 'var(--text-muted)' : 'var(--secondary)' }}>
                           {formatRs(r.price_per_night)}
-                          <span style={{ fontSize: '11px', fontWeight: '500', color: 'var(--text-muted)' }}> / guest / night</span>
+                          <span style={{ fontSize: '11px', fontWeight: '500', color: 'var(--text-muted)' }}>
+                            {' '}/ night · {getIncludedGuests(r)} incl.
+                          </span>
                         </p>
                         {preview && (
                           <p style={{ fontSize: '13px', fontWeight: '800', margin: '8px 0 0', color: 'var(--primary)' }}>

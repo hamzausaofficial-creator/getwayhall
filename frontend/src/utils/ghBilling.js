@@ -26,19 +26,36 @@ export function computeServiceAmount(service, nights, guestsCount) {
   return price;
 }
 
-/** Each guest pays the same nightly room rate as the primary guest. */
+/** Base rate covers included guests; extra guests pay extra_guest_fee_per_night. */
 export function computeRoomGuestCharges(room, nights, guestsCount) {
   const n = Math.max(Number(nights) || 0, 1);
   const guests = Math.max(Number(guestsCount) || 1, 1);
   const nightly = Number(room?.price_per_night) || 0;
-  const roomGuestTotal = nightly * guests * n;
-  return { nights: n, guests, nightly, roomGuestTotal };
+  const included = getIncludedGuests(room);
+  const extraFee = Number(room?.extra_guest_fee_per_night) || 0;
+  const extraGuests = Math.max(guests - included, 0);
+  const roomBase = nightly * n;
+  const extraGuestTotal = extraFee * extraGuests * n;
+  const roomGuestTotal = roomBase + extraGuestTotal;
+  return {
+    nights: n,
+    guests,
+    included,
+    extraGuests,
+    nightly,
+    extraFee,
+    roomBase,
+    extraGuestTotal,
+    roomGuestTotal,
+  };
 }
 
 export function computeStayBilling({ room, guestsCount, nights, services = [], selectedServiceIds = [] }) {
   if (!room || !nights || nights <= 0) return null;
 
-  const { guests, nightly, roomGuestTotal } = computeRoomGuestCharges(room, nights, guestsCount);
+  const {
+    guests, included, extraGuests, nightly, extraFee, roomBase, extraGuestTotal, roomGuestTotal,
+  } = computeRoomGuestCharges(room, nights, guestsCount);
 
   const selected = services.filter((s) => selectedServiceIds.includes(s.id));
   const serviceLines = selected.map((svc) => ({
@@ -53,13 +70,13 @@ export function computeStayBilling({ room, guestsCount, nights, services = [], s
   return {
     nights,
     guests,
+    included,
+    extraGuests,
     nightly,
+    extraFee,
+    roomBase,
+    extraGuestTotal,
     roomGuestTotal,
-    roomBase: roomGuestTotal,
-    extraGuests: Math.max(guests - 1, 0),
-    extraFee: nightly,
-    extraGuestTotal: 0,
-    included: 1,
     serviceLines,
     serviceTotal,
     total,
@@ -70,12 +87,25 @@ export function formatReservationRoomLabel(room, nights, guestsCount) {
   if (!room) return '';
   const nightsN = Math.max(Number(nights) || 1, 1);
   const guests = Math.max(Number(guestsCount) || 1, 1);
+  const included = getIncludedGuests(room);
+  const extraGuests = Math.max(guests - included, 0);
   const rate = Number(room.price_per_night).toLocaleString();
-  return `Room ${room.room_number} (${rate}/night × ${nightsN} night${nightsN !== 1 ? 's' : ''}) (${guests} adult${guests !== 1 ? 's' : ''})`;
+  const extraFee = Number(room.extra_guest_fee_per_night) || 0;
+  let guestPart = `${guests} guest${guests !== 1 ? 's' : ''}`;
+  if (extraGuests > 0 && extraFee > 0) {
+    guestPart += ` (${extraGuests} extra @ ${extraFee.toLocaleString()}/night)`;
+  }
+  return `Room ${room.room_number} (${rate}/night × ${nightsN} night${nightsN !== 1 ? 's' : ''}) · ${guestPart}`;
 }
 
 export function formatRoomGuestChargeLabel(billing) {
   if (!billing) return '';
-  const { guests, nightly, nights } = billing;
-  return `Room (${guests} guest${guests !== 1 ? 's' : ''} × ${Number(nightly).toLocaleString()}/guest/night × ${nights} night${nights !== 1 ? 's' : ''})`;
+  const {
+    nights, included, extraGuests, nightly, extraFee,
+  } = billing;
+  const inc = included ?? 1;
+  if (extraGuests > 0 && Number(extraFee) > 0) {
+    return `Room (base ${inc} incl. × ${Number(nightly).toLocaleString()}/night × ${nights}n + ${extraGuests} extra × ${Number(extraFee).toLocaleString()}/night)`;
+  }
+  return `Room (${inc} guest${inc !== 1 ? 's' : ''} incl. × ${Number(nightly).toLocaleString()}/night × ${nights} night${nights !== 1 ? 's' : ''})`;
 }

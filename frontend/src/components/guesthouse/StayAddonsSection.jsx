@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Snowflake, Plus } from 'lucide-react';
 import { formatRs } from '../../utils/currency';
-import { computeServiceAmount, getServicePriceLabel, formatRoomGuestChargeLabel } from '../../utils/ghBilling';
+import { computeServiceAmount, getServicePriceLabel, formatRoomGuestChargeLabel, getIncludedGuests } from '../../utils/ghBilling';
 
 const PRICING_HINT = {
   PER_NIGHT: 'Charged per night',
@@ -99,10 +99,27 @@ export function StayBillingBreakdown({ billing, advance = 0, compact = false, ro
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '8px' : '10px' }}>
-      <div style={rowStyle}>
-        <span style={{ color: 'var(--text-muted)', flex: 1, minWidth: 0 }}>{roomLabel || formatRoomGuestChargeLabel(billing)}</span>
-        <span style={{ fontWeight: '700', flexShrink: 0 }}>{formatRs(billing.roomGuestTotal ?? billing.roomBase)}</span>
-      </div>
+      {billing.extraGuestTotal > 0 ? (
+        <>
+          <div style={rowStyle}>
+            <span style={{ color: 'var(--text-muted)', flex: 1, minWidth: 0 }}>
+              Room base ({billing.included} guest{billing.included !== 1 ? 's' : ''} incl.)
+            </span>
+            <span style={{ fontWeight: '700', flexShrink: 0 }}>{formatRs(billing.roomBase)}</span>
+          </div>
+          <div style={rowStyle}>
+            <span style={{ color: 'var(--text-muted)', flex: 1, minWidth: 0 }}>
+              Extra guests ({billing.extraGuests} × {formatRs(billing.extraFee)}/night × {billing.nights}n)
+            </span>
+            <span style={{ fontWeight: '700', flexShrink: 0 }}>{formatRs(billing.extraGuestTotal)}</span>
+          </div>
+        </>
+      ) : (
+        <div style={rowStyle}>
+          <span style={{ color: 'var(--text-muted)', flex: 1, minWidth: 0 }}>{roomLabel || formatRoomGuestChargeLabel(billing)}</span>
+          <span style={{ fontWeight: '700', flexShrink: 0 }}>{formatRs(billing.roomGuestTotal ?? billing.roomBase)}</span>
+        </div>
+      )}
       {billing.serviceLines.map((line) => (
         <div key={line.id} style={rowStyle}>
           <span style={{ color: 'var(--text-muted)' }}>{line.label}</span>
@@ -126,13 +143,24 @@ export function StayBillingBreakdown({ billing, advance = 0, compact = false, ro
 export function GuestsCountHint({ room, guestsCount }) {
   if (!room) return null;
   const guests = Math.max(Number(guestsCount) || 1, 1);
+  const included = getIncludedGuests(room);
+  const extraFee = Number(room.extra_guest_fee_per_night) || 0;
+  const extraGuests = Math.max(guests - included, 0);
   const nightly = Number(room.price_per_night) || 0;
+
+  if (extraGuests > 0 && extraFee > 0) {
+    return (
+      <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '6px 0 0 0' }}>
+        Base rate covers {included} guest{included !== 1 ? 's' : ''} ({formatRs(nightly)}/night).
+        {' '}
+        {extraGuests} extra guest{extraGuests !== 1 ? 's' : ''} × {formatRs(extraFee)}/night each.
+      </p>
+    );
+  }
 
   return (
     <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '6px 0 0 0' }}>
-      Each guest pays the same nightly rate as the primary guest: {formatRs(nightly)} per guest per night.
-      {' '}
-      {guests} guest{guests !== 1 ? 's' : ''} = {formatRs(nightly * guests)} per night.
+      Base rate covers up to {included} guest{included !== 1 ? 's' : ''} at {formatRs(nightly)}/night — no extra guest fee.
     </p>
   );
 }

@@ -40,6 +40,8 @@ class GuestHouseStayTests(TestCase):
             room_number='T1',
             room_type='DOUBLE',
             beds=2,
+            included_guests=2,
+            extra_guest_fee_per_night=Decimal('500'),
             price_per_night=Decimal('3000'),
             status='ACTIVE',
         )
@@ -63,7 +65,7 @@ class GuestHouseStayTests(TestCase):
         response = client.post('/api/guesthouse/stays/', self._stay_payload(), format='json')
         self.assertEqual(response.status_code, 201)
 
-    def test_stay_total_charges_each_guest_at_room_rate(self):
+    def test_stay_total_charges_extra_guest_fee_beyond_included(self):
         client = APIClient()
         client.force_authenticate(user=self.staff)
         check_in = self.check_in + timedelta(days=50)
@@ -94,7 +96,8 @@ class GuestHouseStayTests(TestCase):
             ],
         }, format='json')
         self.assertEqual(response.status_code, 201)
-        expected_room = Decimal('3000') * 3 * 2
+        # 2 nights base (3000×2) + 1 extra guest (500×1×2)
+        expected_room = Decimal('7000')
         self.assertEqual(Decimal(str(response.data['total_amount'])), expected_room)
 
         client = APIClient()

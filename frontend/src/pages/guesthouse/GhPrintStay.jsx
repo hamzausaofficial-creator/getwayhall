@@ -252,14 +252,25 @@ export default function GhPrintStay() {
           <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '20px', marginBottom: '28px', border: '1px solid #e2e8f0' }}>
             {stay.billing_breakdown ? (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
-                  <span>
-                    {stay.billing_breakdown.guests
-                      ? `Room (${stay.billing_breakdown.guests} guests × ${formatRs(stay.billing_breakdown.price_per_guest_per_night || stay.price_per_night)}/guest/night × ${stay.billing_breakdown.nights} nights)`
-                      : `Room (${stay.billing_breakdown.nights} night${stay.billing_breakdown.nights !== 1 ? 's' : ''})`}
-                  </span>
-                  <strong>{formatRs(stay.billing_breakdown.room_guest_total ?? stay.billing_breakdown.room_base)}</strong>
-                </div>
+                {Number(stay.billing_breakdown.extra_guest_total) > 0 ? (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                      <span>Room base ({stay.billing_breakdown.included_guests} guests incl.)</span>
+                      <strong>{formatRs(stay.billing_breakdown.room_base)}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                      <span>Extra guests ({stay.billing_breakdown.extra_guests} × {formatRs(stay.billing_breakdown.extra_guest_fee_per_night)}/night)</span>
+                      <strong>{formatRs(stay.billing_breakdown.extra_guest_total)}</strong>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                    <span>
+                      Room ({stay.billing_breakdown.included_guests ?? 1} guests incl. × {formatRs(stay.price_per_night)}/night × {stay.billing_breakdown.nights} nights)
+                    </span>
+                    <strong>{formatRs(stay.billing_breakdown.room_guest_total ?? stay.billing_breakdown.room_base)}</strong>
+                  </div>
+                )}
                 {(stay.billing_breakdown.service_charges || []).map((line) => (
                   <div key={line.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
                     <span>{line.description}</span>
