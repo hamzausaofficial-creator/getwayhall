@@ -104,6 +104,14 @@ class MaintenanceUntilField(forms.SplitDateTimeField):
         kwargs.setdefault('required', False)
         super().__init__(*args, **kwargs)
 
+    def has_changed(self, initial, data):
+        # Changelist POST often sends no date/time; Django's SplitDateTimeField crashes on data=None.
+        if data is None:
+            if initial in (None, ''):
+                return False
+            data = [None, None]
+        return super().has_changed(initial, data)
+
     def compress(self, data_list):
         if data_list:
             date_value, time_value = data_list
