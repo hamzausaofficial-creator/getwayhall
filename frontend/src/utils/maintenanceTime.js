@@ -1,9 +1,25 @@
 const TZ = 'Asia/Karachi';
 
+/** Parse Django ISO datetimes reliably across browsers. */
+export function parseMaintenanceIso(iso) {
+  if (!iso || typeof iso !== 'string') return null;
+  const trimmed = iso.trim();
+  if (!trimmed) return null;
+
+  let date = new Date(trimmed);
+  if (!Number.isNaN(date.getTime())) return date;
+
+  // Fallback: treat as Asia/Karachi local when timezone is missing.
+  const normalized = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T');
+  date = new Date(`${normalized}+05:00`);
+  if (!Number.isNaN(date.getTime())) return date;
+
+  return null;
+}
+
 export function formatMaintenanceEnd(iso) {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
+  const date = parseMaintenanceIso(iso);
+  if (!date) return null;
   return date.toLocaleString('en-PK', {
     timeZone: TZ,
     weekday: 'short',
@@ -17,8 +33,9 @@ export function formatMaintenanceEnd(iso) {
 }
 
 export function formatMaintenanceRemaining(iso) {
-  if (!iso) return null;
-  const diff = new Date(iso).getTime() - Date.now();
+  const date = parseMaintenanceIso(iso);
+  if (!date) return null;
+  const diff = date.getTime() - Date.now();
   if (diff <= 0) return null;
 
   const totalSec = Math.floor(diff / 1000);
@@ -34,6 +51,7 @@ export function formatMaintenanceRemaining(iso) {
 }
 
 export function isMaintenanceExpired(iso) {
-  if (!iso) return false;
-  return new Date(iso).getTime() <= Date.now();
+  const date = parseMaintenanceIso(iso);
+  if (!date) return false;
+  return date.getTime() <= Date.now();
 }

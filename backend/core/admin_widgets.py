@@ -3,7 +3,6 @@
 from datetime import datetime, time
 
 from django import forms
-from django.contrib.admin.widgets import AdminDateWidget
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils import timezone
@@ -86,11 +85,14 @@ class TwelveHourTimeSelectWidget(forms.MultiWidget):
 
 
 class MaintenanceUntilWidget(forms.MultiWidget):
-    """Admin date picker + 12-hour time dropdowns."""
+    """HTML5 date input + 12-hour time dropdowns (works in admin changelist without calendar JS)."""
 
     def __init__(self, attrs=None):
         widgets = (
-            AdminDateWidget(attrs={'class': 'maintenance-date-input'}),
+            forms.DateInput(
+                attrs={'type': 'date', 'class': 'maintenance-date-input'},
+                format='%Y-%m-%d',
+            ),
             TwelveHourTimeSelectWidget(),
         )
         super().__init__(widgets, attrs)
@@ -140,6 +142,7 @@ class MaintenanceUntilField(forms.SplitDateTimeField):
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('required', False)
         super().__init__(*args, **kwargs)
+        self.widget.widgets[0].format = '%Y-%m-%d'
 
     def has_changed(self, initial, data):
         # Changelist POST often sends no date/time; Django's SplitDateTimeField crashes on data=None.

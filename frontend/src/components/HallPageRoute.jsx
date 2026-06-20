@@ -1,4 +1,5 @@
 import { Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useHallPageVisibility } from '../context/HallPageVisibilityContext';
 import { HALL_PAGE_LABELS } from '../constants/hallPages';
 import AppLoader from './AppLoader';
@@ -14,6 +15,13 @@ export function HallPageRoute({ pageKey, children }) {
     firstVisiblePath,
     syncVisibility,
   } = useHallPageVisibility();
+
+  useEffect(() => {
+    if (!loading && isPageInMaintenance(pageKey)) {
+      syncVisibility();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, pageKey]);
 
   if (loading) return <AppLoader fullScreen />;
 

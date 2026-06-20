@@ -5,8 +5,9 @@
   gap: 10px 14px;
 }
 
-.maintenance-until-widget__date input {
-  min-width: 9rem;
+.change-list td.field-maintenance_until .maintenance-date-input {
+  min-width: 10rem;
+  padding: 4px 6px;
 }
 
 .maintenance-time-select {

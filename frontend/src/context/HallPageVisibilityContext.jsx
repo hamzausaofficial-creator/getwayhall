@@ -10,7 +10,7 @@ function applyHallVisibilityData(data) {
   (data?.pages || []).forEach((page) => {
     map[page.key] = page.is_visible === true;
     maintMap[page.key] = page.in_maintenance === true;
-    untilMap[page.key] = page.maintenance_until || null;
+    untilMap[page.key] = page.maintenance_until ?? null;
   });
   return { map, maintMap, untilMap };
 }

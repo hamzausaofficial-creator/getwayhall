@@ -1,4 +1,5 @@
 import { Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useGhPageVisibility } from '../context/GhPageVisibilityContext';
 import { GH_PAGE_LABELS } from '../constants/ghPages';
 import AppLoader from './AppLoader';
@@ -14,6 +15,14 @@ export function GhPageRoute({ pageKey, children }) {
     firstVisiblePath,
     syncVisibility,
   } = useGhPageVisibility();
+
+  useEffect(() => {
+    if (!loading && isPageInMaintenance(pageKey)) {
+      syncVisibility();
+    }
+    // Refresh once when opening a page that is under maintenance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, pageKey]);
 
   if (loading) return <AppLoader fullScreen />;
 

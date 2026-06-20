@@ -13,12 +13,12 @@ function applyGhVisibilityData(data) {
   (data?.pages || []).forEach((page) => {
     map[page.key] = page.is_visible === true;
     maintMap[page.key] = page.in_maintenance === true;
-    untilMap[page.key] = page.maintenance_until || null;
+    untilMap[page.key] = page.maintenance_until ?? null;
   });
   (data?.modules || []).forEach((mod) => {
     moduleMap[mod.key] = mod.is_visible === true;
     moduleMaintMap[mod.key] = mod.in_maintenance === true;
-    moduleUntilMap[mod.key] = mod.maintenance_until || null;
+    moduleUntilMap[mod.key] = mod.maintenance_until ?? null;
   });
   return {
     map,
