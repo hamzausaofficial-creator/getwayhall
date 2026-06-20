@@ -37,3 +37,18 @@
 .change-list td.field-maintenance_until .maintenance-time-select select {
   min-width: 3.5rem;
 }
+
+.change-list td.field-ends_at_display,
+.change-list th.column-ends_at_display {
+  white-space: nowrap;
+}
+
+.maintenance-saved-time {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-weight: 700;
+  color: #0f766e;
+  background: #ecfdf5;
+  border: 1px solid #99f6e4;
+}

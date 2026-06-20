@@ -4,6 +4,8 @@ from datetime import datetime, time
 
 from django import forms
 from django.contrib.admin.widgets import AdminDateWidget
+from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django.utils import timezone
 
 
@@ -54,12 +56,32 @@ class TwelveHourTimeSelectWidget(forms.MultiWidget):
 
         return time(hour24, minute)
 
-    def format_output(self, rendered_widgets):
-        return (
-            '<span class="maintenance-time-select">'
-            f'{rendered_widgets[0]}<span class="maintenance-time-colon">:</span>'
-            f'{rendered_widgets[1]} {rendered_widgets[2]}'
-            '</span>'
+    def render(self, name, value, attrs=None, renderer=None):
+        decompressed = self.decompress(value)
+        hour_html = self.widgets[0].render(
+            f'{name}_0',
+            decompressed[0],
+            {'class': 'maintenance-time-hour'},
+            renderer,
+        )
+        minute_html = self.widgets[1].render(
+            f'{name}_1',
+            decompressed[1],
+            {'class': 'maintenance-time-minute'},
+            renderer,
+        )
+        ampm_html = self.widgets[2].render(
+            f'{name}_2',
+            decompressed[2],
+            {'class': 'maintenance-time-ampm'},
+            renderer,
+        )
+        return format_html(
+            '<span class="maintenance-time-select">{}'
+            '<span class="maintenance-time-colon">:</span>{} {}</span>',
+            mark_safe(hour_html),
+            mark_safe(minute_html),
+            mark_safe(ampm_html),
         )
 
 
@@ -86,12 +108,27 @@ class MaintenanceUntilWidget(forms.MultiWidget):
             return [date_value, time_value]
         return None
 
-    def format_output(self, rendered_widgets):
-        return (
+    def render(self, name, value, attrs=None, renderer=None):
+        date_value, time_value = self.decompress(value)
+        date_html = self.widgets[0].render(
+            f'{name}_0',
+            date_value,
+            {'class': 'maintenance-date-input'},
+            renderer,
+        )
+        time_html = self.widgets[1].render(
+            f'{name}_1',
+            time_value,
+            {},
+            renderer,
+        )
+        return format_html(
             '<div class="maintenance-until-widget">'
-            f'<div class="maintenance-until-widget__date">{rendered_widgets[0]}</div>'
-            f'<div class="maintenance-until-widget__time">{rendered_widgets[1]}</div>'
-            '</div>'
+            '<div class="maintenance-until-widget__date">{}</div>'
+            '<div class="maintenance-until-widget__time">{}</div>'
+            '</div>',
+            mark_safe(date_html),
+            mark_safe(time_html),
         )
 
 
@@ -110,6 +147,8 @@ class MaintenanceUntilField(forms.SplitDateTimeField):
             if initial in (None, ''):
                 return False
             data = [None, None]
+        elif not isinstance(data, (list, tuple)):
+            data = self.widget.decompress(data)
         return super().has_changed(initial, data)
 
     def compress(self, data_list):

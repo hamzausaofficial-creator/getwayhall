@@ -236,7 +236,7 @@ class GuestHousePageMaintenanceAdmin(MaintenanceUntilAdminMixin, _GhPageAdminBas
     form = GuestHousePageMaintenanceForm
     list_display = (
         'label', 'page_key', 'entry_kind', 'tenant', 'maintenance_badge',
-        'in_maintenance', 'maintenance_until',
+        'ends_at_display', 'in_maintenance', 'maintenance_until',
     )
     list_editable = ('in_maintenance', 'maintenance_until')
 
@@ -262,6 +262,7 @@ class GuestHousePageMaintenanceAdmin(MaintenanceUntilAdminMixin, _GhPageAdminBas
         extra_context['title'] = 'Guest House — 2 · Maintenance & reopen time'
         extra_context['subtitle'] = (
             '<strong>For:</strong> putting pages under maintenance and scheduling when they reopen. '
-            'Tick maintenance, set date + 12-hour AM/PM time, then Save.'
+            'Tick maintenance, pick <strong>date</strong> and <strong>time (AM/PM)</strong>, then Save. '
+            'Saved time appears in the <strong>Saved end time</strong> column.'
         )
         return super().changelist_view(request, extra_context=extra_context)
