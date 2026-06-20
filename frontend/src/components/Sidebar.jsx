@@ -132,7 +132,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, isMobileOpen, onMobile
 
       <div className={`app-sidebar__brand${isCollapsed && !isMobile ? ' app-sidebar__brand--collapsed' : ''}`}>
         <AppLogo
-          size={isCollapsed && !isMobile ? 'xs' : 'sm'}
+          size={isCollapsed && !isMobile ? 'md' : 'lg'}
           tone="light"
           showName={!isCollapsed || isMobile}
           nameAccent={(!isCollapsed || isMobile) ? 'Centre' : undefined}

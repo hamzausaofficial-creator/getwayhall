@@ -77,12 +77,27 @@
 .app-logo--sidebar {
   width: 100%;
   align-items: flex-start;
+  gap: 12px;
+}
+
+.app-logo--sidebar .app-logo__img {
+  width: 44px !important;
+  height: 44px !important;
+  max-width: 44px !important;
+  max-height: 44px !important;
 }
 
 .app-logo--sidebar-collapsed {
   justify-content: center;
   align-items: center;
-  width: 44px;
+  width: 48px;
+}
+
+.app-logo--sidebar-collapsed .app-logo__img {
+  width: 40px !important;
+  height: 40px !important;
+  max-width: 40px !important;
+  max-height: 40px !important;
 }
 
 .app-logo--sidebar-collapsed .app-logo__name {
