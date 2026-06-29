@@ -8,15 +8,37 @@ import { customerDisplayName } from '../../utils/customer';
 import { formatCnic } from '../../utils/cnicScanner';
 import './stay-guest-roster.css';
 
-const emptyCompanion = () => ({
+const emptyCompanion = (adultsCount = 1, index = 0) => ({
   customer: '',
   full_name: '',
   cnic: '',
   phone: '',
+  address: '',
+  is_minor: isChildCompanionSlot(index, adultsCount),
 });
 
+/** Companion slots after the first (adults_count - 1) are children under 18. */
+export function isChildCompanionSlot(index, adultsCount = 1) {
+  return index >= Math.max(Number(adultsCount) || 1, 1) - 1;
+}
+
+export function companionFromSaved(saved, isMinor) {
+  return {
+    customer: saved.customer_id ? String(saved.customer_id) : '',
+    full_name: saved.full_name || '',
+    cnic: saved.cnic || '',
+    phone: saved.phone || '',
+    address: saved.address || '',
+    is_minor: Boolean(isMinor ?? saved.is_minor),
+  };
+}
+
 export function isCompanionFilled(guest) {
-  return Boolean(guest?.customer || (guest?.full_name || '').trim() || (guest?.cnic || '').trim());
+  if (guest?.is_minor) {
+    return Boolean((guest?.full_name || '').trim());
+  }
+  if (guest?.customer) return true;
+  return Boolean((guest?.full_name || '').trim() && (guest?.cnic || '').trim());
 }
 
 export function getFilledCompanions(companions = []) {
@@ -36,17 +58,22 @@ export function buildGuestRosterPayload(primaryCustomerId, primaryCustomer, comp
       full_name: primaryCustomer?.full_name || primaryCustomer?.display_name || '',
       cnic: primaryCustomer?.cnic || '',
       phone: primaryCustomer?.phone || '',
+      address: primaryCustomer?.address || '',
+      is_minor: false,
       is_primary: true,
     });
   }
   companions
-    .filter((guest) => guest.customer || (guest.full_name || '').trim() || (guest.cnic || '').trim())
+    .filter((guest) => isCompanionFilled(guest))
     .forEach((guest) => {
     roster.push({
       customer: guest.customer ? Number(guest.customer) : null,
       full_name: (guest.full_name || '').trim(),
       cnic: (guest.cnic || '').trim(),
       phone: (guest.phone || '').trim(),
+      address: (guest.address || '').trim(),
+      is_minor: Boolean(guest.is_minor),
+      linked_primary: primaryCustomerId ? Number(primaryCustomerId) : null,
       is_primary: false,
     });
   });
@@ -76,6 +103,7 @@ export function validateGuestRoster(primaryCustomerId, primaryCustomer, companio
   for (const guest of getFilledCompanions(companions)) {
     const name = (guest.full_name || '').trim();
     const cnic = (guest.cnic || '').trim();
+    const address = (guest.address || '').trim();
     const slotIndex = companions.indexOf(guest);
     const label = slotIndex >= 0 ? slotIndex + 1 : 1;
     if (String(guest.customer) === String(primaryCustomerId)) {
@@ -84,8 +112,14 @@ export function validateGuestRoster(primaryCustomerId, primaryCustomer, companio
     if (!guest.customer && !name) {
       return `Additional guest ${label}: name is required.`;
     }
+    if (guest.is_minor) {
+      if (!guest.customer && !address) {
+        return `Guest ${label + 1}: address is required for guests under 18.`;
+      }
+      continue;
+    }
     if (!guest.customer && !cnic) {
-      return `Additional guest ${label}: CNIC is required.`;
+      return `Guest ${label + 1}: CNIC / ID card is required for guests aged 18+.`;
     }
   }
   const emptySlots = companions.length - getFilledCompanions(companions).length;
@@ -113,6 +147,7 @@ export default function StayGuestRoster({
   onCancelScannedGuest,
   savingScannedGuest = false,
   disabled = false,
+  hidePrimaryPicker = false,
 }) {
   const [activeScanIndex, setActiveScanIndex] = useState(null);
   const totalGuests = deriveGuestsCount(companions);
@@ -138,7 +173,14 @@ export default function StayGuestRoster({
 
   const addCompanion = () => {
     if (!canAddGuest) return;
-    onCompanionsChange([...companions, emptyCompanion()]);
+    onCompanionsChange([...companions, {
+      customer: '',
+      full_name: '',
+      cnic: '',
+      phone: '',
+      address: '',
+      is_minor: false,
+    }]);
   };
 
   const removeCompanion = (index) => {
@@ -147,6 +189,7 @@ export default function StayGuestRoster({
 
   return (
     <div className="stay-guest-roster">
+      {!hidePrimaryPicker && (
       <div className="stay-guest-roster__primary card-surface">
         <div className="stay-guest-roster__heading">
           <div className="stay-guest-roster__heading-icon stay-guest-roster__heading-icon--primary">
@@ -154,7 +197,6 @@ export default function StayGuestRoster({
           </div>
           <div>
             <h4 className="stay-guest-roster__title">Primary guest</h4>
-            <p className="stay-guest-roster__subtitle">Booking is under this person&apos;s name — payment &amp; receipts use primary guest</p>
           </div>
         </div>
 
@@ -218,6 +260,33 @@ export default function StayGuestRoster({
           </div>
         )}
       </div>
+      )}
+
+      {hidePrimaryPicker && showIdScanner && (
+        <div className="stay-guest-roster__primary card-surface">
+          <CnicScannerPanel
+            onScan={(parsed) => {
+              setActiveScanIndex('primary');
+              onIdScanPrimary?.(parsed);
+            }}
+            disabled={disabled || scanProcessing}
+          />
+          {activeScanIndex === 'primary' && (
+            <ScannedGuestPanel
+              draft={scannedGuest}
+              loading={scanProcessing && !scannedGuest}
+              saving={savingScannedGuest}
+              onChange={(field, value) => onScannedGuestChange?.(field, value)}
+              onPhoneChange={onScannedPhoneChange}
+              onSave={onSaveScannedGuest}
+              onCancel={() => {
+                setActiveScanIndex(null);
+                onCancelScannedGuest?.();
+              }}
+            />
+          )}
+        </div>
+      )}
 
       <div className="stay-guest-roster__total-bar">
         <div className="stay-guest-roster__total-bar-left">

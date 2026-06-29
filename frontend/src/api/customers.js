@@ -19,3 +19,8 @@ export const deleteCustomer = async (id) => {
   const response = await client.delete(`/customers/${id}/`);
   return response.data;
 };
+
+export const getCustomerTravelCompanions = async (customerId) => {
+  const response = await client.get(`/customers/${customerId}/travel-companions/`);
+  return response.data?.companions || [];
+};

@@ -474,7 +474,16 @@ export default function GhCustomers() {
                                   className="gh-cust-related__chip gh-cust-related__chip--link"
                                   onClick={() => navigate(`/gh/customers/${guest.customer_id}`)}
                                 >
-                                  <span className="gh-cust-related__chip-name">{guest.full_name}</span>
+                                  <span className="gh-cust-related__chip-name">
+                                    {guest.full_name}
+                                    {guest.is_minor && <span className="gh-cust-related__chip-meta"> (under 18)</span>}
+                                  </span>
+                                  {guest.is_minor && guest.address && (
+                                    <span className="gh-cust-related__chip-meta">{guest.address}</span>
+                                  )}
+                                  {!guest.is_minor && guest.cnic && (
+                                    <span className="gh-cust-related__chip-meta">{guest.cnic}</span>
+                                  )}
                                   {guest.stays_together > 1 && (
                                     <span className="gh-cust-related__chip-meta">{guest.stays_together} stays</span>
                                   )}
@@ -483,8 +492,14 @@ export default function GhCustomers() {
                             }
                             return (
                               <span key={key} className="gh-cust-related__chip" title="No saved profile yet">
-                                <span className="gh-cust-related__chip-name">{guest.full_name}</span>
-                                {guest.cnic && (
+                                <span className="gh-cust-related__chip-name">
+                                  {guest.full_name}
+                                  {guest.is_minor && <span className="gh-cust-related__chip-meta"> (under 18)</span>}
+                                </span>
+                                {guest.is_minor && guest.address && (
+                                  <span className="gh-cust-related__chip-meta">{guest.address}</span>
+                                )}
+                                {!guest.is_minor && guest.cnic && (
                                   <span className="gh-cust-related__chip-meta">{guest.cnic}</span>
                                 )}
                               </span>

@@ -40,20 +40,42 @@ class CustomerSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         attrs = self._sync_legacy_names(attrs)
 
+        is_minor = bool(attrs.get('is_minor', self.instance.is_minor if self.instance else False))
+        attrs['is_minor'] = is_minor
+
+        linked_primary = attrs.get('linked_primary')
+        if linked_primary is None and self.instance:
+            linked_primary = self.instance.linked_primary
+        if is_minor and linked_primary and 'linked_primary' not in attrs:
+            attrs['linked_primary'] = linked_primary
+
         phone = (attrs.get('phone') if 'phone' in attrs else (self.instance.phone if self.instance else '')) or ''
         phone = str(phone).strip()
-        if not phone:
+        if is_minor:
+            if not phone and linked_primary:
+                phone = (linked_primary.phone or '').strip()
+            if not phone:
+                phone = '—'
+            attrs['phone'] = phone
+        elif not phone:
             raise serializers.ValidationError({'phone': 'Phone number is required.'})
-        attrs['phone'] = phone
+        else:
+            attrs['phone'] = phone
 
         cnic = (attrs.get('cnic') if 'cnic' in attrs else (self.instance.cnic if self.instance else '')) or ''
         cnic = str(cnic).strip()
-        if self._is_guest_house_request() and not cnic:
+        if is_minor:
+            attrs['cnic'] = ''
+        elif self._is_guest_house_request() and not cnic:
             raise serializers.ValidationError({'cnic': 'CNIC is required.'})
-        attrs['cnic'] = cnic
+        else:
+            attrs['cnic'] = cnic
 
         if 'address' in attrs and attrs['address'] is not None:
             attrs['address'] = str(attrs['address']).strip() or None
+
+        if is_minor and not (attrs.get('address') or (self.instance.address if self.instance else '')):
+            raise serializers.ValidationError({'address': 'Address is required for guests under 18.'})
 
         return attrs
 

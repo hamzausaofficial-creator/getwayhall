@@ -109,6 +109,14 @@ class StayBooking(models.Model):
     check_in = models.DateField()
     check_out = models.DateField()
     guests_count = models.PositiveIntegerField(default=1)
+    adults_count = models.PositiveIntegerField(
+        default=1,
+        help_text='Guests aged 18 and above on this stay.',
+    )
+    children_count = models.PositiveIntegerField(
+        default=0,
+        help_text='Guests under 18 on this stay.',
+    )
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     advance_paid = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
@@ -225,6 +233,8 @@ class StayGuest(models.Model):
     full_name = models.CharField(max_length=200)
     cnic = models.CharField(max_length=20, blank=True, default='')
     phone = models.CharField(max_length=20, blank=True, default='')
+    is_minor = models.BooleanField(default=False)
+    address = models.TextField(blank=True, default='')
     is_primary = models.BooleanField(default=False)
     sort_order = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)

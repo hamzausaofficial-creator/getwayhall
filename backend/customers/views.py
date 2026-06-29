@@ -45,7 +45,69 @@ class CustomerViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelView
             .values_list('customer_id', flat=True)
             .distinct()
         )
-        return qs.exclude(id__in=companion_only_ids)
+        # Primary bookers only: hide linked companion profiles and stay-only companions.
+        return qs.filter(linked_primary__isnull=True).exclude(id__in=companion_only_ids)
+
+    def _collect_travel_companions(self, customer, tenant_id):
+        """Guests linked to this primary booker (saved profiles + past stay roster)."""
+        from guesthouse.models import StayBooking, StayGuest
+
+        companion_map = {}
+
+        if tenant_id:
+            linked_profiles = Customer.objects.filter(
+                tenant_id=tenant_id,
+                linked_primary_id=customer.id,
+            )
+            for profile in linked_profiles:
+                key = profile.id
+                companion_map[key] = {
+                    'customer_id': profile.id,
+                    'full_name': profile.display_name,
+                    'cnic': profile.cnic or '',
+                    'phone': profile.phone or '',
+                    'address': profile.address or '',
+                    'is_minor': bool(profile.is_minor),
+                    'stays_together': 0,
+                    'source': 'profile',
+                }
+
+            stays_qs = StayBooking.objects.filter(
+                tenant_id=tenant_id,
+                customer=customer,
+            ).prefetch_related('guest_roster', 'guest_roster__customer')
+            for stay in stays_qs:
+                for guest in stay.guest_roster.all():
+                    if guest.is_primary:
+                        continue
+                    key = guest.customer_id or (guest.cnic or '').strip() or guest.full_name
+                    if not key:
+                        continue
+                    if key in companion_map:
+                        companion_map[key]['stays_together'] += 1
+                        continue
+                    companion_map[key] = {
+                        'customer_id': guest.customer_id,
+                        'full_name': guest.full_name,
+                        'cnic': guest.cnic or '',
+                        'phone': guest.phone or '',
+                        'address': guest.address or (guest.customer.address if guest.customer else '') or '',
+                        'is_minor': bool(guest.is_minor or (guest.customer.is_minor if guest.customer else False)),
+                        'stays_together': 1,
+                        'source': 'stay',
+                    }
+
+        return sorted(
+            companion_map.values(),
+            key=lambda row: (row.get('is_minor', False), row.get('full_name', '')),
+        )
+
+    @action(detail=True, methods=['get'], url_path='travel-companions')
+    def travel_companions(self, request, pk=None):
+        customer = self.get_object()
+        tenant_id = getattr(request.user, 'tenant_id', None)
+        companions = self._collect_travel_companions(customer, tenant_id)
+        return Response({'companions': companions})
 
     @action(detail=True, methods=['get'], url_path='summary')
     def summary(self, request, pk=None):
@@ -89,9 +151,29 @@ class CustomerViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelView
                             'full_name': guest.full_name,
                             'cnic': guest.cnic or '',
                             'phone': guest.phone or '',
+                            'address': guest.address or '',
+                            'is_minor': bool(guest.is_minor),
                             'stays_together': 0,
                         }
                     related_map[key]['stays_together'] += 1
+
+            linked_profiles = Customer.objects.filter(
+                tenant_id=tenant_id,
+                linked_primary_id=customer.id,
+            ) if tenant_id else Customer.objects.none()
+            for profile in linked_profiles:
+                key = profile.id
+                if key not in related_map:
+                    related_map[key] = {
+                        'customer_id': profile.id,
+                        'full_name': profile.display_name,
+                        'cnic': profile.cnic or '',
+                        'phone': profile.phone or '',
+                        'address': profile.address or '',
+                        'is_minor': bool(profile.is_minor),
+                        'stays_together': 0,
+                    }
+
             related_guests = list(related_map.values())
 
             return Response({

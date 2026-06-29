@@ -82,8 +82,8 @@ class StayGuestSerializer(serializers.ModelSerializer):
     class Meta:
         model = StayGuest
         fields = [
-            'id', 'customer', 'customer_name', 'full_name', 'cnic', 'phone',
-            'is_primary', 'sort_order',
+            'id', 'customer', 'customer_name', 'full_name', 'cnic', 'phone', 'address',
+            'is_minor', 'is_primary', 'sort_order',
         ]
         read_only_fields = ['id', 'sort_order', 'customer_name']
 
@@ -98,6 +98,9 @@ class StayGuestWriteSerializer(serializers.Serializer):
     full_name = serializers.CharField(required=False, allow_blank=True, max_length=200)
     cnic = serializers.CharField(required=False, allow_blank=True, max_length=20)
     phone = serializers.CharField(required=False, allow_blank=True, max_length=20)
+    address = serializers.CharField(required=False, allow_blank=True)
+    is_minor = serializers.BooleanField(required=False, default=False)
+    linked_primary = serializers.IntegerField(required=False, allow_null=True)
     is_primary = serializers.BooleanField(required=False, default=False)
 
 
@@ -219,7 +222,7 @@ class StayBookingSerializer(serializers.ModelSerializer):
             'id', 'booking_ref', 'customer', 'customer_name', 'customer_phone', 'customer_cnic',
             'room', 'room_number', 'room_type', 'price_per_night',
             'included_guests', 'extra_guest_fee_per_night',
-            'check_in', 'check_out', 'guests_count', 'nights', 'total_amount',
+            'check_in', 'check_out', 'guests_count', 'adults_count', 'children_count', 'nights', 'total_amount',
             'advance_paid', 'advance_payment_method', 'addon_service_ids',
             'remaining_balance', 'charges', 'guests', 'guest_roster', 'billing_breakdown',
             'status', 'payment_status', 'notes',
@@ -363,24 +366,45 @@ class StayBookingSerializer(serializers.ModelSerializer):
             for index, guest in enumerate(guest_roster):
                 name = (guest.get('full_name') or '').strip()
                 cnic = (guest.get('cnic') or '').strip()
+                address = (guest.get('address') or '').strip()
+                is_minor = bool(guest.get('is_minor'))
                 is_primary = bool(guest.get('is_primary')) or index == 0
                 if not guest.get('customer') and not name:
                     raise serializers.ValidationError({
                         'guest_roster': f'Guest {index + 1}: name is required.',
                     })
-                if is_primary and not cnic:
+                if is_primary and not cnic and not guest.get('customer'):
                     raise serializers.ValidationError({
-                        'guest_roster': (
-                            'Primary guest CNIC is required.'
-                            if not guest.get('customer')
-                            else 'Primary guest profile is missing CNIC. Update the guest profile.'
-                        ),
+                        'guest_roster': 'Primary guest CNIC is required.',
                     })
-                if not is_primary and not guest.get('customer') and not cnic:
+                if is_primary and guest.get('customer') and not cnic:
                     raise serializers.ValidationError({
-                        'guest_roster': f'Guest {index + 1}: CNIC is required.',
+                        'guest_roster': 'Primary guest profile is missing CNIC. Update the guest profile.',
+                    })
+                if not is_primary and is_minor:
+                    if not guest.get('customer') and not address:
+                        raise serializers.ValidationError({
+                            'guest_roster': f'Guest {index + 1}: address is required for guests under 18.',
+                        })
+                elif not is_primary and not guest.get('customer') and not cnic:
+                    raise serializers.ValidationError({
+                        'guest_roster': f'Guest {index + 1}: CNIC is required for guests aged 18+.',
                     })
             attrs['guests_count'] = len(guest_roster)
+        if 'adults_count' in attrs or 'adults_count' in self.initial_data:
+            adults = max(
+                int(attrs.get('adults_count', getattr(self.instance, 'adults_count', 1) or 1)),
+                1,
+            )
+            children = max(
+                int(attrs.get('children_count', getattr(self.instance, 'children_count', 0) or 0)),
+                0,
+            )
+            attrs['adults_count'] = adults
+            attrs['children_count'] = children
+            family_total = adults + children
+            current_guests = int(attrs.get('guests_count') or requested_guests or 1)
+            attrs['guests_count'] = max(current_guests, family_total)
         guests_count = attrs.get('guests_count') or requested_guests
         if check_in and check_out and check_out <= check_in:
             raise serializers.ValidationError({'check_out': 'Check-out must be after check-in.'})

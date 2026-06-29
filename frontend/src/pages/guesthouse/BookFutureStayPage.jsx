@@ -2,22 +2,19 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { format, addDays, parseISO } from 'date-fns';
 import {
-  ChevronLeft, Calendar, User, BedDouble, FileText,
-  CheckCircle, X, HelpCircle, Sparkles, Users,
+  ChevronLeft, Calendar, BedDouble, FileText,
+  CheckCircle, X, HelpCircle, Sparkles,
 } from 'lucide-react';
 import { createStay, getAvailableRooms, listGhServices } from '../../api/guesthouse';
 import { computeStayBilling, formatReservationRoomLabel, getServicePriceLabel, getIncludedGuests } from '../../utils/ghBilling';
 import useLiveStayBill, { getBookingNights } from '../../hooks/useLiveStayBill';
-import { StayBillingBreakdown, GuestsCountHint } from '../../components/guesthouse/StayAddonsSection';
+import { StayBillingBreakdown } from '../../components/guesthouse/StayAddonsSection';
 import client from '../../api/client';
 import toast from 'react-hot-toast';
 import AppLoader from '../../components/AppLoader';
 import { usePermissions } from '../../hooks/usePermissions';
-import { useGhPageVisibility } from '../../context/GhPageVisibilityContext';
-import { GH_MODULE_KEYS } from '../../constants/ghPages';
-import StayGuestRoster, {
+import {
   buildGuestRosterPayload,
-  deriveGuestsCount,
   getFilledCompanions,
   shouldSendGuestRoster,
   validateGuestRoster,
@@ -25,11 +22,8 @@ import StayGuestRoster, {
 import { formatRs } from '../../utils/currency';
 import { resolveMediaUrl } from '../../utils/media';
 import { customerDisplayName } from '../../utils/customer';
-import {
-  resolveGuestFromIdScan,
-  isPhoneCompleteForAutoSave,
-  saveGuestFromDraft,
-} from '../../utils/idCardCustomer';
+import BookFutureGuestBar from '../../components/guesthouse/BookFutureGuestBar';
+import { getCustomerTravelCompanions } from '../../api/customers';
 import './book-future-stay.css';
 
 const SectionHeader = ({ icon: Icon, title, subtitle }) => (
@@ -77,9 +71,6 @@ export default function BookFutureStayPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { canOperate } = usePermissions();
-  const { isModuleVisible, isModuleInMaintenance } = useGhPageVisibility();
-  const showIdScanner = isModuleVisible(GH_MODULE_KEYS.ID_SCANNER)
-    && !isModuleInMaintenance(GH_MODULE_KEYS.ID_SCANNER);
 
   const prefillCheckIn = location.state?.check_in || searchParams.get('check_in') || '';
   const prefillCheckOut = location.state?.check_out || searchParams.get('check_out') || '';
@@ -93,6 +84,8 @@ export default function BookFutureStayPage() {
     check_out: prefillCheckOut || (prefillCheckIn ? format(addDays(parseISO(prefillCheckIn), 1), 'yyyy-MM-dd') : ''),
     check_in_time: '14:00',
     check_out_time: '11:00',
+    adults_count: 1,
+    children_count: 0,
     guests_count: 1,
     advance_paid: '',
     advance_payment_method: 'CASH',
@@ -108,10 +101,8 @@ export default function BookFutureStayPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
-  const [scannedGuest, setScannedGuest] = useState(null);
-  const [creatingGuest, setCreatingGuest] = useState(false);
   const [companions, setCompanions] = useState([]);
-  const savingGuestRef = useRef(false);
+  const [savedTravelCompanions, setSavedTravelCompanions] = useState([]);
   const reservationPreviewId = useRef(createReservationPreviewId()).current;
 
   const toggleAddon = (id) => {
@@ -192,6 +183,22 @@ export default function BookFutureStayPage() {
     return () => { cancelled = true; };
   }, [form.check_in, form.check_out]);
 
+  useEffect(() => {
+    if (!form.customer) {
+      setSavedTravelCompanions([]);
+      return undefined;
+    }
+    let cancelled = false;
+    getCustomerTravelCompanions(form.customer)
+      .then((list) => {
+        if (!cancelled) setSavedTravelCompanions(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {
+        if (!cancelled) setSavedTravelCompanions([]);
+      });
+    return () => { cancelled = true; };
+  }, [form.customer]);
+
   const selectedRoom = useMemo(
     () => rooms.find((r) => String(r.id) === String(form.room)),
     [rooms, form.room],
@@ -202,20 +209,16 @@ export default function BookFutureStayPage() {
     [customers, form.customer],
   );
 
+  const familyGuestsCount = useMemo(() => {
+    const adults = Math.max(Number(form.adults_count) || 1, 1);
+    const children = Math.max(Number(form.children_count) || 0, 0);
+    return adults + children;
+  }, [form.adults_count, form.children_count]);
+
   const filledCompanions = useMemo(
     () => getFilledCompanions(companions),
     [companions],
   );
-
-  const effectiveGuestsCount = useMemo(
-    () => deriveGuestsCount(companions),
-    [companions],
-  );
-
-  const maxAdditionalGuests = useMemo(() => {
-    if (!selectedRoom) return undefined;
-    return Math.max((Number(selectedRoom.beds) || 1) - 1, 0);
-  }, [selectedRoom]);
 
   const validSelectedAddonIds = useMemo(() => {
     if (!selectedRoom) return [];
@@ -227,7 +230,7 @@ export default function BookFutureStayPage() {
     checkIn: form.check_in,
     checkOut: form.check_out,
     room: selectedRoom,
-    guestsCount: effectiveGuestsCount,
+    guestsCount: familyGuestsCount,
     services,
     selectedAddonIds: validSelectedAddonIds,
     advancePaid: form.advance_paid,
@@ -241,140 +244,6 @@ export default function BookFutureStayPage() {
     const list = Array.isArray(custData) ? custData : [];
     setCustomers(list);
     return list;
-  };
-
-  const selectGuest = (customer) => {
-    setForm((f) => ({ ...f, customer: String(customer.id) }));
-    setScannedGuest(null);
-    toast.success(`Guest selected: ${customerDisplayName(customer)}`, { id: 'id-scan' });
-  };
-
-  const saveGuestFromScan = async (guestDraft) => {
-    if (savingGuestRef.current) return false;
-    savingGuestRef.current = true;
-    setCreatingGuest(true);
-    try {
-      const result = await saveGuestFromDraft(guestDraft);
-      if (!result.ok) {
-        toast.error(result.error || 'Please complete all required fields');
-        return false;
-      }
-      const list = await reloadCustomers();
-      const match = list.find((c) => c.id === result.customer.id) || result.customer;
-      selectGuest(match);
-      if (result.created) {
-        toast.success(`Guest saved & selected: ${customerDisplayName(match)}`, { id: 'id-scan' });
-      }
-      return true;
-    } catch (err) {
-      const data = err.response?.data;
-      const msg = data?.cnic?.[0] || data?.phone?.[0] || data?.detail || 'Failed to save guest';
-      toast.error(msg);
-      return false;
-    } finally {
-      savingGuestRef.current = false;
-      setCreatingGuest(false);
-    }
-  };
-
-  const handleIdScan = async (parsed) => {
-    if (creatingGuest || savingGuestRef.current) return;
-    setScannedGuest(null);
-    setForm((f) => ({ ...f, customer: '' }));
-    setCreatingGuest(true);
-    try {
-      const result = await resolveGuestFromIdScan(parsed, { customers });
-      if (result.status === 'invalid') {
-        toast.error('Could not read ID card. Scan again.');
-        return;
-      }
-      if (result.status === 'existing') {
-        const list = await reloadCustomers();
-        const match = list.find((c) => c.id === result.customer.id) || result.customer;
-        selectGuest(match);
-        return;
-      }
-      if (result.status === 'created') {
-        const list = await reloadCustomers();
-        const created = list.find((c) => c.id === result.customer.id) || result.customer;
-        setForm((f) => ({ ...f, customer: String(created.id) }));
-        setScannedGuest(null);
-        toast.success(`New guest saved: ${customerDisplayName(created)}`, { id: 'id-scan' });
-        return;
-      }
-      setScannedGuest(result.draft);
-      setForm((f) => ({ ...f, customer: '' }));
-      toast('ID card read — check fields and add phone', { id: 'id-scan', icon: 'ℹ️' });
-    } catch {
-      toast.error('Failed to process ID card scan');
-    } finally {
-      setCreatingGuest(false);
-    }
-  };
-
-  const handleScannedGuestChange = (field, value) => {
-    setScannedGuest((prev) => {
-      if (!prev) return prev;
-      return { ...prev, [field]: value };
-    });
-  };
-
-  const handleScannedPhoneChange = async (value) => {
-    if (!scannedGuest) return;
-    const next = { ...scannedGuest, phone: value };
-    setScannedGuest(next);
-    if (isPhoneCompleteForAutoSave(value)) {
-      await saveGuestFromScan(next);
-    }
-  };
-
-  const handleCreateGuestFromScan = async () => {
-    if (!scannedGuest) return;
-    await saveGuestFromScan(scannedGuest);
-  };
-
-  const handleCompanionIdScan = async (index, parsed) => {
-    if (creatingGuest || savingGuestRef.current) return;
-    setCreatingGuest(true);
-    try {
-      const result = await resolveGuestFromIdScan(parsed, { customers });
-      if (result.status === 'invalid') {
-        toast.error('Could not read ID card. Scan again.');
-        return;
-      }
-      if (result.status === 'existing' || result.status === 'created') {
-        const list = await reloadCustomers();
-        const match = list.find((c) => c.id === result.customer.id) || result.customer;
-        setCompanions((prev) => prev.map((guest, i) => (
-          i === index
-            ? {
-              customer: String(match.id),
-              full_name: match.full_name || customerDisplayName(match),
-              cnic: match.cnic || '',
-              phone: match.phone || '',
-            }
-            : guest
-        )));
-        toast.success(`Guest ${index + 2} added from ID scan`);
-        return;
-      }
-      setCompanions((prev) => prev.map((guest, i) => (
-        i === index
-          ? {
-            ...guest,
-            full_name: result.draft.full_name || '',
-            cnic: result.draft.cnic || '',
-            phone: result.draft.phone || '',
-            customer: '',
-          }
-          : guest
-      )));
-      toast('ID read — complete guest details', { icon: 'ℹ️' });
-    } catch {
-      toast.error('Failed to process ID card scan');
-    } finally {
-      setCreatingGuest(false);
-    }
   };
 
   const handleSubmit = async (e) => {
@@ -404,7 +273,9 @@ export default function BookFutureStayPage() {
         room: Number(form.room),
         check_in: form.check_in,
         check_out: form.check_out,
-        guests_count: effectiveGuestsCount,
+        guests_count: familyGuestsCount,
+        adults_count: Math.max(Number(form.adults_count) || 1, 1),
+        children_count: Math.max(Number(form.children_count) || 0, 0),
         advance_paid: parseFloat(form.advance_paid) || 0,
         advance_payment_method: form.advance_payment_method,
         addon_service_ids: validSelectedAddonIds,
@@ -415,8 +286,8 @@ export default function BookFutureStayPage() {
           form.notes.trim(),
         ].filter(Boolean).join('\n'),
       };
-      if (shouldSendGuestRoster(effectiveGuestsCount, filledCompanions)) {
-        payload.guest_roster = buildGuestRosterPayload(form.customer, primaryCustomer, filledCompanions);
+      if (shouldSendGuestRoster(familyGuestsCount, filledCompanions)) {
+        payload.guest_roster = buildGuestRosterPayload(form.customer, primaryCustomer, companions);
       }
       const created = await createStay(payload);
       toast.success('Future stay booked successfully');
@@ -580,18 +451,30 @@ export default function BookFutureStayPage() {
                   </span>
                 )}
               </div>
+              <BookFutureGuestBar
+                customers={customers}
+                value={form.customer}
+                adultsCount={form.adults_count}
+                childrenCount={form.children_count}
+                companions={companions}
+                onCompanionsChange={setCompanions}
+                savedTravelCompanions={savedTravelCompanions}
+                onAdultsChange={(n) => setForm({ ...form, adults_count: n })}
+                onChildrenChange={(n) => setForm({ ...form, children_count: n })}
+                onChange={(customerId) => setForm({ ...form, customer: customerId })}
+                onCustomerCreated={async () => {
+                  await reloadCustomers();
+                }}
+                disabled={loading || submitting}
+              />
             </div>
 
             {/* Room selection */}
             <div className="premium-card" style={{ padding: '28px' }}>
-              <SectionHeader icon={BedDouble} title="Select room" subtitle="Total for your guests shows on each room card" />
+              <SectionHeader icon={BedDouble} title="Select room" />
               {availabilityLoading ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Checking availability…</p>
-              ) : !form.check_in || !form.check_out ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
-                  Set check-in and check-out dates in the header above to see available rooms.
-                </p>
-              ) : rooms.length === 0 ? (
+              ) : !form.check_in || !form.check_out ? null : rooms.length === 0 ? (
                 <div style={{ padding: '20px', background: '#fef2f2', borderRadius: '12px', border: '1px solid #fecaca', color: '#b91c1c', fontSize: '14px' }}>
                   No active rooms found. Add rooms from Room Management first.
                 </div>
@@ -616,7 +499,7 @@ export default function BookFutureStayPage() {
                     const preview = bookingNights > 0 && !isBooked
                       ? computeStayBilling({
                         room: r,
-                        guestsCount: effectiveGuestsCount,
+                        guestsCount: familyGuestsCount,
                         nights: bookingNights,
                         services,
                         selectedServiceIds: previewAddonIds,
@@ -704,42 +587,6 @@ export default function BookFutureStayPage() {
               )}
             </div>
 
-            {/* Guests */}
-            <div className="premium-card" style={{ padding: '28px' }}>
-              <SectionHeader
-                icon={User}
-                title="Guests on this stay"
-                subtitle="Add guests — bill updates instantly for room, add-ons & balance"
-              />
-              <StayGuestRoster
-                customers={customers}
-                primaryCustomerId={form.customer}
-                maxAdditionalGuests={maxAdditionalGuests}
-                onPrimaryCustomerChange={(customerId) => {
-                  setForm({ ...form, customer: customerId });
-                  if (customerId) setScannedGuest(null);
-                }}
-                companions={companions}
-                onCompanionsChange={setCompanions}
-                showIdScanner={showIdScanner}
-                onIdScanPrimary={handleIdScan}
-                onIdScanCompanion={handleCompanionIdScan}
-                scanProcessing={creatingGuest}
-                scannedGuest={scannedGuest}
-                onScannedGuestChange={handleScannedGuestChange}
-                onScannedPhoneChange={handleScannedPhoneChange}
-                onSaveScannedGuest={handleCreateGuestFromScan}
-                onCancelScannedGuest={() => setScannedGuest(null)}
-                savingScannedGuest={creatingGuest}
-                disabled={loading || submitting}
-              />
-              {selectedRoom && (
-                <div style={{ marginTop: '16px' }}>
-                  <GuestsCountHint room={selectedRoom} guestsCount={effectiveGuestsCount} />
-                </div>
-              )}
-            </div>
-
             {/* Notes */}
             <div className="premium-card" style={{ padding: '28px' }}>
               <SectionHeader icon={FileText} title="Notes" subtitle="Special requests or arrival details (optional)" />
@@ -763,9 +610,6 @@ export default function BookFutureStayPage() {
                   color: '#fff',
                 }}
               >
-                <p style={{ fontSize: '13px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 3px 0', opacity: 0.9 }}>
-                  Reservation ID
-                </p>
                 <p style={{ fontSize: '10px', fontWeight: '700', margin: '0 0 8px 0', letterSpacing: '0.02em', opacity: 0.95 }}>
                   {reservationPreviewId}
                 </p>
@@ -785,7 +629,7 @@ export default function BookFutureStayPage() {
                       compact
                       roomLabel={
                         selectedRoom
-                          ? formatReservationRoomLabel(selectedRoom, bookingNights, effectiveGuestsCount)
+                          ? formatReservationRoomLabel(selectedRoom, bookingNights, familyGuestsCount)
                           : undefined
                       }
                     />
