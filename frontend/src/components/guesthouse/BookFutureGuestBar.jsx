@@ -11,6 +11,7 @@ import {
   validateGhCustomerForm,
   validateMinorGuestForm,
 } from '../../utils/customer';
+import { formatPakPhone, PAK_PHONE_INPUT_MAX_LENGTH, PAK_PHONE_PLACEHOLDER } from '../../utils/phone';
 import {
   companionFromSaved,
   isChildCompanionSlot,
@@ -805,10 +806,12 @@ export default function BookFutureGuestBar({
                       <input
                         value={guestForm.phone}
                         onChange={(e) => {
-                          updateField('phone', e.target.value);
+                          updateField('phone', formatPakPhone(e.target.value));
                           setCompanionSearchId('');
                         }}
-                        placeholder="0300 1234567"
+                        placeholder={PAK_PHONE_PLACEHOLDER}
+                        inputMode="numeric"
+                        maxLength={PAK_PHONE_INPUT_MAX_LENGTH}
                         aria-invalid={!!formErrors.phone}
                       />
                       {formErrors.phone && <p className="field-error">{formErrors.phone}</p>}
@@ -855,8 +858,10 @@ export default function BookFutureGuestBar({
                   <label>Phone <span className="req">*</span></label>
                   <input
                     value={guestForm.phone}
-                    onChange={(e) => updateField('phone', e.target.value)}
-                    placeholder="0300 1234567"
+                    onChange={(e) => updateField('phone', formatPakPhone(e.target.value))}
+                    placeholder={PAK_PHONE_PLACEHOLDER}
+                    inputMode="numeric"
+                    maxLength={PAK_PHONE_INPUT_MAX_LENGTH}
                     aria-invalid={!!formErrors.phone}
                   />
                   {formErrors.phone && <p className="field-error">{formErrors.phone}</p>}

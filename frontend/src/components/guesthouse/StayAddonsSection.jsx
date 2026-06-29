@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Snowflake, Plus } from 'lucide-react';
 import { formatRs } from '../../utils/currency';
-import { computeServiceAmount, getServicePriceLabel, formatRoomGuestChargeLabel, getIncludedGuests } from '../../utils/ghBilling';
+import { computeServiceAmount, getServicePriceLabel, formatRoomGuestChargeLabel, COUPLE_GUEST_MAX } from '../../utils/ghBilling';
 
 const PRICING_HINT = {
   PER_NIGHT: 'Charged per night',
@@ -99,7 +99,14 @@ export function StayBillingBreakdown({ billing, advance, compact = false, roomLa
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '8px' : '10px' }}>
-      {billing.extraGuestTotal > 0 ? (
+      {billing.perGuestAll ? (
+        <div style={rowStyle}>
+          <span style={{ color: 'var(--text-muted)', flex: 1, minWidth: 0 }}>
+            Room rate ({formatRs(billing.nightly)}/night × {billing.guests} guest{billing.guests !== 1 ? 's' : ''} × {billing.nights} night{billing.nights !== 1 ? 's' : ''})
+          </span>
+          <span style={{ fontWeight: '700', flexShrink: 0 }}>{formatRs(billing.roomGuestTotal ?? billing.roomBase)}</span>
+        </div>
+      ) : billing.extraGuestTotal > 0 ? (
         <>
           <div style={rowStyle}>
             <span style={{ color: 'var(--text-muted)', flex: 1, minWidth: 0 }}>
@@ -143,24 +150,27 @@ export function StayBillingBreakdown({ billing, advance, compact = false, roomLa
 export function GuestsCountHint({ room, guestsCount }) {
   if (!room) return null;
   const guests = Math.max(Number(guestsCount) || 1, 1);
-  const included = getIncludedGuests(room);
-  const extraFee = Number(room.extra_guest_fee_per_night) || 0;
-  const extraGuests = Math.max(guests - included, 0);
   const nightly = Number(room.price_per_night) || 0;
 
-  if (extraGuests > 0 && extraFee > 0) {
+  if (guests > COUPLE_GUEST_MAX) {
     return (
       <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '6px 0 0 0' }}>
-        Base rate covers {included} guest{included !== 1 ? 's' : ''} ({formatRs(nightly)}/night).
-        {' '}
-        {extraGuests} extra guest{extraGuests !== 1 ? 's' : ''} × {formatRs(extraFee)}/night each.
+        {guests} guests — room rate applies to each guest ({formatRs(nightly)}/night × {guests} guests).
+      </p>
+    );
+  }
+
+  if (guests === 2) {
+    return (
+      <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '6px 0 0 0' }}>
+        2 guests share the room base rate ({formatRs(nightly)}/night) — no extra guest fee.
       </p>
     );
   }
 
   return (
     <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '6px 0 0 0' }}>
-      Base rate covers up to {included} guest{included !== 1 ? 's' : ''} at {formatRs(nightly)}/night — no extra guest fee.
+      Base room rate {formatRs(nightly)}/night — add a second guest at no extra charge.
     </p>
   );
 }

@@ -3,6 +3,7 @@ from django.db.models import Sum, F
 from django.db.models.functions import Greatest
 from decimal import Decimal
 from .models import Customer
+from .phone import format_pk_phone, validate_pk_phone
 
 
 class CustomerSerializer(serializers.ModelSerializer):
@@ -60,7 +61,10 @@ class CustomerSerializer(serializers.ModelSerializer):
         elif not phone:
             raise serializers.ValidationError({'phone': 'Phone number is required.'})
         else:
-            attrs['phone'] = phone
+            phone_error = validate_pk_phone(phone)
+            if phone_error:
+                raise serializers.ValidationError({'phone': phone_error})
+            attrs['phone'] = format_pk_phone(phone)
 
         cnic = (attrs.get('cnic') if 'cnic' in attrs else (self.instance.cnic if self.instance else '')) or ''
         cnic = str(cnic).strip()

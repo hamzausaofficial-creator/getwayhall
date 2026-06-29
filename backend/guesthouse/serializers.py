@@ -286,6 +286,7 @@ class StayBookingSerializer(serializers.ModelSerializer):
             'extra_guest_fee_per_night': float(room_charges['extra_guest_fee_per_night']),
             'room_base': float(room_charges['room_base']),
             'extra_guest_total': float(room_charges['extra_guest_total']),
+            'per_guest_all': room_charges['per_guest_all'],
             'service_charges': service_lines,
             'service_total': float(service_total),
             'custom_charges': custom_lines,

@@ -12,6 +12,7 @@ import { getGuestHouseDaily } from '../../api/guesthouse';
 import toast from 'react-hot-toast';
 import AppLoader from '../../components/AppLoader';
 import { customerDisplayName, customerInitials, buildCustomerPayload, validateGhCustomerForm } from '../../utils/customer';
+import { formatPakPhone, PAK_PHONE_INPUT_MAX_LENGTH, PAK_PHONE_PLACEHOLDER } from '../../utils/phone';
 import { formatRs, formatCollectDuePKR, hasCollectDue } from '../../utils/currency';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useGhPageVisibility } from '../../context/GhPageVisibilityContext';
@@ -165,7 +166,8 @@ export default function GhCustomers() {
   };
 
   const updateCustomerField = (field, value) => {
-    setCurrentCustomer((prev) => ({ ...prev, [field]: value }));
+    const nextValue = field === 'phone' ? formatPakPhone(value) : value;
+    setCurrentCustomer((prev) => ({ ...prev, [field]: nextValue }));
     if (formErrors[field]) {
       setFormErrors((prev) => {
         const next = { ...prev };
@@ -731,7 +733,9 @@ export default function GhCustomers() {
                 <input
                   value={currentCustomer.phone}
                   onChange={(e) => updateCustomerField('phone', e.target.value)}
-                  placeholder="0300 1234567"
+                  placeholder={PAK_PHONE_PLACEHOLDER}
+                  inputMode="numeric"
+                  maxLength={PAK_PHONE_INPUT_MAX_LENGTH}
                   aria-invalid={!!formErrors.phone}
                 />
                 {formErrors.phone && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#b91c1c', fontWeight: 600 }}>{formErrors.phone}</p>}

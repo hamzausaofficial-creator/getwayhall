@@ -1,3 +1,5 @@
+import { formatPakPhone, validatePakPhone } from './phone';
+
 /** Display name for customer records (supports legacy first/last). */
 export const customerDisplayName = (customer) => {
   if (!customer) return '';
@@ -17,7 +19,7 @@ export const customerInitials = (customer) => {
 export const buildCustomerPayload = ({ full_name, cnic, email, phone, address, notes, is_minor, linked_primary }) => ({
   full_name: (full_name || '').trim(),
   cnic: (cnic || '').trim(),
-  phone: (phone || '').trim(),
+  phone: formatPakPhone(phone),
   email: (email || '').trim() || null,
   address: (address || '').trim(),
   notes: notes || '',
@@ -29,7 +31,8 @@ export const buildCustomerPayload = ({ full_name, cnic, email, phone, address, n
 export const validateGhCustomerForm = ({ full_name, cnic, phone, email }) => {
   const errors = {};
   if (!full_name?.trim()) errors.full_name = 'Full name is required.';
-  if (!phone?.trim()) errors.phone = 'Phone number is required.';
+  const phoneError = validatePakPhone(phone);
+  if (phoneError) errors.phone = phoneError;
   if (!cnic?.trim()) errors.cnic = 'CNIC / ID card is required.';
   if (email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
     errors.email = 'Enter a valid email address.';

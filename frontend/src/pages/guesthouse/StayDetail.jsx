@@ -441,7 +441,16 @@ export default function StayDetail() {
             <div className="sd-bill__body">
               {stay.billing_breakdown && (
                 <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
-                  {Number(stay.billing_breakdown.extra_guest_total) > 0 ? (
+                  {stay.billing_breakdown.per_guest_all ? (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>
+                        Room rate ({formatRs(stay.price_per_night)}/night × {stay.billing_breakdown.guests} guests × {stay.billing_breakdown.nights} night{stay.billing_breakdown.nights !== 1 ? 's' : ''})
+                      </span>
+                      <span style={{ fontWeight: 700 }}>
+                        {formatRs(stay.billing_breakdown.room_guest_total ?? stay.billing_breakdown.room_base)}
+                      </span>
+                    </div>
+                  ) : Number(stay.billing_breakdown.extra_guest_total) > 0 ? (
                     <>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span style={{ color: 'var(--text-muted)' }}>

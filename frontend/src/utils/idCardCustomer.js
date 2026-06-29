@@ -1,5 +1,6 @@
 import client from '../api/client';
 import { buildCustomerPayload, validateGhCustomerForm } from './customer';
+import { isValidPakPhone } from './phone';
 import { cnicDigits, formatCnic, normalizeIdCardParsed } from './cnicScanner';
 
 export function findCustomerByCnic(customers, cnic) {
@@ -70,8 +71,7 @@ export async function resolveGuestFromIdScan(parsed, { customers = [] } = {}) {
 }
 
 export function isPhoneCompleteForAutoSave(phone) {
-  const digits = String(phone || '').replace(/\D/g, '');
-  return digits.length >= 10;
+  return isValidPakPhone(phone);
 }
 
 /** Save scanned guest draft to API (validates first). */
