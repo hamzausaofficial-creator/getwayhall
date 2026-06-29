@@ -363,8 +363,8 @@ export default function StayDetail() {
       </div>
 
       <div className="booking-layout">
-        <div>
-          <div className="premium-card sd-section" style={{ padding: '22px' }}>
+        <div className="sd-detail-stack">
+          <div className="premium-card sd-section sd-guests-section">
             <h3 className="sd-section-title"><User size={18} /> Guests on this stay</h3>
             <StayGuestRosterDetail guests={stay.guests} charges={stay.charges} />
           </div>

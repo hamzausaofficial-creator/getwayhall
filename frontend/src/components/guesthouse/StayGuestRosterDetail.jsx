@@ -1,5 +1,13 @@
 import { Link } from 'react-router-dom';
+import { User, Users } from 'lucide-react';
 import './stay-guest-roster.css';
+
+function guestMetaParts(guest) {
+  if (guest.is_minor) {
+    return guest.address ? [guest.address] : [];
+  }
+  return [guest.cnic, guest.phone].filter(Boolean);
+}
 
 export default function StayGuestRosterDetail({ guests = [], charges = [] }) {
   const sortedGuests = [...guests].sort((a, b) => {
@@ -7,50 +15,80 @@ export default function StayGuestRosterDetail({ guests = [], charges = [] }) {
     return a.is_primary ? -1 : 1;
   });
 
+  const primary = sortedGuests.find((g) => g.is_primary) || sortedGuests[0];
+  const companions = primary ? sortedGuests.filter((g) => g !== primary) : [];
+
   const serviceCharges = (charges || []).filter((line) => line.charge_type !== 'CUSTOM');
+
+  if (!primary) {
+    return null;
+  }
+
+  const primaryMeta = guestMetaParts(primary);
 
   return (
     <div className="stay-guest-roster">
-      <div className="stay-guest-roster__detail-list">
-        {sortedGuests.map((guest, index) => (
-          <div
-            key={guest.id || `guest-${index}`}
-            className={`stay-guest-roster__detail-item${guest.is_primary ? ' stay-guest-roster__detail-item--primary' : ''}`}
-          >
-            <div className="stay-guest-roster__detail-top">
-              <h4 className="stay-guest-roster__detail-name">{guest.full_name}</h4>
-              <span className={`stay-guest-roster__detail-badge${guest.is_primary ? '' : ' stay-guest-roster__detail-badge--guest'}`}>
-                {guest.is_primary ? 'Primary guest' : `Guest ${index + 1}`}
-              </span>
+      <div className="sd-guest-party">
+        <div className="sd-guest-party__primary">
+          <div className="sd-guest-party__icon" aria-hidden>
+            <User size={18} strokeWidth={2.25} />
+          </div>
+          <div className="sd-guest-party__main">
+            <div className="sd-guest-party__title-row">
+              <p className="sd-guest-party__name">{primary.full_name}</p>
+              <span className="sd-guest-party__badge">Primary</span>
+              {primary.customer && (
+                <Link to={`/gh/customers/${primary.customer}`} className="sd-guest-party__link">
+                  Profile →
+                </Link>
+              )}
             </div>
-            <div className="stay-guest-roster__detail-grid">
-              <div>
-                <span className="stay-guest-roster__detail-label">CNIC / ID</span>
-                <span className="stay-guest-roster__detail-value">{guest.cnic || '-'}</span>
-              </div>
-              <div>
-                <span className="stay-guest-roster__detail-label">Phone</span>
-                <span className="stay-guest-roster__detail-value">{guest.phone || '-'}</span>
-              </div>
-            </div>
-            {guest.customer && (
-              <Link to={`/gh/customers/${guest.customer}`} className="stay-guest-roster__profile-link" style={{ marginTop: 10, display: 'inline-block' }}>
-                View profile →
-              </Link>
+            {primaryMeta.length > 0 && (
+              <p className="sd-guest-party__meta">{primaryMeta.join(' · ')}</p>
             )}
           </div>
-        ))}
+        </div>
+
+        {companions.length > 0 && (
+          <div className="sd-guest-party__others">
+            <p className="sd-guest-party__others-label">
+              <Users size={12} />
+              {companions.length} with stay
+            </p>
+            {companions.map((guest, index) => {
+              const meta = guestMetaParts(guest);
+              return (
+                <div key={guest.id || `companion-${index}`} className="sd-guest-party__row">
+                  <div className="sd-guest-party__row-main">
+                    <span className="sd-guest-party__row-name">
+                      {guest.full_name}
+                      {guest.is_minor && <em className="sd-guest-party__child">Under 18</em>}
+                    </span>
+                    {meta.length > 0 && (
+                      <span className="sd-guest-party__row-meta">{meta.join(' · ')}</span>
+                    )}
+                  </div>
+                  {guest.customer && (
+                    <Link to={`/gh/customers/${guest.customer}`} className="sd-guest-party__link sd-guest-party__link--row">
+                      Profile
+                    </Link>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {serviceCharges.length > 0 && (
-        <div className="card-surface" style={{ padding: 16 }}>
-          <h4 className="stay-guest-roster__title" style={{ marginBottom: 10 }}>Room add-ons</h4>
-          <div className="stay-guest-roster__detail-grid">
+        <div className="stay-guest-roster__addons">
+          <p className="stay-guest-roster__addons-title">Room add-ons</p>
+          <div className="stay-guest-roster__addons-list">
             {serviceCharges.map((line) => (
-              <div key={line.id}>
-                <span className="stay-guest-roster__detail-label">{line.service_label || line.description}</span>
-                <span className="stay-guest-roster__detail-value">Rs {Number(line.amount || 0).toLocaleString()}</span>
-              </div>
+              <span key={line.id} className="stay-guest-roster__addons-item">
+                {line.service_label || line.description}
+                <strong>Rs {Number(line.amount || 0).toLocaleString()}</strong>
+              </span>
             ))}
           </div>
         </div>

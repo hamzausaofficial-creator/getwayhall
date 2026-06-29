@@ -294,6 +294,111 @@
   word-break: break-word;
 }
 
+.stay-guest-roster__detail-grid--single {
+  grid-template-columns: 1fr;
+}
+
+.stay-guest-roster__detail-companions {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed rgba(91, 213, 30, 0.35);
+}
+
+.stay-guest-roster__detail-companions-title {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.stay-guest-roster__detail-companion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid var(--border);
+}
+
+.stay-guest-roster__detail-companion + .stay-guest-roster__detail-companion {
+  margin-top: 8px;
+}
+
+.stay-guest-roster__detail-companion-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.stay-guest-roster__detail-companion-name {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.stay-guest-roster__detail-companion-tag {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  background: var(--background);
+  border: 1px solid var(--border);
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+.stay-guest-roster__detail-companion-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.stay-guest-roster__addons {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.stay-guest-roster__addons-title {
+  margin: 0 0 6px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.stay-guest-roster__addons-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.stay-guest-roster__addons-item {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stay-guest-roster__addons-item strong {
+  color: var(--text-main);
+  font-weight: 800;
+}
+
 @media (max-width: 640px) {
   .stay-guest-roster__detail-grid {
     grid-template-columns: 1fr;
