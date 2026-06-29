@@ -1,3 +1,5 @@
+import { formatRs } from './currency';
+
 const PRICING_LABELS = {
   PER_NIGHT: '/ night',
   PER_STAY: '/ stay',
@@ -89,13 +91,16 @@ export function formatReservationRoomLabel(room, nights, guestsCount) {
   const guests = Math.max(Number(guestsCount) || 1, 1);
   const included = getIncludedGuests(room);
   const extraGuests = Math.max(guests - included, 0);
-  const rate = Number(room.price_per_night).toLocaleString();
-  const extraFee = Number(room.extra_guest_fee_per_night) || 0;
-  let guestPart = `${guests} guest${guests !== 1 ? 's' : ''}`;
-  if (extraGuests > 0 && extraFee > 0) {
-    guestPart += ` (${extraGuests} extra @ ${extraFee.toLocaleString()}/night)`;
+  const nightly = formatRs(Number(room.price_per_night) || 0);
+  const nightPart = `${nightsN} night${nightsN !== 1 ? 's' : ''}`;
+  const guestPart = `${guests} guest${guests !== 1 ? 's' : ''}`;
+
+  if (extraGuests > 0 && Number(room.extra_guest_fee_per_night) > 0) {
+    const extraFee = formatRs(room.extra_guest_fee_per_night);
+    return `Room ${room.room_number} · ${nightPart} · ${nightly}/night · ${guestPart} · ${extraGuests} extra @ ${extraFee}/night`;
   }
-  return `Room ${room.room_number} (${rate}/night × ${nightsN} night${nightsN !== 1 ? 's' : ''}) · ${guestPart}`;
+
+  return `Room ${room.room_number} · ${nightPart} · ${nightly}/night · ${guestPart}`;
 }
 
 export function formatRoomGuestChargeLabel(billing) {
@@ -104,8 +109,11 @@ export function formatRoomGuestChargeLabel(billing) {
     nights, included, extraGuests, nightly, extraFee,
   } = billing;
   const inc = included ?? 1;
+  const rate = formatRs(Number(nightly) || 0);
+  const nightPart = `${nights} night${nights !== 1 ? 's' : ''}`;
   if (extraGuests > 0 && Number(extraFee) > 0) {
-    return `Room (base ${inc} incl. × ${Number(nightly).toLocaleString()}/night × ${nights}n + ${extraGuests} extra × ${Number(extraFee).toLocaleString()}/night)`;
+    const extraRate = formatRs(extraFee);
+    return `Room · ${nightPart} · base ${inc} guest${inc !== 1 ? 's' : ''} @ ${rate}/night · ${extraGuests} extra @ ${extraRate}/night`;
   }
-  return `Room (${inc} guest${inc !== 1 ? 's' : ''} incl. × ${Number(nightly).toLocaleString()}/night × ${nights} night${nights !== 1 ? 's' : ''})`;
+  return `Room · ${nightPart} · ${rate}/night · up to ${inc} guest${inc !== 1 ? 's' : ''} included`;
 }

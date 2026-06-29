@@ -91,7 +91,7 @@ export function StayAddonsPicker({ services, selectedIds, onToggle, nights, gues
   );
 }
 
-export function StayBillingBreakdown({ billing, advance = 0, compact = false, roomLabel }) {
+export function StayBillingBreakdown({ billing, advance, compact = false, roomLabel }) {
   if (!billing) return null;
 
   const due = Math.max(0, billing.total - (Number(advance) || 0));

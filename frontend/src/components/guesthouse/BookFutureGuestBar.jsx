@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { UserPlus, X, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -39,12 +39,40 @@ function companionLabel(index, adultsCount) {
   return child ? `Child ${index - Math.max(adultsCount - 1, 0) + 1}` : `Adult guest ${index + 1}`;
 }
 
-function companionDisplayName(guest, customers) {
+function companionDisplayName(guest, primaryCustomers, savedTravelCompanions = []) {
   if (guest.customer) {
-    const match = customers.find((c) => String(c.id) === String(guest.customer));
-    if (match) return customerDisplayName(match);
+    const fromPrimary = primaryCustomers.find((c) => String(c.id) === String(guest.customer));
+    if (fromPrimary) return customerDisplayName(fromPrimary);
+    const fromSaved = savedTravelCompanions.find(
+      (c) => String(c.customer_id) === String(guest.customer),
+    );
+    if (fromSaved?.full_name) return fromSaved.full_name;
   }
   return (guest.full_name || '').trim() || 'Add details';
+}
+
+function savedGuestMatchesCompanion(saved, guest) {
+  if (saved.customer_id && guest.customer) {
+    return String(guest.customer) === String(saved.customer_id);
+  }
+  return (guest.full_name || '').trim().toLowerCase() === (saved.full_name || '').trim().toLowerCase()
+    && Boolean(guest.is_minor) === Boolean(saved.is_minor);
+}
+
+function savedGuestKey(saved) {
+  return `${saved.customer_id || saved.full_name}-${saved.is_minor ? 'c' : 'a'}`;
+}
+
+function savedRowToCustomer(row) {
+  if (!row?.customer_id) return null;
+  return {
+    id: row.customer_id,
+    full_name: row.full_name,
+    cnic: row.cnic || '',
+    phone: row.phone || '',
+    address: row.address || '',
+    is_minor: Boolean(row.is_minor),
+  };
 }
 
 function applySavedCompanions(slots, savedList, adultsCount) {
@@ -90,6 +118,28 @@ export default function BookFutureGuestBar({
   const companionsNeeded = Math.max(totalGuests - 1, 0);
   const isChildModal = companionModalIndex !== null
     && isChildCompanionSlot(companionModalIndex, adultsCount);
+
+  const adultCompanionCustomers = useMemo(() => {
+    const map = new Map();
+    savedTravelCompanions
+      .filter((row) => !row.is_minor && row.customer_id)
+      .forEach((row) => {
+        const customer = savedRowToCustomer(row);
+        if (customer) map.set(customer.id, customer);
+      });
+    return [...map.values()];
+  }, [savedTravelCompanions]);
+
+  const childCompanionCustomers = useMemo(() => {
+    const map = new Map();
+    savedTravelCompanions
+      .filter((row) => row.is_minor && row.customer_id)
+      .forEach((row) => {
+        const customer = savedRowToCustomer(row);
+        if (customer) map.set(customer.id, customer);
+      });
+    return [...map.values()];
+  }, [savedTravelCompanions]);
 
   const syncCompanionsToCount = (nextAdults, nextChildren, currentCompanions = companions) => {
     const total = Math.max(Number(nextAdults) || 1, 1) + Math.max(Number(nextChildren) || 0, 0);
@@ -230,9 +280,11 @@ export default function BookFutureGuestBar({
     }
   };
 
-  const saveCompanionSlot = (index, guestData) => {
+  const saveCompanionSlot = (index, guestData, { silent = false } = {}) => {
     const next = companions.map((guest, i) => (i === index ? { ...guest, ...guestData } : guest));
     onCompanionsChange?.(next);
+
+    if (silent) return;
 
     const nextUnfilled = next.findIndex((guest, i) => i > index && !isCompanionFilled(guest));
     if (nextUnfilled >= 0) {
@@ -249,8 +301,62 @@ export default function BookFutureGuestBar({
       toast.error(childSlot ? 'Select a child under 18 for this slot.' : 'Select an adult guest (18+) for this slot.');
       return;
     }
-    saveCompanionSlot(index, companionFromSaved(saved, childSlot));
-    toast.success(`${companionLabel(index, adultsCount)} added`);
+    saveCompanionSlot(index, companionFromSaved(saved, childSlot), { silent: true });
+    toast.success(`${saved.full_name} added to this stay`);
+  };
+
+  const isSavedGuestSelected = (saved) => (
+    companions.some((guest) => savedGuestMatchesCompanion(saved, guest))
+  );
+
+  const toggleSavedGuest = (saved) => {
+    if (disabled) return;
+
+    const selectedIndex = companions.findIndex((guest) => savedGuestMatchesCompanion(saved, guest));
+    if (selectedIndex >= 0) {
+      removeCompanion(selectedIndex);
+      toast(`${saved.full_name} removed from this stay`, { icon: 'ℹ️' });
+      return;
+    }
+
+    const childSlot = Boolean(saved.is_minor);
+    let nextAdults = Math.max(Number(adultsCount) || 1, 1);
+    let nextChildren = Math.max(Number(childrenCount) || 0, 0);
+    let nextCompanions = [...companions];
+
+    let slotIndex = nextCompanions.findIndex(
+      (guest, index) => !isCompanionFilled(guest)
+        && isChildCompanionSlot(index, nextAdults) === childSlot,
+    );
+
+    if (slotIndex < 0) {
+      if (childSlot) {
+        nextChildren += 1;
+      } else {
+        nextAdults += 1;
+      }
+      const needed = Math.max(nextAdults + nextChildren - 1, 0);
+      while (nextCompanions.length < needed) {
+        nextCompanions.push(makeEmptyCompanion(nextAdults, nextCompanions.length));
+      }
+      slotIndex = nextCompanions.findIndex(
+        (guest, index) => !isCompanionFilled(guest)
+          && isChildCompanionSlot(index, nextAdults) === childSlot,
+      );
+      onAdultsChange?.(nextAdults);
+      onChildrenChange?.(nextChildren);
+    }
+
+    if (slotIndex < 0) {
+      toast.error('Could not add guest to this stay.');
+      return;
+    }
+
+    nextCompanions = nextCompanions.map((guest, index) => (
+      index === slotIndex ? { ...guest, ...companionFromSaved(saved, childSlot) } : guest
+    ));
+    onCompanionsChange?.(nextCompanions);
+    toast.success(`${saved.full_name} added to this stay`);
   };
 
   const handleCompanionSave = async (e) => {
@@ -261,7 +367,7 @@ export default function BookFutureGuestBar({
 
     if (childSlot) {
       if (companionSearchId) {
-        const match = customers.find((c) => String(c.id) === String(companionSearchId));
+        const match = childCompanionCustomers.find((c) => String(c.id) === String(companionSearchId));
         if (!match) {
           toast.error('Please select a valid guest.');
           return;
@@ -321,7 +427,7 @@ export default function BookFutureGuestBar({
         toast.error('Additional guest cannot be the same as the primary guest.');
         return;
       }
-      const match = customers.find((c) => String(c.id) === String(companionSearchId));
+      const match = adultCompanionCustomers.find((c) => String(c.id) === String(companionSearchId));
       if (!match) {
         toast.error('Please select a valid guest.');
         return;
@@ -465,17 +571,25 @@ export default function BookFutureGuestBar({
         <div className="book-future-party-bar__saved">
           <span className="book-future-party-bar__saved-label">Guests who stayed with this customer</span>
           <div className="book-future-party-bar__saved-list">
-            {savedTravelCompanions.map((saved) => (
-              <span
-                key={`${saved.customer_id || saved.full_name}-${saved.is_minor ? 'c' : 'a'}`}
-                className={`book-future-party-bar__saved-chip${saved.is_minor ? ' book-future-party-bar__saved-chip--child' : ''}`}
-                title={saved.is_minor ? 'Under 18' : '18+ with ID'}
-              >
-                {saved.full_name}
-                {saved.is_minor ? ' (child)' : saved.cnic ? ` · ${saved.cnic}` : ''}
-                {saved.stays_together > 1 ? ` · ${saved.stays_together} stays` : ''}
-              </span>
-            ))}
+            {savedTravelCompanions.map((saved) => {
+              const selected = isSavedGuestSelected(saved);
+              return (
+                <button
+                  key={savedGuestKey(saved)}
+                  type="button"
+                  className={`book-future-party-bar__saved-chip book-future-party-bar__saved-chip--btn${saved.is_minor ? ' book-future-party-bar__saved-chip--child' : ''}${selected ? ' book-future-party-bar__saved-chip--selected' : ''}`}
+                  title={selected ? 'Click to remove from this stay' : (saved.is_minor ? 'Click to add child' : 'Click to add adult guest')}
+                  onClick={() => toggleSavedGuest(saved)}
+                  disabled={disabled}
+                  aria-pressed={selected}
+                >
+                  {saved.full_name}
+                  {saved.is_minor ? ' (child)' : saved.cnic ? ` · ${saved.cnic}` : ''}
+                  {saved.stays_together > 1 ? ` · ${saved.stays_together} stays` : ''}
+                  {selected && <span className="book-future-party-bar__saved-check"> ✓</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -497,7 +611,7 @@ export default function BookFutureGuestBar({
                 onClick={() => openCompanionModal(index)}
                 disabled={disabled}
               >
-                {companionLabel(index, adultsCount)}: {companionDisplayName(guest, customers)}
+                {companionLabel(index, adultsCount)}: {companionDisplayName(guest, customers, savedTravelCompanions)}
               </button>
               <button
                 type="button"
@@ -554,7 +668,7 @@ export default function BookFutureGuestBar({
                             const id = e.target.value;
                             setCompanionSearchId(id);
                             const match = savedChildren.find((row) => String(row.customer_id) === id)
-                              || customers.find((c) => String(c.id) === id);
+                              || childCompanionCustomers.find((c) => String(c.id) === id);
                             if (match) {
                               setGuestForm({
                                 full_name: match.full_name || '',
@@ -610,25 +724,29 @@ export default function BookFutureGuestBar({
                 ) : (
                   <>
                     <div className="input-group">
-                      <label>Search existing guest (CNIC required)</label>
+                      <label>Previously stayed with primary (18+)</label>
                       <CustomerSearchSelect
-                        customers={customers.filter((c) => String(c.id) !== String(value) && (c.cnic || '').trim())}
+                        customers={adultCompanionCustomers}
                         value={companionSearchId}
                         onChange={(customerId) => {
                           setCompanionSearchId(customerId);
-                          const match = customers.find((c) => String(c.id) === String(customerId));
+                          const match = adultCompanionCustomers.find(
+                            (c) => String(c.id) === String(customerId),
+                          );
                           if (match) {
                             setGuestForm({
                               full_name: match.full_name || customerDisplayName(match),
                               cnic: match.cnic || '',
                               phone: match.phone || '',
-                              email: match.email || '',
+                              email: '',
                               address: match.address || '',
                             });
                           }
                         }}
-                        placeholder="Name, phone, or CNIC…"
-                        disabled={disabled || saving}
+                        placeholder={adultCompanionCustomers.length > 0
+                          ? 'Pick a guest who stayed with primary…'
+                          : 'No saved adult guests yet — add below'}
+                        disabled={disabled || saving || adultCompanionCustomers.length === 0}
                       />
                     </div>
 

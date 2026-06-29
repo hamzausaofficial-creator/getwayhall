@@ -5,6 +5,12 @@ export const getCustomers = async (params) => {
   return response.data;
 };
 
+/** Guest House booking / guest list — primary bookers only (excludes linked companions). */
+export const getPrimaryCustomers = async () => {
+  const data = await getCustomers({ primary_only: '1' });
+  return data?.results || data || [];
+};
+
 export const createCustomer = async (data) => {
   const response = await client.post('/customers/', data);
   return response.data;

@@ -23,7 +23,7 @@ import { formatRs } from '../../utils/currency';
 import { resolveMediaUrl } from '../../utils/media';
 import { customerDisplayName } from '../../utils/customer';
 import BookFutureGuestBar from '../../components/guesthouse/BookFutureGuestBar';
-import { getCustomerTravelCompanions } from '../../api/customers';
+import { getCustomerTravelCompanions, getPrimaryCustomers } from '../../api/customers';
 import './book-future-stay.css';
 
 const SectionHeader = ({ icon: Icon, title, subtitle }) => (
@@ -127,12 +127,11 @@ export default function BookFutureStayPage() {
     const loadCustomers = async () => {
       setLoading(true);
       try {
-        const [custRes, svcList] = await Promise.all([
-          client.get('/customers/'),
+        const [custList, svcList] = await Promise.all([
+          getPrimaryCustomers(),
           listGhServices(),
         ]);
-        const custData = custRes.data?.results || custRes.data || [];
-        setCustomers(Array.isArray(custData) ? custData : []);
+        setCustomers(Array.isArray(custList) ? custList : []);
         setServices(Array.isArray(svcList) ? svcList : []);
       } catch {
         toast.error('Failed to load booking data');
@@ -239,11 +238,20 @@ export default function BookFutureStayPage() {
   const bookingNights = stayEstimate.nights || getBookingNights(form.check_in, form.check_out);
 
   const reloadCustomers = async () => {
-    const custRes = await client.get('/customers/');
-    const custData = custRes.data?.results || custRes.data || [];
-    const list = Array.isArray(custData) ? custData : [];
-    setCustomers(list);
+    const list = await getPrimaryCustomers();
+    setCustomers(Array.isArray(list) ? list : []);
     return list;
+  };
+
+  const reloadTravelCompanions = async (customerId = form.customer) => {
+    if (!customerId) {
+      setSavedTravelCompanions([]);
+      return [];
+    }
+    const list = await getCustomerTravelCompanions(customerId);
+    const companions = Array.isArray(list) ? list : [];
+    setSavedTravelCompanions(companions);
+    return companions;
   };
 
   const handleSubmit = async (e) => {
@@ -464,6 +472,7 @@ export default function BookFutureStayPage() {
                 onChange={(customerId) => setForm({ ...form, customer: customerId })}
                 onCustomerCreated={async () => {
                   await reloadCustomers();
+                  await reloadTravelCompanions();
                 }}
                 disabled={loading || submitting}
               />
@@ -680,10 +689,6 @@ export default function BookFutureStayPage() {
                           );
                         })}
                       </div>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 14, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-                      <span>Balance due</span>
-                      <span style={{ color: stayEstimate.due > 0 ? 'var(--error)' : 'var(--primary)' }}>{formatRs(stayEstimate.due)}</span>
                     </div>
                   </>
                 ) : (

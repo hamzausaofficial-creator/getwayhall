@@ -270,6 +270,17 @@
   color: var(--primary);
 }
 
+.book-future-party-bar__saved-chip--selected {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.book-future-party-bar__saved-check {
+  font-weight: 800;
+}
+
 .book-future-party-bar__companion-chip--child {
   border-color: rgba(59, 130, 246, 0.35);
 }
