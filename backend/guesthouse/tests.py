@@ -96,8 +96,8 @@ class GuestHouseStayTests(TestCase):
             ],
         }, format='json')
         self.assertEqual(response.status_code, 201)
-        # 2 nights × 3000/night × 3 guests (each guest pays full room rate)
-        expected_room = Decimal('18000')
+        # 2 nights × 3000 base + 1 extra guest × 500/night × 2 nights = 7000
+        expected_room = Decimal('7000')
         self.assertEqual(Decimal(str(response.data['total_amount'])), expected_room)
 
         client = APIClient()

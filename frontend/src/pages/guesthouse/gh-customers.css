@@ -415,3 +415,52 @@
   color: var(--text-muted);
   margin-bottom: 12px;
 }
+
+/* Daily view */
+
+.gh-daily-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: 24px;
+}
+
+.gh-daily-hero {
+  padding: 20px 22px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: linear-gradient(135deg, var(--primary-light) 0%, var(--surface) 55%);
+}
+
+.gh-daily-hero__eyebrow {
+  margin: 0 0 6px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--primary);
+}
+
+.gh-daily-hero__title {
+  margin: 0;
+  font-size: clamp(20px, 3vw, 26px);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--secondary);
+  line-height: 1.2;
+}
+
+.gh-daily-hero__sub {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.gh-daily-kpis {
+  margin-bottom: 4px;
+}
+
+.gh-daily-filters {
+  margin-bottom: 4px;
+}

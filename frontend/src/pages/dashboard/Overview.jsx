@@ -85,7 +85,7 @@ export default function Overview() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [period, setPeriod] = useState('all');
+  const [period, setPeriod] = useState('today');
   const [customDates, setCustomDates] = useState({ start: '', end: '' });
   const [alerts, setAlerts] = useState({
     upcoming_events: [],

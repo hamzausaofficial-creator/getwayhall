@@ -252,14 +252,7 @@ export default function GhPrintStay() {
           <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '20px', marginBottom: '28px', border: '1px solid #e2e8f0' }}>
             {stay.billing_breakdown ? (
               <>
-                {stay.billing_breakdown.per_guest_all ? (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
-                    <span>
-                      Room rate ({formatRs(stay.price_per_night)}/night × {stay.billing_breakdown.guests} guests × {stay.billing_breakdown.nights} nights)
-                    </span>
-                    <strong>{formatRs(stay.billing_breakdown.room_guest_total ?? stay.billing_breakdown.room_base)}</strong>
-                  </div>
-                ) : Number(stay.billing_breakdown.extra_guest_total) > 0 ? (
+                {Number(stay.billing_breakdown.extra_guest_total) > 0 ? (
                   <>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
                       <span>Room base ({stay.billing_breakdown.included_guests} guests incl.)</span>

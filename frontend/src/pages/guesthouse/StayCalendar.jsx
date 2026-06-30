@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ChevronLeft, ChevronRight, Plus,
+  ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon,
+  ChevronRight as ChevronRightIcon,
 } from 'lucide-react';
 import {
   format, addMonths, subMonths, addDays, startOfMonth, endOfMonth,
@@ -10,7 +11,9 @@ import {
 import { getGuestHouseCalendar } from '../../api/guesthouse';
 import toast from 'react-hot-toast';
 import AppLoader from '../../components/AppLoader';
+import { formatCollectDue, hasCollectDue } from '../../utils/currency';
 import { usePermissions } from '../../hooks/usePermissions';
+import StatusBadge from '../../components/ui/StatusBadge';
 import CancelStayModal from '../../components/guesthouse/CancelStayModal';
 import StayQuickViewModal from '../../components/guesthouse/StayQuickViewModal';
 
@@ -78,9 +81,13 @@ export default function StayCalendar() {
 
   const isFutureDay = (day) => !isBefore(startOfDay(day), startOfDay(new Date()));
 
+  const stayDue = (s) => Math.max(0, Number(s.total_amount) - Number(s.advance_paid));
+
+  const selectedDayStays = staysOnDay(selectedDate);
+
   return (
     <div className="animate-fade-in">
-      <div className="calendar-layout calendar-layout--full">
+      <div className="calendar-layout">
         <div className="premium-card stay-calendar">
           <div className="stay-calendar__toolbar">
             <h3 className="stay-calendar__month">{format(currentDate, 'MMMM yyyy')}</h3>
@@ -146,9 +153,9 @@ export default function StayCalendar() {
                           }}
                           className="stay-calendar__stay-chip"
                           style={{ background: STATUS_COLORS[s.status] || '#94a3b8' }}
-                          title={s.customer_name}
+                          title={`${s.customer_name} · Room ${s.room_number}`}
                         >
-                          {s.room_number}
+                          {s.customer_name || s.room_number}
                         </span>
                       ))}
                       {dayStays.length > 4 && <span className="stay-calendar__stay-more">+{dayStays.length - 4}</span>}
@@ -157,6 +164,61 @@ export default function StayCalendar() {
                 );
               })}
             </div>
+          )}
+        </div>
+
+        <div className="premium-card stay-calendar__sidebar">
+          <h4 className="stay-calendar__sidebar-title">
+            <CalendarIcon size={18} aria-hidden />
+            {format(selectedDate, 'EEEE, MMM d, yyyy')}
+            {isFutureDay(selectedDate) && (
+              <span className="stay-calendar__future-badge">Future</span>
+            )}
+          </h4>
+          {selectedDayStays.length === 0 ? (
+            <div className="stay-calendar__sidebar-empty">
+              <p>No stays on this date.</p>
+              {canOperate && (
+                <button
+                  type="button"
+                  className="btn-primary stay-calendar__sidebar-book"
+                  onClick={() => goToBook(selectedDate)}
+                >
+                  <Plus size={16} aria-hidden />
+                  Book stay for this date
+                </button>
+              )}
+            </div>
+          ) : (
+            <ul className="stay-calendar__sidebar-list">
+              {selectedDayStays.map((s) => {
+                const due = stayDue(s);
+                return (
+                  <li key={s.id}>
+                    <button
+                      type="button"
+                      className={`stay-calendar__sidebar-item${selectedStay?.id === s.id ? ' stay-calendar__sidebar-item--active' : ''}`}
+                      onClick={() => setSelectedStay(s)}
+                    >
+                      <div className="stay-calendar__sidebar-item-body">
+                        <p className="stay-calendar__sidebar-customer">{s.customer_name}</p>
+                        <p className="stay-calendar__sidebar-ref">{s.booking_ref}</p>
+                        <p className="stay-calendar__sidebar-room">Room {s.room_number}</p>
+                        <div className="stay-calendar__sidebar-meta">
+                          <StatusBadge status={s.status} />
+                          {hasCollectDue(due) && (
+                            <span className="stay-calendar__sidebar-due">
+                              Due {formatCollectDue(due)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronRightIcon size={18} color="var(--text-muted)" aria-hidden />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
       </div>

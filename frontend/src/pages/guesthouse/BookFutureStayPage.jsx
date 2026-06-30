@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { format, addDays, parseISO } from 'date-fns';
 import {
   ChevronLeft, Calendar, BedDouble, FileText,
-  CheckCircle, X, HelpCircle, Sparkles,
+  CheckCircle, X, Sparkles,
 } from 'lucide-react';
 import { createStay, getAvailableRooms, listGhServices } from '../../api/guesthouse';
 import { computeStayBilling, formatReservationRoomLabel, getServicePriceLabel, getIncludedGuests } from '../../utils/ghBilling';
@@ -739,15 +739,6 @@ export default function BookFutureStayPage() {
                   <X size={16} /> Cancel
                 </button>
               </div>
-            </div>
-
-            <div style={{ background: 'var(--primary-light)', border: '1px solid var(--border)', borderRadius: '14px', padding: '18px' }}>
-              <h4 style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px', margin: '0 0 8px 0' }}>
-                <HelpCircle size={14} /> Tip
-              </h4>
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}>
-                Advance payment secures the room. Remaining balance can be collected at check-in from the Payments page.
-              </p>
             </div>
           </div>
         </div>

@@ -151,6 +151,18 @@
   background: var(--primary-light) !important;
 }
 
+@media (max-width: 1024px) {
+  [data-theme='dark'] .settings-nav-item--active {
+    background: var(--primary) !important;
+    color: #fff !important;
+    border-color: var(--primary) !important;
+  }
+
+  [data-theme='dark'] .settings-nav-item--active svg {
+    color: #fff !important;
+  }
+}
+
 /* Modal overlays */
 [data-theme='dark'] .modal-overlay {
   background-color: rgba(0, 0, 0, 0.65) !important;

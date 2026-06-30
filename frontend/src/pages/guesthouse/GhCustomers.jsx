@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, addDays, subDays, isSameDay, differenceInCalendarDays } from 'date-fns';
 import {
   UserPlus, Mail, Phone, Edit2, Trash2, X, Calendar, MapPin,
   ChevronRight, Wallet, BedDouble, Users, FileText, XCircle,
+  ChevronLeft, LogIn, LogOut, CalendarCheck, Eye,
 } from 'lucide-react';
 import CancelStayModal from '../../components/guesthouse/CancelStayModal';
 import { canCancelGhStay } from '../../utils/ghStay';
@@ -19,6 +20,7 @@ import { useGhPageVisibility } from '../../context/GhPageVisibilityContext';
 import { GH_MODULE_KEYS } from '../../constants/ghPages';
 import SearchInput from '../../components/SearchInput';
 import StatusBadge from '../../components/ui/StatusBadge';
+import StatCard from '../../components/ui/StatCard';
 import EmptyState from '../../components/ui/EmptyState';
 import { todayISO } from '../../utils/ghDate';
 import CnicScannerPanel from '../../components/guesthouse/CnicScannerPanel';
@@ -26,6 +28,7 @@ import { resolveGuestFromIdScan } from '../../utils/idCardCustomer';
 import '../../styles/dashboard.css';
 import './gh-customers.css';
 import './gh-records.css';
+import './stays-list.css';
 
 const formatStayDates = (checkIn, checkOut) => {
   try {
@@ -34,6 +37,125 @@ const formatStayDates = (checkIn, checkOut) => {
     return `${checkIn || '-'} → ${checkOut || '-'}`;
   }
 };
+
+const DAILY_SECTIONS = [
+  { key: 'arrivals', title: 'Check-ins today', icon: LogIn },
+  { key: 'in_house', title: 'In-house guests', icon: Users },
+  { key: 'departures', title: 'Check-outs today', icon: LogOut },
+  { key: 'reservations', title: 'Active reservations', icon: CalendarCheck },
+];
+
+const DAILY_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'arrivals', label: 'Check-ins' },
+  { id: 'in_house', label: 'In-house' },
+  { id: 'departures', label: 'Check-outs' },
+  { id: 'reservations', label: 'Active' },
+];
+
+function stayNights(checkIn, checkOut) {
+  try {
+    return Math.max(differenceInCalendarDays(parseISO(checkOut), parseISO(checkIn)), 1);
+  } catch {
+    return 0;
+  }
+}
+
+function formatDailyHeading(dateStr, todayStr) {
+  if (!dateStr) return 'Select a date';
+  try {
+    const d = parseISO(dateStr);
+    const today = parseISO(todayStr);
+    const base = format(d, 'EEEE, dd MMM yyyy');
+    if (isSameDay(d, today)) return `Today · ${base}`;
+    if (isSameDay(d, addDays(today, 1))) return `Tomorrow · ${base}`;
+    if (isSameDay(d, subDays(today, 1))) return `Yesterday · ${base}`;
+    return base;
+  } catch {
+    return dateStr;
+  }
+}
+
+function GhDailyStayCard({ stay, onOpen }) {
+  const due = stay.status === 'CANCELLED'
+    ? 0
+    : Math.max(0, Number(stay.total_amount) - Number(stay.advance_paid));
+  const nights = stayNights(stay.check_in, stay.check_out);
+  const paidPct = Number(stay.total_amount) > 0
+    ? Math.min(100, Math.round((Number(stay.advance_paid) / Number(stay.total_amount)) * 100))
+    : 0;
+
+  return (
+    <article className="stay-card" onClick={onOpen}>
+      <div className="stay-card__top">
+        <div className="stay-card__top-left">
+          <p className="stay-card__ref">{stay.booking_ref}</p>
+          <h3 className="stay-card__name">{stay.customer_name || 'Guest'}</h3>
+          {stay.customer_phone && (
+            <p className="stay-card__phone"><Phone size={11} /> {stay.customer_phone}</p>
+          )}
+        </div>
+        <div className="stay-card__badges">
+          <StatusBadge status={stay.status} />
+        </div>
+      </div>
+
+      <div className="stay-card__body">
+        <div className="stay-card__info">
+          <div className="stay-card__cell">
+            <p className="stay-card__cell-label">Room</p>
+            <p className="stay-card__cell-val stay-card__cell-val--room">{stay.room_number}</p>
+          </div>
+          <div className="stay-card__cell">
+            <p className="stay-card__cell-label">Stay</p>
+            <p className="stay-card__cell-val">{nights} night{nights !== 1 ? 's' : ''}</p>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+              {formatStayDates(stay.check_in, stay.check_out)}
+            </p>
+          </div>
+        </div>
+
+        <div className="stay-card__pay">
+          <div className="stay-card__pay-head">
+            <span>Payment</span>
+            <StatusBadge status={stay.payment_status} />
+          </div>
+          <div className="stay-card__bar">
+            <div
+              className="stay-card__bar-fill"
+              style={{
+                width: `${paidPct}%`,
+                background: paidPct >= 100 ? '#22c55e' : 'var(--primary)',
+              }}
+            />
+          </div>
+          <div className="stay-card__amounts">
+            <div>
+              <p className="stay-card__amt-l">Total</p>
+              <p className="stay-card__amt-v">{formatRs(stay.total_amount)}</p>
+            </div>
+            <div>
+              <p className="stay-card__amt-l">Paid</p>
+              <p className="stay-card__amt-v" style={{ color: '#166534' }}>{formatRs(stay.advance_paid)}</p>
+            </div>
+            <div>
+              <p className="stay-card__amt-l">Due</p>
+              <p className="stay-card__amt-v" style={{ color: hasCollectDue(due) ? '#b91c1c' : 'var(--text-muted)' }}>
+                {formatCollectDuePKR(due)}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="stay-card__foot" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="btn-secondary" onClick={onOpen}>
+          <Eye size={14} /> View stay
+        </button>
+      </div>
+    </article>
+  );
+}
 
 const emptyCustomer = {
   full_name: '',
@@ -61,6 +183,7 @@ export default function GhCustomers() {
   const [dailyDate, setDailyDate] = useState(todayISO());
   const [dailyData, setDailyData] = useState(null);
   const [dailyLoading, setDailyLoading] = useState(false);
+  const [dailySectionFilter, setDailySectionFilter] = useState('all');
   const [summary, setSummary] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
 
@@ -270,6 +393,48 @@ export default function GhCustomers() {
   };
 
   const selectedCustomer = summary?.customer || customers.find((c) => c.id === selectedId);
+  const today = todayISO();
+  const isDailyToday = dailyDate === today;
+
+  const shiftDailyDate = (days) => {
+    try {
+      setDailyDate(format(addDays(parseISO(dailyDate), days), 'yyyy-MM-dd'));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const dailyTotals = useMemo(() => ({
+    reservations: dailyData?.reservations?.length || 0,
+    arrivals: dailyData?.arrivals?.length || 0,
+    in_house: dailyData?.in_house?.length || 0,
+    departures: dailyData?.departures?.length || 0,
+  }), [dailyData]);
+
+  const dailyTotalCount = dailyTotals.reservations + dailyTotals.arrivals + dailyTotals.in_house + dailyTotals.departures;
+  const dailyHeading = formatDailyHeading(dailyDate, today);
+
+  const visibleDailySections = useMemo(() => {
+    const withItems = DAILY_SECTIONS.map((section) => ({
+      ...section,
+      items: dailyData?.[section.key] || [],
+    }));
+
+    if (dailySectionFilter === 'all') {
+      return withItems.filter((section) => section.items.length > 0);
+    }
+
+    const match = withItems.find((section) => section.key === dailySectionFilter);
+    return match ? [match] : [];
+  }, [dailyData, dailySectionFilter]);
+
+  const dailyFilterCounts = useMemo(() => ({
+    all: dailyTotalCount,
+    arrivals: dailyTotals.arrivals,
+    in_house: dailyTotals.in_house,
+    departures: dailyTotals.departures,
+    reservations: dailyTotals.reservations,
+  }), [dailyTotalCount, dailyTotals]);
 
   return (
     <>
@@ -292,65 +457,132 @@ export default function GhCustomers() {
         </div>
 
         {viewTab === 'daily' ? (
-          <div>
-            <div className="gh-records-toolbar search-filter-bar" style={{ marginBottom: '20px' }}>
-              <div className="gh-records-toolbar__date">
-                <label htmlFor="daily-date" style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)' }}>
-                  Select date
-                </label>
+          <div className="gh-daily-view">
+            <div className="gh-daily-hero">
+              <p className="gh-daily-hero__eyebrow">Guest operations</p>
+              <h2 className="gh-daily-hero__title">{dailyHeading}</h2>
+              <p className="gh-daily-hero__sub">
+                {dailyTotalCount} stay{dailyTotalCount !== 1 ? 's' : ''} scheduled for this day
+              </p>
+            </div>
+
+            <div className="stays-date-bar">
+              <button
+                type="button"
+                className="stays-date-bar__nav"
+                onClick={() => shiftDailyDate(-1)}
+                aria-label="Previous day"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <div className="stays-date-bar__center">
                 <input
                   id="daily-date"
                   type="date"
-                  className="search-filter-bar__select"
+                  className="stays-date-bar__input"
                   value={dailyDate}
                   onChange={(e) => setDailyDate(e.target.value)}
+                  aria-label="Select date"
                 />
+                <p className="stays-date-bar__label">{dailyHeading}</p>
               </div>
+              <button
+                type="button"
+                className="stays-date-bar__nav"
+                onClick={() => shiftDailyDate(1)}
+                aria-label="Next day"
+              >
+                <ChevronRight size={18} />
+              </button>
+              {!isDailyToday && (
+                <button
+                  type="button"
+                  className="btn-secondary stays-date-bar__today"
+                  onClick={() => setDailyDate(today)}
+                >
+                  Today
+                </button>
+              )}
+            </div>
+
+            <section className="dash-kpi-grid gh-daily-kpis">
+              <StatCard label="Check-ins" value={dailyTotals.arrivals} icon={LogIn} variant="success" />
+              <StatCard label="In-house" value={dailyTotals.in_house} icon={Users} variant="info" />
+              <StatCard label="Check-outs" value={dailyTotals.departures} icon={LogOut} variant="warning" />
+              <StatCard label="Active" value={dailyTotals.reservations} icon={CalendarCheck} variant="primary" />
+            </section>
+
+            <div className="stays-filters gh-daily-filters">
+              {DAILY_FILTERS.map((filter) => (
+                <button
+                  key={filter.id}
+                  type="button"
+                  onClick={() => setDailySectionFilter(filter.id)}
+                  className={`stays-filter-pill${dailySectionFilter === filter.id ? ' stays-filter-pill--active' : ''}`}
+                >
+                  {filter.label}
+                  <span className="stays-filter-count">{dailyFilterCounts[filter.id] ?? 0}</span>
+                </button>
+              ))}
             </div>
 
             {dailyLoading ? (
               <AppLoader inline message="Loading daily data…" />
+            ) : dailyTotalCount === 0 ? (
+              <EmptyState
+                icon={BedDouble}
+                title={`No stays for ${dailyHeading}`}
+                description="No guests are scheduled on this date. Pick another day or book a new reservation."
+                action={
+                  canOperate ? (
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={() => navigate('/gh/book')}
+                      style={{ marginTop: 16 }}
+                    >
+                      <FileText size={16} /> New reservation
+                    </button>
+                  ) : null
+                }
+              />
+            ) : visibleDailySections.every((section) => !section.items.length) ? (
+              <EmptyState
+                icon={Users}
+                title="No stays in this group"
+                description="Try another filter or pick a different date."
+              />
             ) : (
-              <>
-                {[
-                  { key: 'reservations', title: 'Active reservations', items: dailyData?.reservations },
-                  { key: 'arrivals', title: 'Check-ins today', items: dailyData?.arrivals },
-                  { key: 'in_house', title: 'In-house guests', items: dailyData?.in_house },
-                  { key: 'departures', title: 'Check-outs today', items: dailyData?.departures },
-                ].map((section) => (
-                  <div key={section.key} className="gh-daily-section">
-                    <h3 className="gh-daily-section__title">
-                      {section.title} ({section.items?.length || 0})
-                    </h3>
-                    {!section.items?.length ? (
-                      <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No records for this section.</p>
-                    ) : (
-                      <div className="gh-daily-grid">
+              <div className="stays-day-groups">
+                {visibleDailySections.map((section) => {
+                  const Icon = section.icon;
+                  return (
+                    <section key={section.key}>
+                      <header className={`stays-day-group__head${isDailyToday && section.key === 'arrivals' ? ' stays-day-group__head--today' : ''}`}>
+                        <div>
+                          <h3 className="stays-day-group__title">
+                            <Icon size={18} style={{ marginRight: 8, verticalAlign: -3 }} aria-hidden />
+                            {section.title}
+                          </h3>
+                          <p className="stays-day-group__sub">
+                            {section.items.length} reservation{section.items.length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                        <span className="stays-day-group__badge">{section.items.length}</span>
+                      </header>
+                      <div className="stays-grid">
                         {section.items.map((stay) => (
-                          <button
+                          <GhDailyStayCard
                             key={`${section.key}-${stay.id}`}
-                            type="button"
-                            className="gh-daily-card"
-                            onClick={() => navigate(`/gh/stays/${stay.id}`)}
-                          >
-                            <p style={{ margin: 0, fontWeight: '800', fontSize: '14px' }}>{stay.customer_name}</p>
-                            <p style={{ margin: '4px 0', fontSize: '12px', color: 'var(--text-muted)' }}>
-                              {stay.booking_ref} · Room {stay.room_number}
-                            </p>
-                            <p style={{ margin: '4px 0', fontSize: '12px' }}>
-                              {formatStayDates(stay.check_in, stay.check_out)}
-                            </p>
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
-                              <StatusBadge status={stay.status} />
-                              <StatusBadge status={stay.payment_status} />
-                            </div>
-                          </button>
+                            stay={stay}
+                            onOpen={() => navigate(`/gh/stays/${stay.id}`)}
+                          />
                         ))}
                       </div>
-                    )}
-                  </div>
-                ))}
-              </>
+                    </section>
+                  );
+                })}
+              </div>
             )}
           </div>
         ) : (

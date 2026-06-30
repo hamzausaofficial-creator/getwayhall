@@ -13,6 +13,8 @@ import AppLoader from '../../components/AppLoader';
 import { usePermissions } from '../../hooks/usePermissions';
 import SearchInput from '../../components/SearchInput';
 import { resolveMediaUrl } from '../../utils/media';
+import { formatRs } from '../../utils/currency';
+import './gh-rooms.css';
 
 const GuestHouseRooms = ({ embedded = false }) => {
   const navigate = useNavigate();
@@ -65,8 +67,120 @@ const GuestHouseRooms = ({ embedded = false }) => {
     }
   };
 
+  const openEdit = (id) => {
+    if (!canManage) return;
+    navigate(`/gh/rooms/${id}/edit`);
+  };
+
+  const statusClass = (status) => (status || 'inactive').toLowerCase();
+
+  const renderEmbeddedCard = (room) => (
+    <article key={room.id} className="gh-rooms__card">
+      <div className="gh-rooms__card-top">
+        <div className="gh-rooms__thumb" aria-hidden>
+          {room.image ? (
+            <img src={resolveMediaUrl(room.image)} alt="" />
+          ) : (
+            <BedDouble size={18} />
+          )}
+        </div>
+        <div className="gh-rooms__info">
+          <div className="gh-rooms__name-row">
+            <p className="gh-rooms__name">Room {room.room_number}</p>
+            <span className={`gh-rooms__status gh-rooms__status--${statusClass(room.status)}`}>
+              {room.status}
+            </span>
+          </div>
+          <p className="gh-rooms__meta">
+            <Users size={12} aria-hidden />
+            {room.beds} bed{room.beds !== 1 ? 's' : ''} · {room.room_type}
+          </p>
+          <div className="gh-rooms__price-row">
+            <p className="gh-rooms__price">{formatRs(room.price_per_night)}</p>
+            <span className="gh-rooms__unit">per night</span>
+          </div>
+        </div>
+      </div>
+      {canManage && (
+        <div className="gh-rooms__actions">
+          <button
+            type="button"
+            className="btn-secondary gh-rooms__action-btn"
+            onClick={() => openEdit(room.id)}
+            aria-label={`Edit room ${room.room_number}`}
+          >
+            <Edit2 size={14} />
+          </button>
+          <button
+            type="button"
+            className="btn-secondary gh-rooms__action-btn gh-rooms__action-btn--danger"
+            onClick={() => remove(room.id)}
+            aria-label={`Delete room ${room.room_number}`}
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      )}
+    </article>
+  );
+
+  const renderFullCard = (room) => (
+    <div key={room.id} className="premium-card gh-room-card">
+      <div className="gh-room-card__image">
+        {room.image ? (
+          <img
+            src={resolveMediaUrl(room.image)}
+            alt={`Room ${room.room_number}`}
+            className="gh-room-card__photo"
+          />
+        ) : (
+          <BedDouble size={48} aria-hidden />
+        )}
+        {canManage && (
+          <div className="gh-room-card__actions">
+            <button
+              type="button"
+              onClick={() => openEdit(room.id)}
+              className="gh-room-card__action-btn"
+              title="Edit room"
+            >
+              <Edit2 size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => remove(room.id)}
+              className="gh-room-card__action-btn gh-room-card__action-btn--danger"
+              title="Delete room"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="gh-room-card__body">
+        <div className="gh-room-card__head">
+          <h3 className="gh-room-card__title">Room {room.room_number}</h3>
+          <span className={`gh-room-card__status gh-room-card__status--${statusClass(room.status)}`}>
+            {room.status}
+          </span>
+        </div>
+        <div className="gh-room-card__meta">
+          <Users size={13} aria-hidden />
+          <span>{room.beds} bed{room.beds !== 1 ? 's' : ''} · {room.room_type}</span>
+        </div>
+        <div className="gh-room-card__price-row">
+          <div className="gh-room-card__price">
+            <span className="gh-room-card__currency">Rs</span>
+            {parseFloat(room.price_per_night).toLocaleString()}
+            <span className="gh-room-card__per-night">/night</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="animate-fade-in">
+    <div className={`animate-fade-in gh-rooms${embedded ? ' gh-rooms--embedded' : ''}`}>
       {!embedded ? (
         <div className="page-header">
           <div>
@@ -78,15 +192,21 @@ const GuestHouseRooms = ({ embedded = false }) => {
             </button>
           )}
         </div>
-      ) : canManage ? (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
-          <button type="button" className="btn-primary" onClick={openCreate} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Plus size={18} /> Add New Room
-          </button>
+      ) : (
+        <div className="gh-rooms__toolbar">
+          <p className="gh-rooms__count">
+            {rooms.length} room{rooms.length !== 1 ? 's' : ''}
+          </p>
+          {canManage && (
+            <button type="button" className="btn-primary gh-rooms__add-btn" onClick={openCreate}>
+              <Plus size={16} aria-hidden />
+              Add room
+            </button>
+          )}
         </div>
-      ) : null}
+      )}
 
-      <div className="search-toolbar">
+      <div className="search-toolbar gh-rooms__search">
         <SearchInput
           variant="inset"
           placeholder="Search rooms by number or type..."
@@ -98,107 +218,26 @@ const GuestHouseRooms = ({ embedded = false }) => {
       {loading ? (
         <AppLoader inline message="Loading rooms…" />
       ) : (
-        <div className="halls-grid">
+        <div className={embedded ? 'gh-rooms__grid' : 'gh-rooms__grid'}>
           {filtered.length === 0 ? (
-            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-              {searchQuery ? 'No rooms match your search.' : 'No rooms yet. Add your first room.'}
-            </div>
-          ) : filtered.map((room) => (
-            <div key={room.id} className="premium-card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div
-                style={{
-                  height: '160px',
-                  backgroundColor: 'var(--surface-elevated)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--text-muted)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}
-              >
-                {room.image ? (
-                  <img
-                    src={resolveMediaUrl(room.image)}
-                    alt={`Room ${room.room_number}`}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <BedDouble size={48} />
-                )}
-                {canManage && (
-                  <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '8px' }}>
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/gh/rooms/${room.id}/edit`)}
-                      style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '8px',
-                        backgroundColor: 'var(--surface)',
-                        color: 'var(--secondary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                      }}
-                      title="Edit room"
-                    >
-                      <Edit2 size={14} />
+            <div className="gh-rooms__empty">
+              {embedded && !searchQuery ? (
+                <>
+                  <BedDouble size={28} style={{ opacity: 0.35, marginBottom: 10 }} aria-hidden />
+                  <p className="gh-rooms__empty-title">No rooms yet</p>
+                  <p style={{ margin: '0 0 14px' }}>Add your first room to start taking guest house bookings.</p>
+                  {canManage && (
+                    <button type="button" className="btn-primary gh-rooms__add-btn" onClick={openCreate}>
+                      <Plus size={16} aria-hidden />
+                      Add first room
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => remove(room.id)}
-                      style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '8px',
-                        backgroundColor: 'var(--surface)',
-                        color: '#ef4444',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                      }}
-                      title="Delete room"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div style={{ padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                  <h3 style={{ fontSize: '18px', fontWeight: '700' }}>Room {room.room_number}</h3>
-                  <span
-                    style={{
-                      padding: '4px 10px',
-                      borderRadius: '20px',
-                      fontSize: '11px',
-                      fontWeight: '700',
-                      backgroundColor: room.status === 'ACTIVE' ? '#dcfce7' : 'var(--surface-elevated)',
-                      color: room.status === 'ACTIVE' ? '#166534' : 'var(--text-dim)',
-                    }}
-                  >
-                    {room.status}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-muted)' }}>
-                    <Users size={14} /> {room.beds} bed{room.beds !== 1 ? 's' : ''} · {room.room_type}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-                  <div style={{ color: 'var(--primary)', fontWeight: '800', fontSize: '20px' }}>
-                    <span style={{ fontSize: '55%', fontWeight: '600', opacity: 0.6 }}>Rs</span>
-                    {' '}
-                    {parseFloat(room.price_per_night).toLocaleString()}
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '500' }}> /night</span>
-                  </div>
-                </div>
-              </div>
+                  )}
+                </>
+              ) : (
+                searchQuery ? 'No rooms match your search.' : 'No rooms yet. Add your first room.'
+              )}
             </div>
-          ))}
+          ) : filtered.map((room) => (embedded ? renderEmbeddedCard(room) : renderFullCard(room)))}
         </div>
       )}
     </div>

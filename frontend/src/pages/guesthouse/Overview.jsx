@@ -99,7 +99,7 @@ export default function GuestHouseOverview() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [period, setPeriod] = useState('thismonth');
+  const [period, setPeriod] = useState('today');
   const [customDates, setCustomDates] = useState({ start: '', end: '' });
   const mounted = useRef(true);
   const refreshRef = useRef(() => {});

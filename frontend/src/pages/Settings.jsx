@@ -105,6 +105,7 @@ const Settings = () => {
   const { isMarriageHall, isGuestHouse } = useAppType();
   const { isAdmin } = usePermissions();
   const avatarInputRef = useRef(null);
+  const navRef = useRef(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const { isPageVisible: isGhPageVisible } = useGhPageVisibility();
   const { isPageVisible: isHallPageVisible } = useHallPageVisibility();
@@ -225,6 +226,11 @@ const Settings = () => {
     if (param) setSearchParams({ tab: param });
     else setSearchParams({});
   };
+
+  useEffect(() => {
+    const activeEl = navRef.current?.querySelector('.settings-nav-item--active');
+    activeEl?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }, [activeTab]);
 
   const reloadUserData = async () => {
     const userRes = await client.get('/auth/me/');
@@ -405,26 +411,23 @@ const Settings = () => {
   if (isLoading) return <AppLoader message="Loading settings…" />;
 
   return (
-    <div className="animate-fade-in">
-      <div style={{ marginBottom: '32px' }}>
-        <p style={{ color: 'var(--text-muted)', margin: 0 }}>Configure your application and account preferences.</p>
-      </div>
-
+    <div className="animate-fade-in settings-page">
       <div className="settings-layout">
-        {/* Navigation Sidebar */}
-        <nav className="settings-nav" aria-label="Settings sections">
-          {tabs.map((tab) => (
-            <button
-              key={tab.name}
-              type="button"
-              onClick={() => handleTabChange(tab.name)}
-              className={`settings-nav-item${activeTab === tab.name ? ' settings-nav-item--active' : ''}`}
-            >
-              <tab.icon size={18} aria-hidden />
-              {tab.name}
-            </button>
-          ))}
-        </nav>
+        <div className="settings-nav-wrap">
+          <nav className="settings-nav" aria-label="Settings sections" ref={navRef}>
+            {tabs.map((tab) => (
+              <button
+                key={tab.name}
+                type="button"
+                onClick={() => handleTabChange(tab.name)}
+                className={`settings-nav-item${activeTab === tab.name ? ' settings-nav-item--active' : ''}`}
+              >
+                <tab.icon size={18} aria-hidden />
+                <span className="settings-nav-item__label">{tab.name}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
 
         {/* Content Area */}
         <div className={`card settings-panel-card${['Halls', 'Rooms', 'Add-on Services', 'Staff', 'All Records'].includes(activeTab) ? ' settings-panel-card--wide' : ''}${activeTab === 'Profile' ? ' settings-panel-card--profile' : ''}`}>
