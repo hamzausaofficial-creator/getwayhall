@@ -1,0 +1,58 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Node
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+
+# Build outputs (built inside Docker)
+frontend/dist/
+backend/staticfiles/
+build/
+out/
+
+# Local databases and uploads (persisted via Docker volumes on client machines)
+backend/db.sqlite3
+backend/media/
+*.db
+*.sqlite3
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!deploy/.env.example
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Deployment backups (client-local only)
+deploy/backups/
+backups/
+*.sql
+
+# Desktop EXE build artifacts
+dist/
+*.spec.bak
+
+# Docs not needed in images
+docs/
+agent-transcripts/

@@ -6,10 +6,8 @@ import {
   persistAuthSession,
 } from '../utils/authSession';
 
-/** Dev: Vite proxy `/api` → Django. Prod (Vercel): set VITE_API_BASE_URL to Railway API URL. */
-const API_BASE =
-  import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.DEV ? '/api' : 'http://127.0.0.1:8000/api');
+/** Dev: Vite proxy `/api` → Django. Docker/local prod: `/api` via nginx. Vercel: set VITE_API_BASE_URL. */
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const client = axios.create({
   baseURL: API_BASE,

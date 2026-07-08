@@ -1,0 +1,87 @@
+name: gateway-hall
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-hallora}
+      POSTGRES_USER: ${DB_USER:-hallora}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in deploy/.env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-hallora} -d ${DB_NAME:-hallora}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/docker/backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in deploy/.env}
+      DEBUG: ${DEBUG:-False}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
+      DB_NAME: ${DB_NAME:-hallora}
+      DB_USER: ${DB_USER:-hallora}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in deploy/.env}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_SSL: "false"
+      MEDIA_ROOT: /app/media
+      SERVE_FRONTEND: "false"
+      USE_HTTPS: "false"
+      RUN_SEED_ON_START: ${RUN_SEED_ON_START:-false}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
+      GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-120}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      NOTIFICATION_BACKEND: ${NOTIFICATION_BACKEND:-console}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
+      TWILIO_WHATSAPP_FROM: ${TWILIO_WHATSAPP_FROM:-}
+    volumes:
+      - media_data:/app/media
+      - static_data:/app/backend/staticfiles
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/docker/frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  postgres_data:
+    name: gateway_hall_postgres_data
+  media_data:
+    name: gateway_hall_media_data
+  static_data:
+    name: gateway_hall_static_data

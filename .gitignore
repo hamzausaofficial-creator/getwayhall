@@ -36,6 +36,12 @@ db.sqlite3
 .env.test.local
 .env.production.local
 .env*.local
+deploy/.env
+
+# Local Windows Docker deployment backups
+deploy/backups/
+backups/
+*.sql
 
 # IDE & system files
 .vscode/

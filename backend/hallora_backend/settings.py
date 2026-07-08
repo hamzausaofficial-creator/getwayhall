@@ -218,6 +218,10 @@ else:
         'http://127.0.0.1:5173',
         'http://localhost:8000',
         'http://127.0.0.1:8000',
+        'http://localhost:8080',
+        'http://127.0.0.1:8080',
+        'http://localhost',
+        'http://127.0.0.1',
     ]
 
 # Allow any Vercel preview/production frontend without manual env updates.
@@ -243,11 +247,46 @@ for _host in ALLOWED_HOSTS:
         if _origin not in CSRF_TRUSTED_ORIGINS:
             CSRF_TRUSTED_ORIGINS.append(_origin)
 
-# Railway / reverse-proxy HTTPS
-if os.environ.get('RAILWAY_ENVIRONMENT') or not DEBUG:
+# HTTPS cookies — enable only behind TLS (Railway, production HTTPS).
+# Local Docker / Windows laptop deployments should set USE_HTTPS=false.
+USE_HTTPS = os.environ.get('USE_HTTPS', 'false').lower() == 'true'
+if os.environ.get('RAILWAY_ENVIRONMENT') or (not DEBUG and USE_HTTPS):
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
 WHITENOISE_USE_FINDERS = DEBUG
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {name} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': os.environ.get('LOG_LEVEL', 'INFO'),
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': os.environ.get('DJANGO_LOG_LEVEL', os.environ.get('LOG_LEVEL', 'INFO')),
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+    },
+}
 

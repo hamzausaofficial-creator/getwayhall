@@ -52,7 +52,22 @@ def api_root(request):
 
 
 def health_check(request):
-    return JsonResponse({'status': 'ok', 'service': 'gateway-hall-api'})
+    from django.db import connection
+
+    db_status = 'ok'
+    try:
+        connection.ensure_connection()
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT 1')
+    except Exception:
+        db_status = 'unavailable'
+
+    payload = {
+        'status': 'ok' if db_status == 'ok' else 'degraded',
+        'database': db_status,
+        'service': 'gateway-hall-api',
+    }
+    return JsonResponse(payload, status=200 if db_status == 'ok' else 503)
 
 
 def api_not_found(request):
