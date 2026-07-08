@@ -1,7 +1,14 @@
 from django.db import models
+from django.conf import settings
 from core.models import Tenant
 
 class Customer(models.Model):
+    LIST_STATUS_CHOICES = (
+        ('NORMAL', 'Normal'),
+        ('WHITELISTED', 'Whitelisted'),
+        ('BLOCKLISTED', 'Blocklisted'),
+    )
+
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='customers', null=True, blank=True)
     full_name = models.CharField(max_length=200, blank=True, default='')
     cnic = models.CharField(max_length=20, blank=True, default='')
@@ -18,6 +25,16 @@ class Customer(models.Model):
         null=True,
         blank=True,
         related_name='linked_companions',
+    )
+    list_status = models.CharField(max_length=16, choices=LIST_STATUS_CHOICES, default='NORMAL')
+    list_status_note = models.CharField(max_length=255, blank=True, default='')
+    list_status_updated_at = models.DateTimeField(null=True, blank=True)
+    list_status_updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='customer_list_status_updates',
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

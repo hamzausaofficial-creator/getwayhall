@@ -8,11 +8,15 @@ from .phone import format_pk_phone, validate_pk_phone
 
 class CustomerSerializer(serializers.ModelSerializer):
     outstanding_balance = serializers.SerializerMethodField()
+    list_status_updated_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Customer
         fields = '__all__'
-        read_only_fields = ['tenant', 'created_at', 'first_name', 'last_name', 'outstanding_balance']
+        read_only_fields = [
+            'tenant', 'created_at', 'first_name', 'last_name', 'outstanding_balance',
+            'list_status_updated_at', 'list_status_updated_by', 'list_status_updated_by_name',
+        ]
         extra_kwargs = {
             'email': {'required': False, 'allow_blank': True, 'allow_null': True},
             'cnic': {'required': False, 'allow_blank': True},
@@ -40,6 +44,8 @@ class CustomerSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         attrs = self._sync_legacy_names(attrs)
+        if 'list_status_note' in attrs:
+            attrs['list_status_note'] = (attrs.get('list_status_note') or '').strip()
 
         is_minor = bool(attrs.get('is_minor', self.instance.is_minor if self.instance else False))
         attrs['is_minor'] = is_minor
@@ -91,6 +97,13 @@ class CustomerSerializer(serializers.ModelSerializer):
             due=Greatest(F('total_amount') - F('advance_paid'), Decimal('0'))
         ).aggregate(total=Sum('due'))['total'] or Decimal('0')
         return float(max(Decimal('0'), hall_due) + max(Decimal('0'), gh_total))
+
+    def get_list_status_updated_by_name(self, obj):
+        if not obj.list_status_updated_by_id:
+            return ''
+        user = obj.list_status_updated_by
+        name = f'{user.first_name or ""} {user.last_name or ""}'.strip()
+        return name or user.username
 
     def create(self, validated_data):
         request = self.context.get('request')

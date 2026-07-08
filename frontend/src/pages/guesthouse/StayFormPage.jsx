@@ -291,6 +291,7 @@ export default function StayFormPage() {
     () => customers.find((c) => String(c.id) === String(form.customer)),
     [customers, form.customer],
   );
+  const isPrimaryBlocked = (primaryCustomer?.list_status || 'NORMAL') === 'BLOCKLISTED';
 
   const effectiveGuestsCount = useMemo(
     () => deriveGuestsCount(companions),
@@ -319,6 +320,10 @@ export default function StayFormPage() {
     setFormError('');
     if (!form.customer) {
       setFormError('Please select a guest');
+      return;
+    }
+    if (isPrimaryBlocked) {
+      setFormError('Selected guest is blocklisted and cannot be booked.');
       return;
     }
     if (!form.room) {
@@ -489,6 +494,11 @@ export default function StayFormPage() {
                   savingScannedGuest={savingGuest}
                   disabled={submitting}
                 />
+                {isPrimaryBlocked && (
+                  <div style={{ marginTop: '-4px', padding: '10px 12px', borderRadius: 10, border: '1px solid #fecaca', background: '#fef2f2', color: '#b91c1c', fontSize: 12, fontWeight: 700 }}>
+                    This primary guest is blocklisted. Please select another guest.
+                  </div>
+                )}
                 <div className="input-group">
                   <label>Room</label>
                   <select
@@ -711,7 +721,7 @@ export default function StayFormPage() {
                 <button
                   type="submit"
                   className="btn-primary"
-                  disabled={submitting}
+                  disabled={submitting || isPrimaryBlocked}
                   style={{
                     display: 'flex',
                     alignItems: 'center',

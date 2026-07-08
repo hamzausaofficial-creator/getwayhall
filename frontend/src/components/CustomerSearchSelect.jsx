@@ -3,6 +3,12 @@ import { User, X } from 'lucide-react';
 import SearchInput from './SearchInput';
 import { customerDisplayName } from '../utils/customer';
 
+const STATUS_LABELS = {
+  WHITELISTED: 'Whitelisted',
+  BLOCKLISTED: 'Blocklisted',
+  NORMAL: 'Normal',
+};
+
 const formatCustomerLabel = (customer) => {
   const name = customerDisplayName(customer);
   return customer?.phone ? `${name} · ${customer.phone}` : name;
@@ -14,6 +20,8 @@ export default function CustomerSearchSelect({
   onChange,
   placeholder = 'Search guest by name, phone, or CNIC…',
   disabled = false,
+  excludeStatuses = [],
+  priorityStatuses = [],
 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -21,12 +29,22 @@ export default function CustomerSearchSelect({
 
   const uniqueCustomers = useMemo(() => {
     const seen = new Set();
-    return customers.filter((c) => {
+    const blockedStatuses = new Set((excludeStatuses || []).map((s) => String(s).toUpperCase()));
+    const filteredUnique = customers.filter((c) => {
       if (!c?.id || seen.has(c.id)) return false;
+      if (blockedStatuses.has(String(c.list_status || 'NORMAL').toUpperCase())) return false;
       seen.add(c.id);
       return true;
     });
-  }, [customers]);
+    const priorities = new Set((priorityStatuses || []).map((s) => String(s).toUpperCase()));
+    if (!priorities.size) return filteredUnique;
+    return [...filteredUnique].sort((a, b) => {
+      const aPriority = priorities.has(String(a.list_status || 'NORMAL').toUpperCase()) ? 0 : 1;
+      const bPriority = priorities.has(String(b.list_status || 'NORMAL').toUpperCase()) ? 0 : 1;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      return customerDisplayName(a).localeCompare(customerDisplayName(b));
+    });
+  }, [customers, excludeStatuses, priorityStatuses]);
 
   const selected = useMemo(
     () => uniqueCustomers.find((c) => String(c.id) === String(value)),
@@ -122,7 +140,14 @@ export default function CustomerSearchSelect({
                       <User size={14} />
                     </span>
                     <span className="customer-search-select__meta">
-                      <span className="customer-search-select__name">{customerDisplayName(c)}</span>
+                      <span className="customer-search-select__name">
+                        {customerDisplayName(c)}
+                        {(c.list_status || 'NORMAL') !== 'NORMAL' && (
+                          <span className={`customer-search-select__status customer-search-select__status--${String(c.list_status || 'NORMAL').toLowerCase()}`}>
+                            {STATUS_LABELS[c.list_status] || c.list_status}
+                          </span>
+                        )}
+                      </span>
                       {c.phone && <span className="customer-search-select__phone">{c.phone}</span>}
                     </span>
                   </button>

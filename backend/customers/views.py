@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Sum, F
 from django.db.models.functions import Greatest
+from django.utils import timezone
 from decimal import Decimal
 
 from core.mixins import TenantQuerysetMixin, TenantAssignMixin
@@ -26,6 +27,9 @@ class CustomerViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelView
         qs = super().get_queryset()
         if self.action != 'list':
             return qs
+        list_status = (self.request.query_params.get('list_status') or '').strip().upper()
+        if list_status in {'NORMAL', 'WHITELISTED', 'BLOCKLISTED'}:
+            qs = qs.filter(list_status=list_status)
         primary_only = self.request.query_params.get('primary_only', '').lower() in ('1', 'true', 'yes')
         if not primary_only:
             return qs
@@ -201,3 +205,28 @@ class CustomerViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelView
             'bookings_count': len(bookings_data),
             'total_outstanding': float(outstanding),
         })
+
+    @action(detail=True, methods=['post'], url_path='set-list-status')
+    def set_list_status(self, request, pk=None):
+        customer = self.get_object()
+        status_value = (request.data.get('list_status') or '').strip().upper()
+        note = (request.data.get('list_status_note') or '').strip()
+        if status_value not in {'NORMAL', 'WHITELISTED', 'BLOCKLISTED'}:
+            return Response(
+                {'detail': 'list_status must be NORMAL, WHITELISTED, or BLOCKLISTED.'},
+                status=400,
+            )
+        if status_value == 'BLOCKLISTED' and len(note) < 8:
+            return Response(
+                {'detail': 'Blocklist reason must be at least 8 characters.'},
+                status=400,
+            )
+        customer.list_status = status_value
+        customer.list_status_note = note
+        customer.list_status_updated_at = timezone.now()
+        customer.list_status_updated_by = request.user
+        customer.save(update_fields=[
+            'list_status', 'list_status_note',
+            'list_status_updated_at', 'list_status_updated_by',
+        ])
+        return Response(CustomerSerializer(customer, context={'request': request}).data)

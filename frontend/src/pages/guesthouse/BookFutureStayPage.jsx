@@ -207,6 +207,7 @@ export default function BookFutureStayPage() {
     () => customers.find((c) => String(c.id) === String(form.customer)),
     [customers, form.customer],
   );
+  const isPrimaryBlocked = (primaryCustomer?.list_status || 'NORMAL') === 'BLOCKLISTED';
 
   const familyGuestsCount = useMemo(() => {
     const adults = Math.max(Number(form.adults_count) || 1, 1);
@@ -267,6 +268,10 @@ export default function BookFutureStayPage() {
     }
     if (!form.customer || !form.room) {
       setFormError('Please select a guest and room.');
+      return;
+    }
+    if (isPrimaryBlocked) {
+      setFormError('Selected guest is blocklisted and cannot be booked.');
       return;
     }
     const rosterError = validateGuestRoster(form.customer, primaryCustomer, companions);
@@ -476,6 +481,11 @@ export default function BookFutureStayPage() {
                 }}
                 disabled={loading || submitting}
               />
+              {isPrimaryBlocked && (
+                <div style={{ marginTop: '8px', padding: '10px 12px', borderRadius: 10, border: '1px solid #fecaca', background: '#fef2f2', color: '#b91c1c', fontSize: 12, fontWeight: 700 }}>
+                  This primary guest is blocklisted. Please select another guest.
+                </div>
+              )}
             </div>
 
             {/* Room selection */}
@@ -704,7 +714,7 @@ export default function BookFutureStayPage() {
                 <button
                   type="submit"
                   className="btn-primary"
-                  disabled={submitting || !form.room || !form.customer}
+                  disabled={submitting || !form.room || !form.customer || isPrimaryBlocked}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -756,7 +766,7 @@ export default function BookFutureStayPage() {
           <button
             type="submit"
             className="btn-primary"
-            disabled={submitting || !form.room || !form.customer}
+            disabled={submitting || !form.room || !form.customer || isPrimaryBlocked}
           >
             {submitting ? 'Booking…' : 'Confirm reservation'}
           </button>

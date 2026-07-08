@@ -25,6 +25,46 @@
   gap: 8px;
 }
 
+.gh-cust-list-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+}
+
+.gh-cust-list-filter {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gh-cust-list-filter--active {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+.gh-cust-list-filter__count {
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  background: var(--background);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
 .gh-cust-row {
   width: 100%;
   text-align: left;
@@ -82,6 +122,33 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.gh-cust-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 5px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  background: var(--background);
+}
+
+.gh-cust-status-badge--whitelisted {
+  border-color: #bbf7d0;
+  color: #166534;
+  background: #dcfce7;
+}
+
+.gh-cust-status-badge--blocklisted {
+  border-color: #fecaca;
+  color: #b91c1c;
+  background: #fee2e2;
 }
 
 .gh-cust-row__phone {
@@ -150,6 +217,52 @@
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 20px;
+}
+
+.gh-cust-list-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 14px;
+}
+
+.gh-cust-risk-panel {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--background);
+  padding: 12px;
+  margin: 0 0 16px;
+}
+
+.gh-cust-risk-panel__title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--secondary);
+}
+
+.gh-cust-risk-panel__input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--text-main);
+  font-size: 13px;
+  resize: vertical;
+}
+
+.gh-cust-risk-panel__actions {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.gh-cust-risk-panel__audit {
+  margin: 8px 2px 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
 }
 
 .gh-cust-chip {

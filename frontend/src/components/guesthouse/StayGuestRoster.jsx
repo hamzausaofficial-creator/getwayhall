@@ -236,6 +236,8 @@ export default function StayGuestRoster({
               if (customerId) setActiveScanIndex(null);
             }}
             placeholder="Name, phone, or CNIC…"
+            excludeStatuses={['BLOCKLISTED']}
+            priorityStatuses={['WHITELISTED']}
             disabled={disabled}
           />
         </div>
@@ -360,6 +362,8 @@ export default function StayGuestRoster({
                   value={guest.customer}
                   onChange={(customerId) => handleCompanionSelect(index, customerId)}
                   placeholder="Match by name, phone, or CNIC…"
+                  excludeStatuses={['BLOCKLISTED']}
+                  priorityStatuses={['WHITELISTED']}
                   disabled={disabled}
                 />
               </div>

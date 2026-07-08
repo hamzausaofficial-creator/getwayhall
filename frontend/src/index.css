@@ -305,11 +305,39 @@ textarea:focus {
   font-size: 14px;
   font-weight: 700;
   color: var(--secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .customer-search-select__phone {
   font-size: 12px;
   color: var(--text-muted);
+}
+
+.customer-search-select__status {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 999px;
+  padding: 2px 7px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  background: var(--background);
+}
+
+.customer-search-select__status--whitelisted {
+  border-color: #bbf7d0;
+  color: #166534;
+  background: #dcfce7;
+}
+
+.customer-search-select__status--blocklisted {
+  border-color: #fecaca;
+  color: #b91c1c;
+  background: #fee2e2;
 }
 
 .customer-search-select__empty {

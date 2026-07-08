@@ -4,7 +4,7 @@ import { format, parseISO, addDays, subDays, isSameDay, differenceInCalendarDays
 import {
   UserPlus, Mail, Phone, Edit2, Trash2, X, Calendar, MapPin,
   ChevronRight, Wallet, BedDouble, Users, FileText, XCircle,
-  ChevronLeft, LogIn, LogOut, CalendarCheck, Eye,
+  ChevronLeft, LogIn, LogOut, CalendarCheck, Eye, ShieldCheck, ShieldX,
 } from 'lucide-react';
 import CancelStayModal from '../../components/guesthouse/CancelStayModal';
 import { canCancelGhStay } from '../../utils/ghStay';
@@ -52,6 +52,19 @@ const DAILY_FILTERS = [
   { id: 'departures', label: 'Check-outs' },
   { id: 'reservations', label: 'Active' },
 ];
+
+const LIST_STATUS_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'WHITELISTED', label: 'Whitelist' },
+  { id: 'BLOCKLISTED', label: 'Blocklist' },
+  { id: 'NORMAL', label: 'Normal' },
+];
+
+const LIST_STATUS_LABELS = {
+  NORMAL: 'Normal',
+  WHITELISTED: 'Whitelisted',
+  BLOCKLISTED: 'Blocklisted',
+};
 
 function stayNights(checkIn, checkOut) {
   try {
@@ -180,6 +193,7 @@ export default function GhCustomers() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewTab, setViewTab] = useState('all');
+  const [listStatusFilter, setListStatusFilter] = useState('all');
   const [dailyDate, setDailyDate] = useState(todayISO());
   const [dailyData, setDailyData] = useState(null);
   const [dailyLoading, setDailyLoading] = useState(false);
@@ -192,6 +206,8 @@ export default function GhCustomers() {
   const [currentCustomer, setCurrentCustomer] = useState(emptyCustomer);
   const [formErrors, setFormErrors] = useState({});
   const [scanProcessing, setScanProcessing] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [statusNoteDraft, setStatusNoteDraft] = useState('');
 
   const fetchCustomers = async () => {
     setIsLoading(true);
@@ -253,19 +269,39 @@ export default function GhCustomers() {
     else setSummary(null);
   }, [selectedId, fetchSummary]);
 
+  useEffect(() => {
+    setStatusNoteDraft(summary?.customer?.list_status_note || '');
+  }, [summary?.customer?.id, summary?.customer?.list_status_note]);
+
   const filteredCustomers = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return customers;
-    return customers.filter((c) => {
+    const list = customers.filter((c) => {
+      const statusMatch = listStatusFilter === 'all'
+        || (c.list_status || 'NORMAL') === listStatusFilter;
       const name = customerDisplayName(c).toLowerCase();
-      return (
+      const textMatch = (
         name.includes(q)
         || (c.phone || '').includes(q)
         || (c.email || '').toLowerCase().includes(q)
         || (c.cnic || '').includes(q)
       );
+      return statusMatch && (!q || textMatch);
     });
-  }, [customers, searchQuery]);
+    const priority = { BLOCKLISTED: 0, WHITELISTED: 1, NORMAL: 2 };
+    return list.sort((a, b) => {
+      const pa = priority[a.list_status || 'NORMAL'] ?? 3;
+      const pb = priority[b.list_status || 'NORMAL'] ?? 3;
+      if (pa !== pb) return pa - pb;
+      return customerDisplayName(a).localeCompare(customerDisplayName(b));
+    });
+  }, [customers, searchQuery, listStatusFilter]);
+
+  const statusCounts = useMemo(() => ({
+    all: customers.length,
+    NORMAL: customers.filter((c) => (c.list_status || 'NORMAL') === 'NORMAL').length,
+    WHITELISTED: customers.filter((c) => c.list_status === 'WHITELISTED').length,
+    BLOCKLISTED: customers.filter((c) => c.list_status === 'BLOCKLISTED').length,
+  }), [customers]);
 
   const handleOpenFormModal = (customer = null) => {
     if (!canOperate) {
@@ -389,6 +425,32 @@ export default function GhCustomers() {
       fetchCustomers();
     } catch {
       toast.error('Failed to delete');
+    }
+  };
+
+  const handleListStatusUpdate = async (nextStatus, note = statusNoteDraft) => {
+    if (!selectedId || statusUpdating || !canOperate) return;
+    if (nextStatus === 'BLOCKLISTED' && String(note || '').trim().length < 8) {
+      toast.error('Blocklist reason kam az kam 8 characters ka likhein.');
+      return;
+    }
+    if (nextStatus === 'BLOCKLISTED') {
+      const ok = window.confirm('Customer ko blocklist karna hai? Is customer ki new booking block ho jayegi.');
+      if (!ok) return;
+    }
+    setStatusUpdating(true);
+    try {
+      await client.post(`/customers/${selectedId}/set-list-status/`, {
+        list_status: nextStatus,
+        list_status_note: note,
+      });
+      toast.success(`Customer marked as ${LIST_STATUS_LABELS[nextStatus]}`);
+      await fetchCustomers();
+      await fetchSummary(selectedId);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to update list status');
+    } finally {
+      setStatusUpdating(false);
     }
   };
 
@@ -598,6 +660,21 @@ export default function GhCustomers() {
                 />
               </div>
             </div>
+            <div className="gh-cust-list-filters">
+              {LIST_STATUS_FILTERS.map((filter) => (
+                <button
+                  key={filter.id}
+                  type="button"
+                  className={`gh-cust-list-filter${listStatusFilter === filter.id ? ' gh-cust-list-filter--active' : ''}`}
+                  onClick={() => setListStatusFilter(filter.id)}
+                >
+                  {filter.label}
+                  <span className="gh-cust-list-filter__count">
+                    {statusCounts[filter.id] ?? 0}
+                  </span>
+                </button>
+              ))}
+            </div>
 
             {isLoading ? (
               <div className="gh-cust-empty">Loading guests…</div>
@@ -633,6 +710,11 @@ export default function GhCustomers() {
                         <span className="gh-cust-row__avatar">{customerInitials(customer)}</span>
                         <div className="gh-cust-row__body">
                           <p className="gh-cust-row__name">{customerDisplayName(customer)}</p>
+                          {(customer.list_status || 'NORMAL') !== 'NORMAL' && (
+                            <span className={`gh-cust-status-badge gh-cust-status-badge--${(customer.list_status || 'NORMAL').toLowerCase()}`}>
+                              {LIST_STATUS_LABELS[customer.list_status] || customer.list_status}
+                            </span>
+                          )}
                           <p className="gh-cust-row__phone">{customer.phone || '-'}</p>
                           <p className={`gh-cust-row__due ${hasCollectDue(due) ? 'gh-cust-row__due--warn' : 'gh-cust-row__due--ok'}`}>
                             Due: {formatCollectDuePKR(due)}
@@ -658,6 +740,11 @@ export default function GhCustomers() {
                       <div style={{ minWidth: 0 }}>
                         <h3 className="gh-cust-detail__name">{customerDisplayName(selectedCustomer)}</h3>
                         <p className="gh-cust-detail__sub">Primary booker — click a guest below to open their profile</p>
+                        {(selectedCustomer.list_status || 'NORMAL') !== 'NORMAL' && (
+                          <span className={`gh-cust-status-badge gh-cust-status-badge--${(selectedCustomer.list_status || 'NORMAL').toLowerCase()}`}>
+                            {LIST_STATUS_LABELS[selectedCustomer.list_status] || selectedCustomer.list_status}
+                          </span>
+                        )}
                       </div>
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                         {canOperate && (
@@ -691,6 +778,63 @@ export default function GhCustomers() {
                         <Calendar size={14} /> Joined {new Date(selectedCustomer.created_at).toLocaleDateString()}
                       </span>
                     </div>
+
+                    <div className="gh-cust-list-actions">
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        disabled={statusUpdating || !canOperate || selectedCustomer.list_status === 'WHITELISTED'}
+                        onClick={() => handleListStatusUpdate('WHITELISTED')}
+                      >
+                        <ShieldCheck size={14} /> Add to whitelist
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        disabled={statusUpdating || !canOperate || selectedCustomer.list_status === 'BLOCKLISTED'}
+                        onClick={() => handleListStatusUpdate('BLOCKLISTED')}
+                        style={{ color: '#b91c1c', borderColor: '#fecaca' }}
+                      >
+                        <ShieldX size={14} /> Add to blocklist
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        disabled={statusUpdating || !canOperate || selectedCustomer.list_status === 'NORMAL'}
+                        onClick={() => handleListStatusUpdate('NORMAL')}
+                      >
+                        Clear status
+                      </button>
+                    </div>
+                    <div className="gh-cust-risk-panel">
+                      <p className="gh-cust-risk-panel__title">Whitelist / Blocklist notes</p>
+                      <textarea
+                        value={statusNoteDraft}
+                        onChange={(e) => setStatusNoteDraft(e.target.value)}
+                        rows={2}
+                        placeholder="Example: Verified corporate client / Repeated no-show / Security concern..."
+                        className="gh-cust-risk-panel__input"
+                        disabled={!canOperate || statusUpdating}
+                      />
+                      <div className="gh-cust-risk-panel__actions">
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          disabled={!canOperate || statusUpdating}
+                          onClick={() => handleListStatusUpdate(selectedCustomer.list_status || 'NORMAL', statusNoteDraft)}
+                        >
+                          Save note
+                        </button>
+                      </div>
+                    </div>
+                    {summary?.customer?.list_status_updated_at && (
+                      <p className="gh-cust-risk-panel__audit">
+                        Last update: {new Date(summary.customer.list_status_updated_at).toLocaleString()}
+                        {summary?.customer?.list_status_updated_by_name
+                          ? ` by ${summary.customer.list_status_updated_by_name}`
+                          : ''}
+                      </p>
+                    )}
 
                     {(summary?.related_guests?.length > 0) && (
                       <div className="gh-cust-related">
@@ -760,10 +904,14 @@ export default function GhCustomers() {
                       <button
                         type="button"
                         className="btn-primary"
+                        disabled={(selectedCustomer.list_status || 'NORMAL') === 'BLOCKLISTED'}
                         onClick={() => navigate('/gh/book', { state: { prefillCustomer: selectedId } })}
                         style={{ width: '100%', marginBottom: 16, padding: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                       >
-                        <FileText size={16} /> New stay booking
+                        <FileText size={16} />
+                        {(selectedCustomer.list_status || 'NORMAL') === 'BLOCKLISTED'
+                          ? 'Blocklisted customer - booking disabled'
+                          : 'New stay booking'}
                       </button>
                     )}
 

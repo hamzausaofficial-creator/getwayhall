@@ -241,3 +241,23 @@ class GuestHouseStayTests(TestCase):
         client.force_authenticate(user=self.staff)
         response = client.delete(f'/api/guesthouse/stays/{stay.id}/')
         self.assertEqual(response.status_code, 403)
+
+    def test_blocklisted_customer_cannot_be_booked(self):
+        self.customer.list_status = 'BLOCKLISTED'
+        self.customer.save(update_fields=['list_status'])
+        client = APIClient()
+        client.force_authenticate(user=self.staff)
+        response = client.post('/api/guesthouse/stays/', self._stay_payload(), format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('customer', response.data)
+
+    def test_customer_list_status_can_be_updated(self):
+        client = APIClient()
+        client.force_authenticate(user=self.admin)
+        response = client.post(f'/api/customers/{self.customer.id}/set-list-status/', {
+            'list_status': 'WHITELISTED',
+            'list_status_note': 'Always verify ID quickly.',
+        }, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.list_status, 'WHITELISTED')

@@ -552,6 +552,8 @@ export default function BookFutureGuestBar({
             value={value}
             onChange={onChange}
             placeholder="Primary guest…"
+            excludeStatuses={['BLOCKLISTED']}
+            priorityStatuses={['WHITELISTED']}
             disabled={disabled}
           />
         </div>

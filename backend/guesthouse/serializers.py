@@ -410,6 +410,11 @@ class StayBookingSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'check_out': 'Check-out must be after check-in.'})
         if room and check_in and check_out and room.status != 'ACTIVE':
             raise serializers.ValidationError({'room': 'Selected room is not available for booking.'})
+        customer = attrs.get('customer') or getattr(self.instance, 'customer', None)
+        if customer and getattr(customer, 'list_status', 'NORMAL') == 'BLOCKLISTED':
+            raise serializers.ValidationError({
+                'customer': 'This customer is blocklisted and cannot be booked.',
+            })
         if room and check_in and check_out:
             qs = StayBooking.objects.filter(room=room).exclude(status='CANCELLED').filter(
                 Q(check_in__lt=check_out) & Q(check_out__gt=check_in)
