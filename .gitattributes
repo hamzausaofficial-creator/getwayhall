@@ -1,0 +1,2 @@
+# Shell scripts must use LF so Docker entrypoints work on Windows clones.
+*.sh text eol=lf

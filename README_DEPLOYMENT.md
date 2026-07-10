@@ -202,6 +202,17 @@ getwayhall/
 
 ## Troubleshooting
 
+### Django admin shows CSRF 403
+
+Ensure `deploy\.env` includes (match your `APP_PORT`):
+
+```env
+CSRF_TRUSTED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080,http://localhost,http://127.0.0.1
+CORS_ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080,http://localhost,http://127.0.0.1
+```
+
+Then restart: `deploy\start.bat`
+
 ### Docker is not running
 
 Start **Docker Desktop** from the Start menu, wait until it shows "Running", then run `deploy\start.bat` again.
@@ -257,6 +268,7 @@ The existing `backend/hallora_backend/settings.py` supports this deployment via 
 | `MEDIA_ROOT=/app/media` | Volume mounted | Persistent uploads |
 | `SERVE_FRONTEND=false` | Set in compose | Nginx serves React |
 | `USE_HTTPS=false` | Set in compose | HTTP cookies on localhost |
+| `CSRF_TRUSTED_ORIGINS` | `http://localhost:8080,...` | Required for Django admin login |
 | `DEBUG=False` | Recommended | Production mode |
 
 Health check endpoint: `http://localhost:8080/api/health/`

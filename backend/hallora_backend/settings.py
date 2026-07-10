@@ -230,6 +230,10 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
+# HTTPS cookies — enable only behind TLS (Railway, production HTTPS).
+# Local Docker / Windows laptop deployments should set USE_HTTPS=false.
+USE_HTTPS = os.environ.get('USE_HTTPS', 'false').lower() == 'true'
+
 _csrf_origins = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(',') if o.strip()] if _csrf_origins else []
 
@@ -243,13 +247,17 @@ for _railway_var in ('RAILWAY_PUBLIC_DOMAIN', 'RAILWAY_STATIC_URL'):
 
 for _host in ALLOWED_HOSTS:
     if _host and not _host.startswith('.'):
-        _origin = f'https://{_host}'
-        if _origin not in CSRF_TRUSTED_ORIGINS:
-            CSRF_TRUSTED_ORIGINS.append(_origin)
-
-# HTTPS cookies — enable only behind TLS (Railway, production HTTPS).
-# Local Docker / Windows laptop deployments should set USE_HTTPS=false.
-USE_HTTPS = os.environ.get('USE_HTTPS', 'false').lower() == 'true'
+        _schemes = ('https',) if USE_HTTPS else ('http', 'https')
+        for _scheme in _schemes:
+            _origin = f'{_scheme}://{_host}'
+            if _origin not in CSRF_TRUSTED_ORIGINS:
+                CSRF_TRUSTED_ORIGINS.append(_origin)
+        if not USE_HTTPS:
+            _app_port = os.environ.get('APP_PORT', '8080').strip()
+            for _port in filter(None, {_app_port, '8080', '80'}):
+                _origin = f'http://{_host}:{_port}'
+                if _origin not in CSRF_TRUSTED_ORIGINS:
+                    CSRF_TRUSTED_ORIGINS.append(_origin)
 if os.environ.get('RAILWAY_ENVIRONMENT') or (not DEBUG and USE_HTTPS):
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE = True
