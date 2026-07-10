@@ -4,12 +4,6 @@ import HeroSection from '../components/landing/HeroSection';
 import TrustSection from '../components/landing/TrustSection';
 import GallerySection from '../components/landing/GallerySection';
 import GalleryAlbumSection from '../components/landing/GalleryAlbumSection';
-import FeaturesSection from '../components/landing/FeaturesSection';
-import WhyChooseSection from '../components/landing/WhyChooseSection';
-import HowItWorksSection from '../components/landing/HowItWorksSection';
-import MapSection from '../components/landing/MapSection';
-import TestimonialsSection from '../components/landing/TestimonialsSection';
-import FAQSection from '../components/landing/FAQSection';
 import CTASection from '../components/landing/CTASection';
 import LandingFooter from '../components/landing/LandingFooter';
 import LandingSkeleton from '../components/landing/LandingSkeleton';
@@ -19,7 +13,7 @@ import { RefreshCw, AlertCircle } from 'lucide-react';
 
 export default function LandingPage() {
   const { data, loading, error, reload } = useLandingContent();
-  const { hero: heroStats, trust: trustStats, whyBadges } = useLandingLiveStats({
+  const { hero: heroStats, trust: trustStats } = useLandingLiveStats({
     hero: data.statistics?.hero,
     trust: data.statistics?.trust,
   });
@@ -54,12 +48,6 @@ export default function LandingPage() {
           <TrustSection stats={trustStats} />
           <GallerySection images={data.gallery} />
           <GalleryAlbumSection />
-          <FeaturesSection />
-          <WhyChooseSection badges={whyBadges} />
-          <HowItWorksSection />
-          <MapSection />
-          <TestimonialsSection testimonials={data.testimonials} />
-          <FAQSection faqs={data.faqs} />
           <CTASection />
           <LandingFooter />
         </>

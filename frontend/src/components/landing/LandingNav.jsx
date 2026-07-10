@@ -4,10 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import AppLogo from '../AppLogo';
 
 const LINKS = [
-  { label: 'Features', href: '#features' },
   { label: 'Gallery', href: '#gallery' },
-  { label: 'How It Works', href: '#how-it-works' },
-  { label: 'FAQ', href: '#faq' },
 ];
 
 export default function LandingNav({ transparent = true }) {
