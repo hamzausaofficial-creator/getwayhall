@@ -262,6 +262,7 @@ class StayPayment(models.Model):
 
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='gh_payments')
     stay = models.ForeignKey(StayBooking, on_delete=models.CASCADE, related_name='payments')
+    receipt_ref = models.CharField(max_length=50, blank=True, unique=True, null=True)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     payment_method = models.CharField(max_length=20, choices=METHOD_CHOICES, default='CASH')
     transaction_id = models.CharField(max_length=100, blank=True, default='')
@@ -282,7 +283,20 @@ class StayPayment(models.Model):
         verbose_name_plural = '6 · GH — Payments'
 
     def __str__(self):
-        return f'GH-PAY-{self.id}'
+        return self.receipt_ref or f'GH-PAY-{self.id}'
+
+    def save(self, *args, **kwargs):
+        if not self.receipt_ref:
+            prefix = 'GHR'
+            date_part = datetime.date.today().strftime('%y%m%d')
+            for _ in range(12):
+                candidate = f'{prefix}{date_part}{random.randint(1000, 9999)}'
+                if not StayPayment.objects.filter(receipt_ref=candidate).exists():
+                    self.receipt_ref = candidate
+                    break
+            if not self.receipt_ref:
+                self.receipt_ref = f'{prefix}{date_part}{random.randint(10000, 99999)}'
+        super().save(*args, **kwargs)
 
 
 class GhExpense(models.Model):

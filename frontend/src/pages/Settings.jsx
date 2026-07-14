@@ -39,6 +39,7 @@ import { useHallPageVisibility } from '../context/HallPageVisibilityContext';
 import { GH_PAGE_KEYS } from '../constants/ghPages';
 import { HALL_PAGE_KEYS } from '../constants/hallPages';
 import { resolveMediaUrl } from '../utils/media';
+import { ghStayTimesFromTenant } from '../utils/ghStay';
 import StatusBadge from '../components/ui/StatusBadge';
 
 const formatDateTime = (value) => {
@@ -69,7 +70,10 @@ const TAB_HEADINGS = {
   'Add-on Services': { title: 'Add-on services', subtitle: 'Manage AC, breakfast, laundry, and other extras for stays.' },
   Staff: { title: 'Staff management', subtitle: 'Team accounts, roles, and access for your organization.' },
   'All Records': { title: 'All records', subtitle: 'Reservations, payments, and expense vouchers in one ledger.' },
-  'Venue Info': { title: 'Venue information', subtitle: 'Official name, contact details, and plan for your organization.' },
+  'Venue Info': {
+    title: 'Venue information',
+    subtitle: 'Official name, contact details, and default guest stay times.',
+  },
   Notifications: { title: 'Notifications', subtitle: 'In-app alerts and customer SMS / WhatsApp preferences.' },
   Security: { title: 'Security', subtitle: 'Password, last login, and account status.' },
   System: { title: 'System', subtitle: 'Theme, language, and timezone preferences.' },
@@ -126,7 +130,13 @@ const Settings = () => {
     confirm_password: '',
   });
   const [profileForm, setProfileForm] = useState({ first_name: '', last_name: '' });
-  const [tenantForm, setTenantForm] = useState({ name: '', phone: '', address: '' });
+  const [tenantForm, setTenantForm] = useState({
+    name: '',
+    phone: '',
+    address: '',
+    gh_default_check_in_time: '14:00',
+    gh_default_check_out_time: '11:00',
+  });
   const [notifSettings, setNotifSettings] = useState({
     notify_new_bookings: true,
     notify_payments: true,
@@ -155,10 +165,13 @@ const Settings = () => {
       });
       if (tenantRes) {
         setTenantData(tenantRes);
+        const stayTimes = ghStayTimesFromTenant(tenantRes);
         setTenantForm({
           name: tenantRes.name || '',
           phone: tenantRes.phone || '',
           address: tenantRes.address || '',
+          gh_default_check_in_time: stayTimes.checkInTime,
+          gh_default_check_out_time: stayTimes.checkOutTime,
         });
       }
       if (prefsRes) {
@@ -613,6 +626,40 @@ const Settings = () => {
                 <InputGroup label="Current Plan">
                   <input type="text" value={tenantData?.plan_type || ''} style={{ width: '100%' }} readOnly />
                 </InputGroup>
+                {isGuestHouse && (
+                  <>
+                    <h4 style={{ fontSize: '16px', fontWeight: '700', margin: '28px 0 12px' }}>Default stay times</h4>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                      Starting check-in and check-out times for new bookings. You can still change them on each reservation.
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+                      <InputGroup label="Check-in time">
+                        <input
+                          type="time"
+                          value={tenantForm.gh_default_check_in_time}
+                          onChange={(e) => setTenantForm({
+                            ...tenantForm,
+                            gh_default_check_in_time: e.target.value,
+                          })}
+                          style={{ width: '100%' }}
+                          aria-label="Default check-in time"
+                        />
+                      </InputGroup>
+                      <InputGroup label="Check-out time">
+                        <input
+                          type="time"
+                          value={tenantForm.gh_default_check_out_time}
+                          onChange={(e) => setTenantForm({
+                            ...tenantForm,
+                            gh_default_check_out_time: e.target.value,
+                          })}
+                          style={{ width: '100%' }}
+                          aria-label="Default check-out time"
+                        />
+                      </InputGroup>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

@@ -11,6 +11,7 @@ import {
   addStayCharge, removeStayCharge,
 } from '../../api/guesthouse';
 import CancelStayModal from '../../components/guesthouse/CancelStayModal';
+import StatusAdvanceModal from '../../components/guesthouse/StatusAdvanceModal';
 import AppLoader from '../../components/AppLoader';
 import toast from 'react-hot-toast';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -47,7 +48,7 @@ const formatDateShort = (d) => {
   }
 };
 
-function StatusTrack({ status }) {
+function StatusTrack({ status, canAct = false, onAdvance }) {
   if (status === 'CANCELLED') {
     return (
       <div className="sd-track">
@@ -61,19 +62,42 @@ function StatusTrack({ status }) {
 
   const currentIdx = STATUS_ORDER[status] ?? 0;
 
+  const canClickStep = (stepKey) => {
+    if (!canAct || !onAdvance) return false;
+    if (stepKey === 'CONFIRMED') return status === 'PENDING';
+    if (stepKey === 'CHECKED_IN') return ['PENDING', 'CONFIRMED'].includes(status);
+    if (stepKey === 'CHECKED_OUT') return status === 'CHECKED_IN';
+    return false;
+  };
+
   return (
     <div className="sd-track">
       {TRACK_STEPS.map((step, i) => {
         const done = currentIdx > i;
         const current = currentIdx === i;
+        const clickable = canClickStep(step.key);
         const cls = [
           'sd-track__step',
           done ? 'sd-track__step--done' : '',
           current ? 'sd-track__step--current' : '',
+          clickable ? 'sd-track__step--clickable' : '',
         ].filter(Boolean).join(' ');
 
         return (
-          <div key={step.key} className={cls}>
+          <div
+            key={step.key}
+            className={cls}
+            role={clickable ? 'button' : undefined}
+            tabIndex={clickable ? 0 : undefined}
+            onClick={clickable ? () => onAdvance(step.key) : undefined}
+            onKeyDown={clickable ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onAdvance(step.key);
+              }
+            } : undefined}
+            title={clickable ? `Click to mark as ${step.label}` : undefined}
+          >
             <span className="sd-track__dot">{done ? '✓' : i + 1}</span>
             <span className="sd-track__label">{step.label}</span>
           </div>
@@ -94,6 +118,8 @@ export default function StayDetail() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [advanceTarget, setAdvanceTarget] = useState(null);
+  const [advanceSubmitting, setAdvanceSubmitting] = useState(false);
   const [chargeDesc, setChargeDesc] = useState('');
   const [chargeAmount, setChargeAmount] = useState('');
   const [addingCharge, setAddingCharge] = useState(false);
@@ -127,8 +153,10 @@ export default function StayDetail() {
       setStay(updated);
       await load();
       toast.success(msg);
+      return true;
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Action failed');
+      return false;
     }
   };
 
@@ -138,6 +166,7 @@ export default function StayDetail() {
       setStay(updated);
       toast.success('Checked in');
       load();
+      return true;
     } catch (err) {
       const data = err.response?.data;
       if (data?.requires_acknowledgement) {
@@ -148,13 +177,16 @@ export default function StayDetail() {
             setStay(updated);
             toast.success('Checked in (balance still due)');
             load();
+            return true;
           } catch (e2) {
             toast.error(e2.response?.data?.detail || 'Check-in failed');
+            return false;
           }
         }
-      } else {
-        toast.error(data?.detail || 'Check-in failed');
+        return false;
       }
+      toast.error(data?.detail || 'Check-in failed');
+      return false;
     }
   };
 
@@ -163,6 +195,7 @@ export default function StayDetail() {
       await stayCheckOut(stayId);
       toast.success('Checked out');
       load();
+      return true;
     } catch (err) {
       const data = err.response?.data;
       if (data?.requires_acknowledgement) {
@@ -173,13 +206,38 @@ export default function StayDetail() {
             setStay(updated);
             toast.success('Checked out');
             load();
+            return true;
           } catch (e2) {
             toast.error(e2.response?.data?.detail || 'Check-out failed');
+            return false;
           }
         }
-      } else {
-        toast.error(data?.detail || 'Check-out failed');
+        return false;
       }
+      toast.error(data?.detail || 'Check-out failed');
+      return false;
+    }
+  };
+
+  const requestStatusAdvance = (targetStatus) => {
+    setAdvanceTarget(targetStatus);
+  };
+
+  const confirmStatusAdvance = async () => {
+    if (!advanceTarget) return;
+    setAdvanceSubmitting(true);
+    try {
+      let ok = false;
+      if (advanceTarget === 'CONFIRMED') {
+        ok = await runAction(stayConfirm, 'Stay confirmed');
+      } else if (advanceTarget === 'CHECKED_IN') {
+        ok = await handleCheckIn();
+      } else if (advanceTarget === 'CHECKED_OUT') {
+        ok = await handleCheckOut();
+      }
+      if (ok) setAdvanceTarget(null);
+    } finally {
+      setAdvanceSubmitting(false);
     }
   };
 
@@ -311,7 +369,7 @@ export default function StayDetail() {
         </div>
       </div>
 
-      <StatusTrack status={stay.status} />
+      <StatusTrack status={stay.status} canAct={canAct} onAdvance={requestStatusAdvance} />
 
       {isCancelled && (
         <div
@@ -562,17 +620,17 @@ export default function StayDetail() {
               <h3 className="sd-section-title" style={{ marginBottom: 14 }}><Clock size={18} /> Actions</h3>
               <div className="sd-actions">
                 {canAct && stay.status === 'PENDING' && (
-                  <button type="button" className="btn-secondary" onClick={() => runAction(stayConfirm, 'Stay confirmed')}>
+                  <button type="button" className="btn-secondary" onClick={() => requestStatusAdvance('CONFIRMED')}>
                     <CheckCircle size={16} /> Confirm booking
                   </button>
                 )}
                 {canAct && ['CONFIRMED', 'PENDING'].includes(stay.status) && (
-                  <button type="button" className="btn-primary" onClick={handleCheckIn}>
+                  <button type="button" className="btn-primary" onClick={() => requestStatusAdvance('CHECKED_IN')}>
                     <LogIn size={16} /> Check in
                   </button>
                 )}
                 {canAct && stay.status === 'CHECKED_IN' && (
-                  <button type="button" className="btn-primary" onClick={handleCheckOut}>
+                  <button type="button" className="btn-primary" onClick={() => requestStatusAdvance('CHECKED_OUT')}>
                     <LogOut size={16} /> Check out
                   </button>
                 )}
@@ -600,6 +658,18 @@ export default function StayDetail() {
         open={showCancelModal}
         onClose={() => setShowCancelModal(false)}
         onCancelled={load}
+      />
+
+      <StatusAdvanceModal
+        open={Boolean(advanceTarget)}
+        targetStatus={advanceTarget}
+        guestName={stay.customer_name}
+        bookingRef={stay.booking_ref}
+        submitting={advanceSubmitting}
+        onClose={() => {
+          if (!advanceSubmitting) setAdvanceTarget(null);
+        }}
+        onConfirm={confirmStatusAdvance}
       />
     </div>
   );

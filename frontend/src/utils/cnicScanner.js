@@ -32,6 +32,36 @@ export function formatCnic(value) {
   return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`;
 }
 
+/** Format CNIC while typing: 12345-1234567-1 (passport-style IDs pass through). */
+export function formatCnicInput(value) {
+  const raw = String(value || '');
+  if (/[a-zA-Z]/.test(raw)) {
+    return raw.replace(/\s{2,}/g, ' ');
+  }
+  const digits = cnicDigits(raw).slice(0, 13);
+  if (digits.length <= 5) return digits;
+  if (digits.length <= 12) return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+  return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`;
+}
+
+export function validateCnic(value, { required = true } = {}) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) {
+    return required ? 'CNIC / ID card is required.' : null;
+  }
+  if (/[a-zA-Z]/.test(trimmed)) {
+    return trimmed.length >= 5 ? null : 'Enter a valid passport or ID number.';
+  }
+  const digits = cnicDigits(trimmed);
+  if (digits.length < 13) {
+    return 'Enter 13 digits (e.g. 35202-1234567-9).';
+  }
+  return null;
+}
+
+export const CNIC_PLACEHOLDER = '35202-1234567-9';
+export const CNIC_INPUT_MAX_LENGTH = 15;
+
 export function cnicDigits(value) {
   return String(value || '').replace(/\D/g, '');
 }

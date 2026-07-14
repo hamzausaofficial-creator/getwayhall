@@ -8,6 +8,18 @@ class Customer(models.Model):
         ('WHITELISTED', 'Whitelisted'),
         ('BLOCKLISTED', 'Blocklisted'),
     )
+    GENDER_CHOICES = (
+        ('', '—'),
+        ('MALE', 'Male'),
+        ('FEMALE', 'Female'),
+    )
+    RELATIVE_RELATION_CHOICES = (
+        ('', '—'),
+        ('FATHER', 'Father'),
+        ('HUSBAND', 'Husband'),
+        ('SON', 'Son'),
+        ('OTHER', 'Other'),
+    )
 
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='customers', null=True, blank=True)
     full_name = models.CharField(max_length=200, blank=True, default='')
@@ -16,6 +28,14 @@ class Customer(models.Model):
     last_name = models.CharField(max_length=100, blank=True, default='')
     email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=20)
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True, default='')
+    relative_relation = models.CharField(
+        max_length=16,
+        choices=RELATIVE_RELATION_CHOICES,
+        blank=True,
+        default='',
+    )
+    relative_name = models.CharField(max_length=200, blank=True, default='')
     address = models.TextField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     is_minor = models.BooleanField(default=False)

@@ -71,7 +71,7 @@ export default function GhPrintShell({ title, subtitle, children, autoPrint = tr
         className="gh-print-doc print-page-a5"
         style={{
           margin: '0 auto',
-          padding: '28px 24px',
+          padding: '16px 18px',
           background: '#fff',
           color: '#0f172a',
           fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -87,25 +87,25 @@ export default function GhPrintShell({ title, subtitle, children, autoPrint = tr
 
 export function GhPrintHeader({ docType }) {
   return (
-    <header style={{ borderBottom: '3px solid #5BD51E', paddingBottom: '20px', marginBottom: '28px' }}>
+    <header className="gh-print-header">
       <AppLogo
-        size="md"
+        size="sm"
         tone="dark"
         showName
         name={BRAND_GUEST_HOUSE}
         className="app-logo--print"
         nameClassName="app-logo__print-title"
       />
-      <p style={{ margin: '8px 0 0', fontSize: '14px', color: '#64748b', fontWeight: '600' }}>{docType}</p>
+      {docType ? <p className="gh-print-header__type">{docType}</p> : null}
     </header>
   );
 }
 
 export function GhPrintFooter() {
   return (
-    <footer style={{ marginTop: '40px', paddingTop: '16px', borderTop: '1px solid #e2e8f0', fontSize: '11px', color: '#94a3b8' }}>
-      <p style={{ margin: 0 }}>This is a computer-generated document. Printed {new Date().toLocaleString()}.</p>
-      <p style={{ margin: '6px 0 0 0' }}>Thank you for staying with us.</p>
+    <footer className="gh-print-footer">
+      <p>This is a computer-generated document. Printed {new Date().toLocaleString()}.</p>
+      <p>Thank you for staying with us.</p>
     </footer>
   );
 }

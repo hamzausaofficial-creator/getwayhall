@@ -74,18 +74,76 @@ class CustomerSerializer(serializers.ModelSerializer):
 
         cnic = (attrs.get('cnic') if 'cnic' in attrs else (self.instance.cnic if self.instance else '')) or ''
         cnic = str(cnic).strip()
-        if is_minor:
-            attrs['cnic'] = ''
-        elif self._is_guest_house_request() and not cnic:
-            raise serializers.ValidationError({'cnic': 'CNIC is required.'})
-        else:
-            attrs['cnic'] = cnic
 
         if 'address' in attrs and attrs['address'] is not None:
             attrs['address'] = str(attrs['address']).strip() or None
 
-        if is_minor and not (attrs.get('address') or (self.instance.address if self.instance else '')):
-            raise serializers.ValidationError({'address': 'Address is required for guests under 18.'})
+        gender = (attrs.get('gender') if 'gender' in attrs else (self.instance.gender if self.instance else '')) or ''
+        gender = str(gender).strip().upper()
+        if gender and gender not in ('MALE', 'FEMALE'):
+            raise serializers.ValidationError({'gender': 'Select Male or Female.'})
+        if 'gender' in attrs:
+            attrs['gender'] = gender
+
+        relative_relation = (
+            attrs.get('relative_relation')
+            if 'relative_relation' in attrs
+            else (self.instance.relative_relation if self.instance else '')
+        ) or ''
+        relative_relation = str(relative_relation).strip().upper()
+        relative_name = (
+            attrs.get('relative_name')
+            if 'relative_name' in attrs
+            else (self.instance.relative_name if self.instance else '')
+        ) or ''
+        relative_name = str(relative_name).strip()
+
+        if is_minor:
+            # Under-3 / child profiles: father name + father CNIC (no own ID required).
+            attrs['gender'] = ''
+            attrs['relative_relation'] = 'FATHER'
+            if 'relative_name' in attrs or not relative_name:
+                attrs['relative_name'] = relative_name
+            if not (attrs.get('relative_name') or (self.instance.relative_name if self.instance else '')):
+                # Fallback: use full_name as father name for legacy child creates
+                if attrs.get('full_name'):
+                    attrs['relative_name'] = attrs['full_name']
+                else:
+                    raise serializers.ValidationError({'relative_name': 'Father name is required.'})
+            if not cnic:
+                raise serializers.ValidationError({'cnic': 'Father CNIC / ID is required.'})
+            attrs['cnic'] = cnic
+            if not attrs.get('full_name'):
+                attrs['full_name'] = f"Child of {attrs['relative_name']}"
+                attrs['first_name'] = attrs['full_name']
+                attrs['last_name'] = ''
+            # Address optional for under-3 children
+        else:
+            if self._is_guest_house_request() and not cnic:
+                raise serializers.ValidationError({'cnic': 'CNIC is required.'})
+            attrs['cnic'] = cnic
+
+            if gender == 'MALE':
+                relative_relation = 'FATHER'
+            elif gender == 'FEMALE' and relative_relation not in ('FATHER', 'HUSBAND', 'SON', 'OTHER', ''):
+                raise serializers.ValidationError({'relative_relation': 'Select relation type.'})
+
+            if 'relative_relation' in attrs or gender:
+                attrs['relative_relation'] = relative_relation if gender else ''
+            if 'relative_name' in attrs or gender:
+                attrs['relative_name'] = relative_name if gender else ''
+
+            if self._is_guest_house_request() and gender:
+                if not relative_name:
+                    label = {
+                        'FATHER': 'Father name',
+                        'HUSBAND': 'Husband name',
+                        'SON': 'Son name',
+                        'OTHER': 'Relative name',
+                    }.get(relative_relation or 'FATHER', 'Relative name')
+                    raise serializers.ValidationError({'relative_name': f'{label} is required.'})
+                if gender == 'FEMALE' and relative_relation not in ('FATHER', 'HUSBAND', 'SON', 'OTHER'):
+                    raise serializers.ValidationError({'relative_relation': 'Select Husband, Father, Son, or Other.'})
 
         return attrs
 

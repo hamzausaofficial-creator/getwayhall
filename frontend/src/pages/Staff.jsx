@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   UserPlus,
   Mail,
@@ -20,6 +21,7 @@ import client from '../api/client';
 import toast from 'react-hot-toast';
 import { resolveMediaUrl } from '../utils/media';
 import { useAppType } from '../hooks/useAppType';
+import './staff.css';
 
 const ROLE_COLORS = {
   ADMIN: { bg: '#fef3c7', color: '#92400e', label: 'Admin' },
@@ -145,6 +147,20 @@ const Staff = ({ embedded = false }) => {
   useEffect(() => {
     fetchStaff();
   }, []);
+
+  useEffect(() => {
+    if (!showModal) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => {
+      if (e.key === 'Escape') setShowModal(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [showModal]);
 
   useEffect(() => {
     if (selectedId) {
@@ -283,7 +299,7 @@ const Staff = ({ embedded = false }) => {
 
   return (
     <>
-      <div className="animate-fade-in">
+      <div className={embedded ? 'staff-page staff-page--embedded' : 'staff-page animate-fade-in'}>
         {!embedded ? (
           <div className="page-header">
             <div>
@@ -301,7 +317,7 @@ const Staff = ({ embedded = false }) => {
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+          <div className="staff-page__toolbar">
             <button
               type="button"
               className="btn-primary"
@@ -587,36 +603,40 @@ const Staff = ({ embedded = false }) => {
         )}
       </div>
 
-      {showModal && (
-        <div className="modal-overlay">
-          <div className="card modal-panel modal-panel--sm">
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                marginBottom: '24px',
-              }}
-            >
+      {showModal && createPortal(
+        <div
+          className="modal-overlay staff-modal-overlay"
+          onClick={() => setShowModal(false)}
+          role="presentation"
+        >
+          <div
+            className="card modal-panel modal-panel--sm staff-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="staff-modal-title"
+          >
+            <div className="staff-modal__head">
               <div>
-                <h3 style={{ fontSize: '20px', fontWeight: '700' }}>
+                <h3 id="staff-modal-title">
                   {editingMember ? 'Edit Staff Member' : 'Add Staff Member'}
                 </h3>
-                <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                <p>
                   {editingMember
                     ? 'Update role and login access for this account.'
-                    : `Creates a ${portalLabel} login - user signs in with username, password, and assigned role.`}
+                    : `Creates a ${portalLabel} login — username, password, and role.`}
                 </p>
               </div>
               <button
                 type="button"
+                className="staff-modal__close"
                 onClick={() => setShowModal(false)}
-                style={{ backgroundColor: 'transparent', color: 'var(--text-muted)' }}
+                aria-label="Close"
               >
-                <X size={24} />
+                <X size={22} />
               </button>
             </div>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <form onSubmit={handleSubmit} className="staff-modal__form" noValidate>
               <div className="input-group">
                 <label>Username (for login)</label>
                 <input
@@ -665,16 +685,14 @@ const Staff = ({ embedded = false }) => {
                   value={formData.role}
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 >
-                  <option value="STAFF">Staff - bookings & stays</option>
-                  <option value="MANAGER">Manager - full except staff/settings</option>
-                  <option value="ADMIN">Admin - full access</option>
+                  <option value="STAFF">Staff — bookings & stays</option>
+                  <option value="MANAGER">Manager — full except staff/settings</option>
+                  <option value="ADMIN">Admin — full access</option>
                 </select>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px', lineHeight: 1.4 }}>
-                  {ROLE_LOGIN_ACCESS[formData.role]}
-                </p>
+                <p className="staff-modal__hint">{ROLE_LOGIN_ACCESS[formData.role]}</p>
               </div>
               <div className="input-group">
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <label className="staff-modal__check">
                   <input
                     type="checkbox"
                     checked={formData.profile_status !== false}
@@ -682,7 +700,7 @@ const Staff = ({ embedded = false }) => {
                   />
                   Allow login (account active)
                 </label>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                <p className="staff-modal__hint">
                   Uncheck to block sign-in without deleting the account.
                 </p>
               </div>
@@ -690,18 +708,8 @@ const Staff = ({ embedded = false }) => {
                 <>
                   <div className="input-group">
                     <label>Login password</label>
-                    <div style={{ position: 'relative' }}>
-                      <Lock
-                        size={18}
-                        style={{
-                          position: 'absolute',
-                          left: '12px',
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          color: 'var(--text-muted)',
-                          pointerEvents: 'none',
-                        }}
-                      />
+                    <div className="staff-modal__password">
+                      <Lock size={18} className="staff-modal__password-icon" aria-hidden />
                       <input
                         type={showCreatePassword ? 'text' : 'password'}
                         required
@@ -710,20 +718,11 @@ const Staff = ({ embedded = false }) => {
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                         placeholder="Min. 8 characters"
                         autoComplete="new-password"
-                        style={{ paddingLeft: '40px', paddingRight: '40px', width: '100%' }}
                       />
                       <button
                         type="button"
+                        className="staff-modal__password-toggle"
                         onClick={() => setShowCreatePassword(!showCreatePassword)}
-                        style={{
-                          position: 'absolute',
-                          right: '8px',
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          background: 'transparent',
-                          color: 'var(--text-muted)',
-                          padding: '4px',
-                        }}
                         aria-label={showCreatePassword ? 'Hide password' : 'Show password'}
                       >
                         {showCreatePassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -732,18 +731,8 @@ const Staff = ({ embedded = false }) => {
                   </div>
                   <div className="input-group">
                     <label>Confirm password</label>
-                    <div style={{ position: 'relative' }}>
-                      <Lock
-                        size={18}
-                        style={{
-                          position: 'absolute',
-                          left: '12px',
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          color: 'var(--text-muted)',
-                          pointerEvents: 'none',
-                        }}
-                      />
+                    <div className="staff-modal__password">
+                      <Lock size={18} className="staff-modal__password-icon" aria-hidden />
                       <input
                         type={showCreatePassword ? 'text' : 'password'}
                         required
@@ -754,7 +743,6 @@ const Staff = ({ embedded = false }) => {
                         }
                         placeholder="Re-enter password"
                         autoComplete="new-password"
-                        style={{ paddingLeft: '40px', width: '100%' }}
                       />
                     </div>
                   </div>
@@ -787,12 +775,18 @@ const Staff = ({ embedded = false }) => {
                   onChange={(e) => setFormData({ ...formData, joining_date: e.target.value })}
                 />
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%', padding: '12px' }}>
-                {editingMember ? 'Save changes' : 'Create Staff Account'}
-              </button>
+              <div className="staff-modal__actions">
+                <button type="button" className="btn-secondary" onClick={() => setShowModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary">
+                  {editingMember ? 'Save changes' : 'Create Staff Account'}
+                </button>
+              </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

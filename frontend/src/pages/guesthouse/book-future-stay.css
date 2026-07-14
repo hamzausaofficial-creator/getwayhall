@@ -64,8 +64,9 @@
 
 .book-future-party-bar__counts {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
@@ -156,12 +157,38 @@
   cursor: not-allowed;
 }
 
+.book-future-party-bar__companions-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
 .book-future-party-bar__companions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 8px;
+}
+
+.book-future-party-bar__companions-label--male {
+  color: #1d4ed8;
+}
+
+.book-future-party-bar__companions-label--female {
+  color: #be185d;
+}
+
+.book-future-party-bar__companions-label--child {
+  color: #b45309;
+}
+
+.book-future-party-bar__companion-chip--male {
+  border-color: rgba(29, 78, 216, 0.25);
+}
+
+.book-future-party-bar__companion-chip--female {
+  border-color: rgba(190, 24, 93, 0.25);
 }
 
 .book-future-party-bar__companions-label {
@@ -345,6 +372,8 @@
 .book-future-guest-modal {
   width: 100%;
   max-width: 480px;
+  max-height: min(92vh, 860px);
+  overflow: auto;
   padding: 24px;
 }
 
@@ -390,6 +419,62 @@
   font-size: 12px;
   color: #b91c1c;
   font-weight: 600;
+}
+
+.book-future-guest-modal__gender {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  padding: 4px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius-md, 10px);
+  background: var(--background, #f8fafc);
+}
+
+.book-future-guest-modal__gender--error {
+  border-color: #fca5a5;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.08);
+}
+
+.book-future-guest-modal__gender-option {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: calc(var(--radius-md, 10px) - 3px);
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+  user-select: none;
+}
+
+.book-future-guest-modal__gender-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.book-future-guest-modal__gender-option:hover:not(.is-active) {
+  color: var(--text-main, #0f172a);
+}
+
+.book-future-guest-modal__gender-option.is-active {
+  background: var(--surface, #fff);
+  color: var(--primary, #5bd51e);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.book-future-guest-modal__gender-option:focus-within {
+  outline: 2px solid color-mix(in srgb, var(--primary, #5bd51e) 40%, white);
+  outline-offset: 1px;
 }
 
 .book-future-guest-modal__actions {

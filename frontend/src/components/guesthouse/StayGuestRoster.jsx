@@ -14,12 +14,80 @@ const emptyCompanion = (adultsCount = 1, index = 0) => ({
   cnic: '',
   phone: '',
   address: '',
+  gender: '',
+  relative_relation: '',
+  relative_name: '',
   is_minor: isChildCompanionSlot(index, adultsCount),
 });
 
-/** Companion slots after the first (adults_count - 1) are children under 18. */
+/** Companion slots after the first (adults_count - 1) are under-3 children. */
 export function isChildCompanionSlot(index, adultsCount = 1) {
   return index >= Math.max(Number(adultsCount) || 1, 1) - 1;
+}
+
+/** Primary guest gender for slot math (primary occupies one male or female count). */
+export function getPrimaryGuestGender(primaryCustomer, malesCount = 1, femalesCount = 0) {
+  const fromProfile = (primaryCustomer?.gender || '').toUpperCase();
+  if (fromProfile === 'MALE' || fromProfile === 'FEMALE') return fromProfile;
+  const males = Math.max(Number(malesCount) || 0, 0);
+  const females = Math.max(Number(femalesCount) || 0, 0);
+  if (males >= 1) return 'MALE';
+  if (females >= 1) return 'FEMALE';
+  return 'MALE';
+}
+
+/** Build empty companion slots for Male/Female adults + under-3 children. */
+export function buildPartyCompanionSlots(
+  malesCount,
+  femalesCount,
+  under3Count,
+  primaryGender = 'MALE',
+) {
+  const males = Math.max(Number(malesCount) || 0, 0);
+  const females = Math.max(Number(femalesCount) || 0, 0);
+  const under3 = Math.max(Number(under3Count) || 0, 0);
+  const pg = (primaryGender || 'MALE').toUpperCase();
+
+  let maleSlots = males - (pg === 'MALE' ? 1 : 0);
+  let femaleSlots = females - (pg === 'FEMALE' ? 1 : 0);
+  maleSlots = Math.max(maleSlots, 0);
+  femaleSlots = Math.max(femaleSlots, 0);
+
+  return [
+    ...Array.from({ length: maleSlots }, () => ({
+      customer: '',
+      full_name: '',
+      cnic: '',
+      phone: '',
+      address: '',
+      gender: 'MALE',
+      relative_relation: 'FATHER',
+      relative_name: '',
+      is_minor: false,
+    })),
+    ...Array.from({ length: femaleSlots }, () => ({
+      customer: '',
+      full_name: '',
+      cnic: '',
+      phone: '',
+      address: '',
+      gender: 'FEMALE',
+      relative_relation: '',
+      relative_name: '',
+      is_minor: false,
+    })),
+    ...Array.from({ length: under3 }, () => ({
+      customer: '',
+      full_name: '',
+      cnic: '',
+      phone: '',
+      address: '',
+      gender: '',
+      relative_relation: 'FATHER',
+      relative_name: '',
+      is_minor: true,
+    })),
+  ];
 }
 
 export function companionFromSaved(saved, isMinor) {
@@ -29,13 +97,21 @@ export function companionFromSaved(saved, isMinor) {
     cnic: saved.cnic || '',
     phone: saved.phone || '',
     address: saved.address || '',
+    gender: saved.gender || '',
+    relative_relation: saved.relative_relation || '',
+    relative_name: saved.relative_name || '',
     is_minor: Boolean(isMinor ?? saved.is_minor),
   };
 }
 
 export function isCompanionFilled(guest) {
   if (guest?.is_minor) {
-    return Boolean((guest?.full_name || '').trim());
+    if (guest?.customer) return true;
+    return Boolean(
+      (guest?.full_name || '').trim()
+      && (guest?.relative_name || '').trim()
+      && (guest?.cnic || '').trim(),
+    );
   }
   if (guest?.customer) return true;
   return Boolean((guest?.full_name || '').trim() && (guest?.cnic || '').trim());
@@ -72,6 +148,9 @@ export function buildGuestRosterPayload(primaryCustomerId, primaryCustomer, comp
       cnic: (guest.cnic || '').trim(),
       phone: (guest.phone || '').trim(),
       address: (guest.address || '').trim(),
+      gender: guest.gender || '',
+      relative_relation: guest.relative_relation || '',
+      relative_name: guest.relative_name || '',
       is_minor: Boolean(guest.is_minor),
       linked_primary: primaryCustomerId ? Number(primaryCustomerId) : null,
       is_primary: false,
@@ -102,24 +181,30 @@ export function validateGuestRoster(primaryCustomerId, primaryCustomer, companio
   }
   for (const guest of getFilledCompanions(companions)) {
     const name = (guest.full_name || '').trim();
+    const fatherName = (guest.relative_name || '').trim();
     const cnic = (guest.cnic || '').trim();
-    const address = (guest.address || '').trim();
     const slotIndex = companions.indexOf(guest);
     const label = slotIndex >= 0 ? slotIndex + 1 : 1;
     if (String(guest.customer) === String(primaryCustomerId)) {
       return `Additional guest ${label} cannot be the same as the primary booker.`;
     }
-    if (!guest.customer && !name) {
-      return `Additional guest ${label}: name is required.`;
-    }
     if (guest.is_minor) {
-      if (!guest.customer && !address) {
-        return `Guest ${label + 1}: address is required for guests under 18.`;
+      if (!guest.customer && !name) {
+        return `Child ${label}: name is required.`;
+      }
+      if (!guest.customer && !fatherName) {
+        return `Child ${label}: father name is required.`;
+      }
+      if (!guest.customer && !cnic) {
+        return `Child ${label}: father CNIC / ID is required.`;
       }
       continue;
     }
+    if (!guest.customer && !name) {
+      return `Additional guest ${label}: name is required.`;
+    }
     if (!guest.customer && !cnic) {
-      return `Guest ${label + 1}: CNIC / ID card is required for guests aged 18+.`;
+      return `Guest ${label}: CNIC / ID card is required for male/female guests.`;
     }
   }
   const emptySlots = companions.length - getFilledCompanions(companions).length;

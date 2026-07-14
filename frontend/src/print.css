@@ -2,7 +2,7 @@
 @media print {
   @page {
     size: A5 portrait;
-    margin: 10mm;
+    margin: 8mm;
   }
 
   .app-sidebar,
@@ -22,11 +22,323 @@
 }
 
 /* On-screen preview width ≈ A5 content area (128mm) */
-.print-page-a5 {
+.print-page-a5,
+.gh-print-doc {
   box-sizing: border-box;
   max-width: 520px;
   margin-left: auto;
   margin-right: auto;
+}
+
+/* Guest House print — compact single A5 page */
+.gh-print-doc {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.gh-print-header {
+  border-bottom: 2px solid #5bd51e;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.gh-print-header__type {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.gh-print-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.gh-print-meta__label {
+  font-size: 9px;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  margin: 0 0 2px;
+}
+
+.gh-print-meta__ref {
+  font-size: 16px;
+  font-weight: 900;
+  margin: 0;
+  font-family: monospace;
+}
+
+.gh-print-meta__guest {
+  font-size: 12px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.gh-print-meta__phone {
+  font-size: 11px;
+  color: #64748b;
+  margin: 2px 0 0;
+}
+
+.gh-print-meta__relative {
+  font-size: 11px;
+  color: #475569;
+  margin: 2px 0 0;
+  font-weight: 600;
+}
+
+.gh-print-amount {
+  background: #f5fdf2;
+  border: 1.5px dashed #c0f7a6;
+  padding: 12px 14px;
+  border-radius: 10px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.gh-print-amount__label {
+  font-size: 9px;
+  font-weight: 800;
+  color: #288005;
+  text-transform: uppercase;
+}
+
+.gh-print-amount__value {
+  font-size: 22px;
+  font-weight: 900;
+  color: #5bd51e;
+  margin: 4px 0;
+}
+
+.gh-print-amount__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #c0f7a6;
+  color: #1e5e03;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.gh-print-amount__meta {
+  font-size: 10px;
+  color: #64748b;
+  margin: 6px 0 0;
+}
+
+.gh-print-table {
+  width: 100%;
+  margin-bottom: 10px;
+  border-collapse: collapse;
+}
+
+.gh-print-table td {
+  padding: 3px 0;
+  vertical-align: top;
+}
+
+.gh-print-table td:first-child {
+  color: #64748b;
+  width: 38%;
+  font-size: 11px;
+}
+
+.gh-print-table td:last-child {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gh-print-table td:last-child.gh-print-table__bold {
+  font-weight: 800;
+}
+
+.gh-print-terms {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 10px;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+
+.gh-print-terms__title {
+  font-weight: 800;
+  font-size: 11px;
+  margin: 0 0 6px;
+  color: #0f172a;
+}
+
+.gh-print-terms ol {
+  padding-left: 16px;
+  margin: 0;
+  color: #475569;
+}
+
+.gh-print-terms li {
+  margin-bottom: 3px;
+}
+
+.gh-print-terms li:last-child {
+  margin-bottom: 0;
+}
+
+.gh-print-bill {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.gh-print-bill__row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+
+.gh-print-bill__total {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 6px;
+  border-top: 2px solid #5bd51e;
+  font-size: 14px;
+  font-weight: 900;
+  color: #5bd51e;
+}
+
+.gh-print-signatures {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-size: 10px;
+}
+
+.gh-print-signatures__box {
+  width: 42%;
+  text-align: center;
+}
+
+.gh-print-signatures__line {
+  border-bottom: 1px solid #94a3b8;
+  height: 28px;
+  margin-bottom: 4px;
+}
+
+.gh-print-signatures p {
+  margin: 0;
+  color: #64748b;
+}
+
+.gh-print-footer {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+  font-size: 9px;
+  color: #94a3b8;
+}
+
+.gh-print-footer p {
+  margin: 0;
+}
+
+.gh-print-footer p + p {
+  margin-top: 3px;
+}
+
+.gh-print-notes {
+  font-size: 10px;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.gh-print-cancel-banner {
+  text-align: center;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  border: 2px solid #fecaca;
+  background: #fef2f2;
+}
+
+.gh-print-cancel-banner h2 {
+  font-size: 18px;
+  font-weight: 900;
+  color: #991b1b;
+  margin: 0 0 4px;
+}
+
+.gh-print-cancel-banner p {
+  font-size: 11px;
+  color: #7f1d1d;
+  margin: 0;
+  font-weight: 600;
+}
+
+.gh-print-payments {
+  margin-bottom: 10px;
+}
+
+.gh-print-payments h3 {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #64748b;
+  margin: 0 0 6px;
+}
+
+.gh-print-payments table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+
+.gh-print-payments th,
+.gh-print-payments td {
+  padding: 4px;
+  text-align: left;
+}
+
+.gh-print-payments thead tr {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.gh-print-payments tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+@media print {
+  .gh-print-doc {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    font-size: 9pt !important;
+    line-height: 1.3 !important;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  .gh-print-header,
+  .gh-print-footer,
+  .gh-print-amount,
+  .gh-print-terms,
+  .gh-print-bill,
+  .gh-print-signatures {
+    page-break-inside: avoid;
+  }
+
+  .gh-print-amount__value {
+    font-size: 18pt !important;
+  }
 }
 
 @media screen {

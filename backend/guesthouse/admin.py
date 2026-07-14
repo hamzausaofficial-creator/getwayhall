@@ -109,14 +109,14 @@ class StayChargeAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
 @admin.register(StayPayment)
 class StayPaymentAdmin(ManagerOnlyAdminMixin, TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = (
-        'id', 'stay', 'amount', 'payment_method', 'status',
+        'receipt_ref', 'id', 'stay', 'amount', 'payment_method', 'status',
         'payment_date', 'tenant', 'recorded_by',
     )
     list_filter = ('status', 'payment_method', 'tenant')
-    search_fields = ('notes', 'stay__booking_ref', 'stay__customer__full_name')
+    search_fields = ('receipt_ref', 'notes', 'stay__booking_ref', 'stay__customer__full_name')
     raw_id_fields = ('stay', 'recorded_by')
     date_hierarchy = 'payment_date'
-    readonly_fields = ('payment_date',)
+    readonly_fields = ('payment_date', 'receipt_ref')
 
 
 @admin.register(GhExpense)

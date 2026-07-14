@@ -118,7 +118,7 @@ class StayPaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = StayPayment
         fields = '__all__'
-        read_only_fields = ['tenant', 'payment_date', 'recorded_by']
+        read_only_fields = ['tenant', 'payment_date', 'recorded_by', 'receipt_ref']
 
     def get_customer_name(self, obj):
         if obj.stay and obj.stay.customer:
@@ -191,6 +191,9 @@ class StayBookingSerializer(serializers.ModelSerializer):
     customer_name = serializers.SerializerMethodField()
     customer_phone = serializers.CharField(source='customer.phone', read_only=True)
     customer_cnic = serializers.CharField(source='customer.cnic', read_only=True)
+    customer_gender = serializers.CharField(source='customer.gender', read_only=True)
+    customer_relative_relation = serializers.CharField(source='customer.relative_relation', read_only=True)
+    customer_relative_name = serializers.CharField(source='customer.relative_name', read_only=True)
     room_number = serializers.CharField(source='room.room_number', read_only=True)
     room_type = serializers.CharField(source='room.room_type', read_only=True)
     price_per_night = serializers.DecimalField(source='room.price_per_night', max_digits=12, decimal_places=2, read_only=True)
@@ -220,6 +223,7 @@ class StayBookingSerializer(serializers.ModelSerializer):
         model = StayBooking
         fields = [
             'id', 'booking_ref', 'customer', 'customer_name', 'customer_phone', 'customer_cnic',
+            'customer_gender', 'customer_relative_relation', 'customer_relative_name',
             'room', 'room_number', 'room_type', 'price_per_night',
             'included_guests', 'extra_guest_fee_per_night',
             'check_in', 'check_out', 'guests_count', 'adults_count', 'children_count', 'nights', 'total_amount',
@@ -230,7 +234,9 @@ class StayBookingSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at',
         ]
         read_only_fields = [
-            'id', 'booking_ref', 'customer_name', 'customer_phone', 'customer_cnic', 'room_number',
+            'id', 'booking_ref', 'customer_name', 'customer_phone', 'customer_cnic',
+            'customer_gender', 'customer_relative_relation', 'customer_relative_name',
+            'room_number',
             'room_type', 'price_per_night', 'included_guests', 'extra_guest_fee_per_night',
             'nights', 'remaining_balance', 'total_amount', 'advance_paid',
             'payment_status', 'charges', 'guests', 'billing_breakdown',

@@ -14,7 +14,11 @@ class TenantAdmin(AdminOnlyAdminMixin, admin.ModelAdmin):
 
     fieldsets = (
         (None, {
-            'fields': ('name', 'subdomain', 'plan_type', 'is_active', 'phone', 'address', 'sms_enabled', 'default_country_code'),
+            'fields': (
+                'name', 'subdomain', 'plan_type', 'is_active', 'phone', 'address',
+                'sms_enabled', 'default_country_code',
+                'gh_default_check_in_time', 'gh_default_check_out_time',
+            ),
             'description': (
                 '<strong>Tenant</strong> = one organization (e.g. your centre). '
                 'Scroll down on this page to control <strong>Guest House</strong> and '

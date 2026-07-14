@@ -1,2 +1,2 @@
-# Shell scripts must use LF so Docker entrypoints work on Windows clones.
+# Keep shell scripts LF so Docker Linux containers can exec them.
 *.sh text eol=lf

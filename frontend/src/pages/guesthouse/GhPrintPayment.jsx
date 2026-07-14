@@ -37,14 +37,14 @@ export default function GhPrintPayment() {
     return <AppLoader fullScreen message="Loading receipt…" />;
   }
 
-  const slipId = `PAY-${String(payment.id).padStart(5, '0')}`;
+  const receiptId = payment.receipt_ref || `GHR-PAY-${String(payment.id).padStart(5, '0')}`;
 
   const isAdvanceReceipt = (payment.notes || '').includes('Initial advance');
 
   return (
     <GhPrintShell
       title={isAdvanceReceipt ? 'Advance receipt' : 'Payment receipt'}
-      subtitle={slipId}
+      subtitle={receiptId}
       backTo="/gh/payments"
     >
       <GhPrintHeader docType={isAdvanceReceipt ? 'Advance receipt / ایڈوانس رسیڈ' : 'Payment receipt'} />
@@ -62,7 +62,7 @@ export default function GhPrintPayment() {
       <table style={{ width: '100%', marginBottom: '24px', borderCollapse: 'collapse' }}>
         <tbody>
           {[
-            ['Receipt no.', slipId],
+            ['Receipt ID', receiptId],
             ['Date', payment.payment_date ? new Date(payment.payment_date).toLocaleString() : '-'],
             ['Stay reference', payment.stay_ref || stay?.booking_ref],
             ['Guest', payment.customer_name || stay?.customer_name],

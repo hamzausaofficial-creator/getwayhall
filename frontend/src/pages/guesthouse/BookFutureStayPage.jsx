@@ -24,6 +24,12 @@ import { resolveMediaUrl } from '../../utils/media';
 import { customerDisplayName } from '../../utils/customer';
 import BookFutureGuestBar from '../../components/guesthouse/BookFutureGuestBar';
 import { getCustomerTravelCompanions, getPrimaryCustomers } from '../../api/customers';
+import { getTenant } from '../../api/core';
+import {
+  DEFAULT_GH_CHECK_IN_TIME,
+  DEFAULT_GH_CHECK_OUT_TIME,
+  ghStayTimesFromTenant,
+} from '../../utils/ghStay';
 import './book-future-stay.css';
 
 const SectionHeader = ({ icon: Icon, title, subtitle }) => (
@@ -82,10 +88,12 @@ export default function BookFutureStayPage() {
     room: prefillRoom ? String(prefillRoom) : '',
     check_in: prefillCheckIn,
     check_out: prefillCheckOut || (prefillCheckIn ? format(addDays(parseISO(prefillCheckIn), 1), 'yyyy-MM-dd') : ''),
-    check_in_time: '14:00',
-    check_out_time: '11:00',
+    check_in_time: DEFAULT_GH_CHECK_IN_TIME,
+    check_out_time: DEFAULT_GH_CHECK_OUT_TIME,
     adults_count: 1,
     children_count: 0,
+    males_count: 1,
+    females_count: 0,
     guests_count: 1,
     advance_paid: '',
     advance_payment_method: 'CASH',
@@ -127,12 +135,21 @@ export default function BookFutureStayPage() {
     const loadCustomers = async () => {
       setLoading(true);
       try {
-        const [custList, svcList] = await Promise.all([
+        const [custList, svcList, tenantRes] = await Promise.all([
           getPrimaryCustomers(),
           listGhServices(),
+          getTenant().catch(() => null),
         ]);
         setCustomers(Array.isArray(custList) ? custList : []);
         setServices(Array.isArray(svcList) ? svcList : []);
+        if (tenantRes) {
+          const stayTimes = ghStayTimesFromTenant(tenantRes);
+          setForm((f) => ({
+            ...f,
+            check_in_time: stayTimes.checkInTime,
+            check_out_time: stayTimes.checkOutTime,
+          }));
+        }
       } catch {
         toast.error('Failed to load booking data');
         navigate('/gh/calendar');
@@ -210,10 +227,12 @@ export default function BookFutureStayPage() {
   const isPrimaryBlocked = (primaryCustomer?.list_status || 'NORMAL') === 'BLOCKLISTED';
 
   const familyGuestsCount = useMemo(() => {
-    const adults = Math.max(Number(form.adults_count) || 1, 1);
+    const males = Math.max(Number(form.males_count) || 0, 0);
+    const females = Math.max(Number(form.females_count) || 0, 0);
+    const adults = Math.max(males + females, 1);
     const children = Math.max(Number(form.children_count) || 0, 0);
     return adults + children;
-  }, [form.adults_count, form.children_count]);
+  }, [form.males_count, form.females_count, form.children_count]);
 
   const filledCompanions = useMemo(
     () => getFilledCompanions(companions),
@@ -287,7 +306,10 @@ export default function BookFutureStayPage() {
         check_in: form.check_in,
         check_out: form.check_out,
         guests_count: familyGuestsCount,
-        adults_count: Math.max(Number(form.adults_count) || 1, 1),
+        adults_count: Math.max(
+          (Number(form.males_count) || 0) + (Number(form.females_count) || 0),
+          1,
+        ),
         children_count: Math.max(Number(form.children_count) || 0, 0),
         advance_paid: parseFloat(form.advance_paid) || 0,
         advance_payment_method: form.advance_payment_method,
@@ -410,6 +432,7 @@ export default function BookFutureStayPage() {
                   value={form.check_in_time}
                   onChange={(e) => setForm({ ...form, check_in_time: e.target.value })}
                   aria-label="Check-in time"
+                  title="Default from Settings → Venue Info"
                 />
                 <span style={{ color: 'var(--text-muted)', fontWeight: '700', fontSize: '12px' }}>→</span>
                 <input
@@ -425,6 +448,7 @@ export default function BookFutureStayPage() {
                   value={form.check_out_time}
                   onChange={(e) => setForm({ ...form, check_out_time: e.target.value })}
                   aria-label="Check-out time"
+                  title="Default from Settings → Venue Info"
                 />
                 {form.check_in && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -467,13 +491,23 @@ export default function BookFutureStayPage() {
               <BookFutureGuestBar
                 customers={customers}
                 value={form.customer}
-                adultsCount={form.adults_count}
-                childrenCount={form.children_count}
+                malesCount={form.males_count}
+                femalesCount={form.females_count}
+                under3Count={form.children_count}
                 companions={companions}
                 onCompanionsChange={setCompanions}
                 savedTravelCompanions={savedTravelCompanions}
-                onAdultsChange={(n) => setForm({ ...form, adults_count: n })}
-                onChildrenChange={(n) => setForm({ ...form, children_count: n })}
+                onMalesChange={(n) => setForm({
+                  ...form,
+                  males_count: n,
+                  adults_count: Math.max(n + (Number(form.females_count) || 0), 1),
+                })}
+                onFemalesChange={(n) => setForm({
+                  ...form,
+                  females_count: n,
+                  adults_count: Math.max((Number(form.males_count) || 0) + n, 1),
+                })}
+                onUnder3Change={(n) => setForm({ ...form, children_count: n })}
                 onChange={(customerId) => setForm({ ...form, customer: customerId })}
                 onCustomerCreated={async () => {
                   await reloadCustomers();

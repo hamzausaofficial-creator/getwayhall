@@ -220,6 +220,8 @@ else:
         'http://127.0.0.1:8000',
         'http://localhost:8080',
         'http://127.0.0.1:8080',
+        'http://localhost:8888',
+        'http://127.0.0.1:8888',
         'http://localhost',
         'http://127.0.0.1',
     ]
@@ -254,7 +256,7 @@ for _host in ALLOWED_HOSTS:
                 CSRF_TRUSTED_ORIGINS.append(_origin)
         if not USE_HTTPS:
             _app_port = os.environ.get('APP_PORT', '8080').strip()
-            for _port in filter(None, {_app_port, '8080', '80'}):
+            for _port in filter(None, {_app_port, '8080', '8888', '80'}):
                 _origin = f'http://{_host}:{_port}'
                 if _origin not in CSRF_TRUSTED_ORIGINS:
                     CSRF_TRUSTED_ORIGINS.append(_origin)
