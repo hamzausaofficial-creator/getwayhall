@@ -1,14 +1,76 @@
 from decimal import Decimal
 
 from rest_framework import serializers
-from django.db.models import Q, Sum
-from .models import Room, StayBooking, StayPayment, GhExpense, GuestHouseService, StayCharge, StayGuest
-from .billing import compute_service_amount, get_included_guests, compute_room_charges
+from django.db.models import Sum
+from .models import (
+    Room, RoomBed, UnitMedia, Amenity, UnitAmenity,
+    StayBooking, StayPayment, GhExpense,
+    GuestHouseService, StayCharge, StayGuest,
+)
+from .billing import compute_service_amount, get_included_guests, get_max_guests, compute_room_charges
+from .availability import blocked_unit_ids, conflict_message
 from .guest_roster import sync_stay_guests, ensure_primary_guest_row, _guest_entry_filled, _enrich_guest_entry
+
+
+class RoomBedSerializer(serializers.ModelSerializer):
+    bed_type_display = serializers.CharField(source='get_bed_type_display', read_only=True)
+
+    class Meta:
+        model = RoomBed
+        fields = ['id', 'bed_type', 'bed_type_display', 'quantity']
+        read_only_fields = ['id', 'bed_type_display']
+
+
+class UnitMediaSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UnitMedia
+        fields = [
+            'id', 'unit', 'unit_type', 'file', 'url',
+            'caption', 'sort_order', 'is_cover', 'created_at',
+        ]
+        read_only_fields = ['id', 'unit', 'unit_type', 'url', 'created_at']
+
+    def get_url(self, obj):
+        if not obj.file:
+            return ''
+        request = self.context.get('request')
+        url = obj.file.url
+        if request:
+            return request.build_absolute_uri(url)
+        return url
+
+
+class AmenitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Amenity
+        fields = ['id', 'name', 'code', 'sort_order', 'is_active', 'created_at']
+        read_only_fields = ['id', 'created_at']
 
 
 class RoomSerializer(serializers.ModelSerializer):
     effective_included_guests = serializers.SerializerMethodField()
+    effective_max_guests = serializers.SerializerMethodField()
+    is_suite = serializers.SerializerMethodField()
+    is_independent = serializers.SerializerMethodField()
+    parent_number = serializers.CharField(source='parent.room_number', read_only=True, default='')
+    children_count = serializers.SerializerMethodField()
+    bed_configs = RoomBedSerializer(many=True, required=False)
+    media = UnitMediaSerializer(many=True, read_only=True)
+    image = serializers.SerializerMethodField()
+    amenity_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Amenity.objects.none(),
+        required=False,
+        write_only=True,
+    )
+    amenities = AmenitySerializer(many=True, read_only=True)
+    parent = serializers.PrimaryKeyRelatedField(
+        queryset=Room.objects.none(),
+        allow_null=True,
+        required=False,
+    )
     addon_service_ids = serializers.PrimaryKeyRelatedField(
         many=True,
         queryset=GuestHouseService.objects.none(),
@@ -19,13 +81,21 @@ class RoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = Room
         fields = [
-            'id', 'room_number', 'room_type', 'beds', 'included_guests',
-            'extra_guest_fee_per_night', 'effective_included_guests',
-            'price_per_night', 'description', 'image', 'status',
-            'addon_service_ids',
+            'id', 'parent', 'parent_number', 'unit_kind', 'is_suite', 'is_independent',
+            'room_number', 'room_type', 'beds', 'included_guests', 'max_guests',
+            'extra_bed_allowed', 'extra_bed_limit',
+            'extra_guest_fee_per_night', 'effective_included_guests', 'effective_max_guests',
+            'price_per_night', 'description', 'image', 'media',
+            'amenity_ids', 'amenities',
+            'status', 'housekeeping_status', 'sellable', 'children_count',
+            'bed_configs', 'addon_service_ids',
             'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'effective_included_guests']
+        read_only_fields = [
+            'id', 'created_at', 'updated_at', 'effective_included_guests',
+            'effective_max_guests', 'is_suite', 'is_independent', 'parent_number',
+            'children_count', 'image', 'media', 'amenities',
+        ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -38,9 +108,35 @@ class RoomSerializer(serializers.ModelSerializer):
             )
             addon_field = self.fields['addon_service_ids']
             addon_field.queryset = addon_qs
-            # many=True wraps a child PrimaryKeyRelatedField; queryset must be set there too.
             if getattr(addon_field, 'child_relation', None) is not None:
                 addon_field.child_relation.queryset = addon_qs
+            amenity_qs = Amenity.objects.filter(tenant_id=tenant_id, is_active=True)
+            amenity_field = self.fields['amenity_ids']
+            amenity_field.queryset = amenity_qs
+            if getattr(amenity_field, 'child_relation', None) is not None:
+                amenity_field.child_relation.queryset = amenity_qs
+            self.fields['parent'].queryset = Room.objects.filter(
+                tenant_id=tenant_id,
+                unit_kind='SUITE',
+            )
+
+    def to_internal_value(self, data):
+        if hasattr(data, 'copy'):
+            data = data.copy()
+        beds = data.get('bed_configs')
+        if isinstance(beds, str):
+            import json
+            try:
+                data['bed_configs'] = json.loads(beds) if beds.strip() else []
+            except json.JSONDecodeError as exc:
+                raise serializers.ValidationError({'bed_configs': 'Invalid bed configuration.'}) from exc
+        parent = data.get('parent')
+        if parent in ('', 'null', 'None'):
+            data['parent'] = None
+        # Legacy clients may still POST image — ignore; use UnitMedia endpoints.
+        if hasattr(data, 'pop'):
+            data.pop('image', None)
+        return super().to_internal_value(data)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -48,10 +144,111 @@ class RoomSerializer(serializers.ModelSerializer):
             data['addon_service_ids'] = list(
                 instance.addon_services.filter(is_active=True).values_list('id', flat=True)
             )
+            data['amenity_ids'] = list(instance.amenities.values_list('id', flat=True))
         return data
+
+    def get_image(self, obj):
+        """Cover photo URL for backward-compatible list/booking cards."""
+        request = self.context.get('request')
+        cover = None
+        if obj.pk:
+            media_qs = obj.media.all()
+            cover = next((m for m in media_qs if m.is_cover), None) or next(iter(media_qs), None)
+        if cover and cover.file:
+            url = cover.file.url
+            return request.build_absolute_uri(url) if request else url
+        if obj.image:
+            url = obj.image.url
+            return request.build_absolute_uri(url) if request else url
+        return None
 
     def get_effective_included_guests(self, obj):
         return get_included_guests(obj)
+
+    def get_effective_max_guests(self, obj):
+        return get_max_guests(obj)
+
+    def get_is_suite(self, obj):
+        return obj.is_suite
+
+    def get_is_independent(self, obj):
+        return obj.is_independent_room
+
+    def get_children_count(self, obj):
+        if not obj.is_suite:
+            return 0
+        return obj.children.count()
+
+    def validate(self, attrs):
+        unit_kind = attrs.get('unit_kind', getattr(self.instance, 'unit_kind', 'ROOM'))
+        parent = attrs.get('parent', getattr(self.instance, 'parent', None))
+        room_type = attrs.get('room_type', getattr(self.instance, 'room_type', 'DOUBLE'))
+
+        if unit_kind == 'SUITE':
+            attrs['parent'] = None
+            if room_type != 'SUITE':
+                attrs['room_type'] = 'SUITE'
+        elif parent is not None:
+            if getattr(parent, 'unit_kind', None) != 'SUITE' and not getattr(parent, 'is_suite', False):
+                raise serializers.ValidationError({'parent': 'Parent must be a suite.'})
+            if self.instance and parent.pk == self.instance.pk:
+                raise serializers.ValidationError({'parent': 'A unit cannot be its own parent.'})
+
+        max_guests = attrs.get('max_guests', getattr(self.instance, 'max_guests', 0) or 0)
+        included = attrs.get('included_guests', getattr(self.instance, 'included_guests', 0) or 0)
+        if max_guests and included and max_guests < included:
+            raise serializers.ValidationError({
+                'max_guests': 'Max guests cannot be less than included guests.',
+            })
+        return attrs
+
+    def _sync_beds(self, room, bed_configs):
+        if bed_configs is None:
+            return
+        room.bed_configs.all().delete()
+        total = 0
+        for row in bed_configs:
+            qty = int(row.get('quantity') or 1)
+            if qty < 1:
+                continue
+            RoomBed.objects.create(
+                room=room,
+                bed_type=row.get('bed_type') or 'QUEEN',
+                quantity=qty,
+            )
+            total += qty
+        if total > 0:
+            room.beds = total
+            room.save(update_fields=['beds', 'updated_at'])
+
+    def create(self, validated_data):
+        bed_configs = validated_data.pop('bed_configs', None)
+        addon_services = validated_data.pop('addon_services', None)
+        amenity_ids = validated_data.pop('amenity_ids', None)
+        validated_data.pop('image', None)
+        room = Room.objects.create(**validated_data)
+        if addon_services is not None:
+            room.addon_services.set(addon_services)
+        if amenity_ids is not None:
+            room.amenities.set(amenity_ids)
+        self._sync_beds(room, bed_configs)
+        return room
+
+    def update(self, instance, validated_data):
+        bed_configs = validated_data.pop('bed_configs', None)
+        addon_services = validated_data.pop('addon_services', None)
+        amenity_ids = validated_data.pop('amenity_ids', None)
+        validated_data.pop('image', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if addon_services is not None:
+            instance.addon_services.set(addon_services)
+        if amenity_ids is not None:
+            instance.amenities.set(amenity_ids)
+        if bed_configs is not None:
+            self._sync_beds(instance, bed_configs)
+        return instance
 
 
 class GuestHouseServiceSerializer(serializers.ModelSerializer):
@@ -416,21 +613,25 @@ class StayBookingSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'check_out': 'Check-out must be after check-in.'})
         if room and check_in and check_out and room.status != 'ACTIVE':
             raise serializers.ValidationError({'room': 'Selected room is not available for booking.'})
+        if room and getattr(room, 'sellable', True) is False:
+            raise serializers.ValidationError({'room': 'This unit cannot be booked.'})
         customer = attrs.get('customer') or getattr(self.instance, 'customer', None)
         if customer and getattr(customer, 'list_status', 'NORMAL') == 'BLOCKLISTED':
             raise serializers.ValidationError({
                 'customer': 'This customer is blocklisted and cannot be booked.',
             })
-        if room and check_in and check_out:
-            qs = StayBooking.objects.filter(room=room).exclude(status='CANCELLED').filter(
-                Q(check_in__lt=check_out) & Q(check_out__gt=check_in)
-            )
-            if self.instance:
-                qs = qs.exclude(pk=self.instance.pk)
-            if qs.exists():
+        if room and guests_count:
+            max_guests = get_max_guests(room)
+            if int(guests_count) > max_guests:
                 raise serializers.ValidationError({
-                    'room': f'Room {room.room_number} is already booked for overlapping dates.',
+                    'guests_count': f'This unit allows at most {max_guests} guests.',
                 })
+        if room and check_in and check_out:
+            tenant = room.tenant
+            exclude_pk = self.instance.pk if self.instance else None
+            blocked = blocked_unit_ids(tenant, check_in, check_out, exclude_stay=exclude_pk)
+            if room.id in blocked:
+                raise serializers.ValidationError({'room': conflict_message(room)})
         advance = attrs.get('advance_paid')
         addon_ids = self._parse_addon_ids()
         if addon_ids and room:

@@ -30,7 +30,7 @@ export const GH_PAGE_LABELS = {
   [GH_PAGE_KEYS.BOOK]: 'Reservation',
   [GH_PAGE_KEYS.STAYS]: 'Stays',
   [GH_PAGE_KEYS.CALENDAR]: 'Calendar',
-  [GH_PAGE_KEYS.ROOMS]: 'Rooms',
+  [GH_PAGE_KEYS.ROOMS]: 'Units',
   [GH_PAGE_KEYS.SERVICES]: 'Add-on Services',
   [GH_PAGE_KEYS.CUSTOMERS]: 'Guest Directory',
   [GH_PAGE_KEYS.RECORDS]: 'All Records',

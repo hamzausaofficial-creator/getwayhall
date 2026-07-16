@@ -30,6 +30,27 @@
   margin-bottom: 14px;
 }
 
+.gh-rooms__hierarchy {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.gh-rooms__group-title {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.gh-rooms__card--child,
+.gh-room-card--child {
+  margin-left: 12px;
+  border-left: 3px solid var(--primary);
+}
+
 .gh-rooms--embedded .gh-rooms__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));

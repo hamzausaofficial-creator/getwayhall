@@ -1,6 +1,6 @@
 const SETTINGS_TABS = {
   halls: 'Halls',
-  rooms: 'Rooms',
+  rooms: 'Units',
   staff: 'Staff',
   records: 'All Records',
   services: 'Add-on Services',

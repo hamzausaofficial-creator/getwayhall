@@ -15,7 +15,7 @@ export const normalizeStayTime = (value, fallback = '') => {
   return `${hours}:${minutes}`;
 };
 
-export const DEFAULT_GH_CHECK_IN_TIME = '14:00';
+export const DEFAULT_GH_CHECK_IN_TIME = '18:00';
 export const DEFAULT_GH_CHECK_OUT_TIME = '11:00';
 
 export const ghStayTimesFromTenant = (tenant) => ({

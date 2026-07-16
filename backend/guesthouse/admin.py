@@ -12,6 +12,10 @@ from core.models import Tenant
 
 from .models import (
     Room,
+    RoomBed,
+    UnitMedia,
+    Amenity,
+    UnitAmenity,
     GuestHouseService,
     StayBooking,
     StayCharge,
@@ -23,21 +27,60 @@ from .models import (
 from .page_visibility import ensure_tenant_gh_pages, GH_MODULE_KEYS
 
 
+class RoomBedInline(admin.TabularInline):
+    model = RoomBed
+    extra = 1
+    fields = ('bed_type', 'quantity')
+
+
+class UnitMediaInline(admin.TabularInline):
+    model = UnitMedia
+    extra = 0
+    fields = ('file', 'caption', 'sort_order', 'is_cover', 'unit_type')
+    readonly_fields = ('unit_type',)
+
+
+class UnitAmenityInline(admin.TabularInline):
+    model = UnitAmenity
+    extra = 0
+    autocomplete_fields = ('amenity',)
+
+
+@admin.register(Amenity)
+class AmenityAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
+    list_display = ('name', 'code', 'sort_order', 'is_active', 'tenant')
+    list_filter = ('is_active', 'tenant')
+    search_fields = ('name', 'code')
+    list_editable = ('sort_order', 'is_active')
+
+
 @admin.register(Room)
 class RoomAdmin(TenantScopedAdminMixin, admin.ModelAdmin):
     list_display = (
-        'room_number', 'room_type', 'beds', 'included_guests',
-        'extra_guest_fee_per_night', 'price_per_night', 'status', 'tenant',
+        'room_number', 'unit_kind', 'parent', 'room_type', 'beds', 'included_guests',
+        'max_guests', 'extra_guest_fee_per_night', 'price_per_night', 'status', 'tenant',
     )
-    list_filter = ('status', 'room_type', 'tenant')
+    list_filter = ('status', 'unit_kind', 'room_type', 'tenant')
     search_fields = ('room_number', 'description')
+    raw_id_fields = ('parent',)
+    inlines = [RoomBedInline, UnitMediaInline, UnitAmenityInline]
     fieldsets = (
         (None, {
-            'fields': ('tenant', 'room_number', 'room_type', 'beds', 'status', 'description', 'image'),
+            'fields': (
+                'tenant', 'unit_kind', 'parent', 'room_number', 'room_type',
+                'beds', 'status', 'housekeeping_status', 'sellable', 'description',
+            ),
         }),
-        ('Billing', {
-            'fields': ('price_per_night', 'included_guests', 'extra_guest_fee_per_night'),
-            'description': 'Included guests: 0 = use bed count. Extra guest fee applies per additional guest per night.',
+        ('Billing & capacity', {
+            'fields': (
+                'price_per_night', 'included_guests', 'max_guests',
+                'extra_bed_allowed', 'extra_bed_limit', 'extra_guest_fee_per_night',
+            ),
+            'description': (
+                'Suite and room can both be sold. Booking a suite blocks its rooms, '
+                'and booking any room blocks the parent suite for overlapping dates. '
+                'Photos live in Unit media; amenities via Unit amenities.'
+            ),
         }),
     )
 

@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { format, addDays, parseISO } from 'date-fns';
 import {
   ChevronLeft, Calendar, BedDouble, FileText,
-  CheckCircle, X, Sparkles,
+  CheckCircle, X,
 } from 'lucide-react';
 import { createStay, getAvailableRooms, listGhServices } from '../../api/guesthouse';
 import { computeStayBilling, formatReservationRoomLabel, getServicePriceLabel, getIncludedGuests } from '../../utils/ghBilling';
@@ -387,25 +387,6 @@ export default function BookFutureStayPage() {
                 padding: '14px 18px',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <span
-                  style={{
-                    fontSize: '9px',
-                    fontWeight: '800',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.12em',
-                    padding: '3px 8px',
-                    borderRadius: '20px',
-                    background: 'var(--primary)',
-                    color: '#fff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
-                >
-                  <Sparkles size={9} /> Future booking
-                </span>
-              </div>
               <h1 style={{ fontSize: '20px', fontWeight: '900', letterSpacing: '-0.03em', margin: '0 0 10px 0', color: 'var(--secondary)' }}>
                 Reservation
               </h1>
@@ -482,11 +463,6 @@ export default function BookFutureStayPage() {
                     </span>
                   </div>
                 )}
-                {stayEstimate?.ready && (
-                  <span style={{ color: 'var(--secondary)', fontWeight: '800', fontSize: '12px', whiteSpace: 'nowrap' }}>
-                    · {formatRs(stayEstimate.total)}
-                  </span>
-                )}
               </div>
               <BookFutureGuestBar
                 customers={customers}
@@ -524,23 +500,23 @@ export default function BookFutureStayPage() {
 
             {/* Room selection */}
             <div className="premium-card" style={{ padding: '28px' }}>
-              <SectionHeader icon={BedDouble} title="Select room" />
+              <SectionHeader icon={BedDouble} title="Select unit" />
               {availabilityLoading ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Checking availability…</p>
               ) : !form.check_in || !form.check_out ? null : rooms.length === 0 ? (
                 <div style={{ padding: '20px', background: '#fef2f2', borderRadius: '12px', border: '1px solid #fecaca', color: '#b91c1c', fontSize: '14px' }}>
-                  No active rooms found. Add rooms from Room Management first.
+                  No active units found. Add suites/rooms from Units first.
                 </div>
               ) : (
                 <>
                   {availabilityInfo && (
                     <p style={{ fontSize: '13px', color: 'var(--primary)', fontWeight: '700', marginBottom: '14px' }}>
-                      {availabilityInfo.total_available} of {availabilityInfo.total_rooms} rooms available for these dates
+                      {availabilityInfo.total_available} of {availabilityInfo.total_rooms} units available for these dates
                     </p>
                   )}
                   {availabilityInfo?.total_available === 0 && (
                     <div style={{ padding: '14px 16px', background: '#fef2f2', borderRadius: '12px', border: '1px solid #fecaca', color: '#b91c1c', fontSize: '13px', marginBottom: '14px' }}>
-                      All rooms are booked for these dates. Try different dates or check the calendar.
+                      All units are booked for these dates. Try different dates or check the calendar.
                     </div>
                   )}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px' }}>
@@ -558,6 +534,10 @@ export default function BookFutureStayPage() {
                         selectedServiceIds: previewAddonIds,
                       })
                       : null;
+                    const kind = r.unit_kind === 'SUITE' || r.is_suite ? 'Suite' : 'Room';
+                    const bedText = Array.isArray(r.bed_configs) && r.bed_configs.length
+                      ? r.bed_configs.map((b) => `${b.bed_type_display || b.bed_type}×${b.quantity}`).join(', ')
+                      : `${r.beds} bed${r.beds !== 1 ? 's' : ''}`;
                     return (
                       <button
                         key={r.id}
@@ -581,7 +561,7 @@ export default function BookFutureStayPage() {
                           <div style={{ height: '110px', overflow: 'hidden', background: 'var(--surface-muted)' }}>
                             <img
                               src={resolveMediaUrl(r.image)}
-                              alt={`Room ${r.room_number}`}
+                              alt={`${kind} ${r.room_number}`}
                               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                             />
                           </div>
@@ -589,7 +569,7 @@ export default function BookFutureStayPage() {
                         <div style={{ padding: r.image ? '14px 16px 16px' : 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px', gap: 8 }}>
                           <span style={{ fontSize: '18px', fontWeight: '900', color: isBooked ? '#b91c1c' : selected ? 'var(--primary)' : 'var(--secondary)' }}>
-                            {r.room_number}
+                            {kind} {r.room_number}
                           </span>
                           {isBooked ? (
                             <span style={{ fontSize: '9px', fontWeight: '800', padding: '3px 8px', borderRadius: '20px', background: '#fecaca', color: '#b91c1c', textTransform: 'uppercase' }}>Booked</span>
@@ -597,13 +577,14 @@ export default function BookFutureStayPage() {
                             <CheckCircle size={18} color="var(--primary)" />
                           ) : null}
                         </div>
-                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 6px 0', textTransform: 'capitalize' }}>
-                          {r.room_type?.toLowerCase()} · {r.beds} bed{r.beds !== 1 ? 's' : ''}
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 6px 0' }}>
+                          {r.parent_number ? `${r.parent_number} · ` : ''}{bedText}
                         </p>
                         <p style={{ fontSize: '15px', fontWeight: '800', margin: 0, color: isBooked ? 'var(--text-muted)' : 'var(--secondary)' }}>
                           {formatRs(r.price_per_night)}
                           <span style={{ fontSize: '11px', fontWeight: '500', color: 'var(--text-muted)' }}>
                             {' '}/ night · {getIncludedGuests(r)} incl.
+                            {r.effective_max_guests ? ` · max ${r.effective_max_guests}` : ''}
                           </span>
                         </p>
                         {preview && (

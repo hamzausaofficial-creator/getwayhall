@@ -16,30 +16,90 @@ class Room(models.Model):
         ('SUITE', 'Suite'),
         ('FAMILY', 'Family'),
     )
+    UNIT_KIND_CHOICES = (
+        ('SUITE', 'Suite'),
+        ('ROOM', 'Room'),
+    )
     STATUS_CHOICES = (
         ('ACTIVE', 'Active'),
         ('MAINTENANCE', 'Maintenance'),
         ('INACTIVE', 'Inactive'),
     )
+    HOUSEKEEPING_CHOICES = (
+        ('VACANT', 'Vacant'),
+        ('OCCUPIED', 'Occupied'),
+        ('CLEANING', 'Cleaning'),
+        ('MAINTENANCE', 'Maintenance'),
+        ('OUT_OF_ORDER', 'Out of order'),
+    )
 
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='gh_rooms')
+    parent = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='children',
+        help_text='Parent suite for this room. Suites must leave this empty.',
+    )
+    unit_kind = models.CharField(
+        max_length=10,
+        choices=UNIT_KIND_CHOICES,
+        default='ROOM',
+        help_text=(
+            'Type of accommodation unit. Suite = top-level parent (parent must be empty). '
+            'Room with no parent = independent. Room with parent = belongs to that suite.'
+        ),
+    )
     room_number = models.CharField(max_length=20)
     room_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='DOUBLE')
-    beds = models.PositiveIntegerField(default=1)
+    beds = models.PositiveIntegerField(
+        default=1,
+        help_text='Legacy bed count. Prefer RoomBed rows when present.',
+    )
     included_guests = models.PositiveIntegerField(
         default=0,
         help_text='Guests included in base rate. 0 = use bed count.',
+    )
+    max_guests = models.PositiveIntegerField(
+        default=0,
+        help_text='Hard cap including extra beds. 0 = included guests (or beds) only.',
+    )
+    extra_bed_allowed = models.BooleanField(default=False)
+    extra_bed_limit = models.PositiveIntegerField(
+        default=0,
+        help_text='Max extra mattresses beyond included guests.',
     )
     extra_guest_fee_per_night = models.DecimalField(
         max_digits=12,
         decimal_places=2,
         default=0,
-        help_text='Extra charge per additional guest per night.',
+        help_text='Extra bedding / additional guest charge per night.',
     )
     price_per_night = models.DecimalField(max_digits=12, decimal_places=2)
     description = models.TextField(blank=True, default='')
-    image = models.ImageField(upload_to='gh_rooms/', blank=True, null=True)
+    image = models.ImageField(
+        upload_to='gh_rooms/',
+        blank=True,
+        null=True,
+        help_text='Deprecated. Use UnitMedia rows; kept for legacy data migration.',
+    )
+    amenities = models.ManyToManyField(
+        'Amenity',
+        through='UnitAmenity',
+        blank=True,
+        related_name='units',
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
+    housekeeping_status = models.CharField(
+        max_length=20,
+        choices=HOUSEKEEPING_CHOICES,
+        default='VACANT',
+    )
+    sellable = models.BooleanField(
+        default=True,
+        help_text='If false, unit is structural only and cannot be booked.',
+    )
     addon_services = models.ManyToManyField(
         'GuestHouseService',
         blank=True,
@@ -56,10 +116,134 @@ class Room(models.Model):
         verbose_name_plural = '3 · GH — Rooms'
 
     def __str__(self):
-        return f'{self.room_number} ({self.get_room_type_display()})'
+        kind = self.get_unit_kind_display() if self.unit_kind else self.get_room_type_display()
+        return f'{self.room_number} ({kind})'
+
+    @property
+    def is_suite(self):
+        return self.unit_kind == 'SUITE'
+
+    @property
+    def is_independent_room(self):
+        return self.unit_kind == 'ROOM' and not self.parent_id
 
     def get_included_guests(self):
         return get_included_guests(self)
+
+    def get_max_guests(self):
+        included = get_included_guests(self)
+        if self.max_guests and self.max_guests > 0:
+            return int(self.max_guests)
+        if self.extra_bed_allowed and self.extra_bed_limit:
+            return included + int(self.extra_bed_limit)
+        return included
+
+    def get_bed_total(self):
+        if self.pk and hasattr(self, 'bed_configs'):
+            total = sum(b.quantity for b in self.bed_configs.all())
+            if total:
+                return total
+        return int(self.beds or 1)
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.unit_kind == 'SUITE' and self.parent_id:
+            raise ValidationError({'parent': 'A suite cannot belong to another suite.'})
+        if self.parent_id and self.unit_kind == 'SUITE':
+            raise ValidationError({'unit_kind': 'Child units must be rooms, not suites.'})
+        if self.parent_id and self.parent_id == self.pk:
+            raise ValidationError({'parent': 'A unit cannot be its own parent.'})
+        if self.parent_id:
+            parent = self.parent
+            if parent and not parent.is_suite:
+                raise ValidationError({'parent': 'Parent must be a suite.'})
+
+
+class RoomBed(models.Model):
+    BED_TYPE_CHOICES = (
+        ('KING', 'King'),
+        ('QUEEN', 'Queen'),
+        ('TWIN', 'Twin'),
+        ('SINGLE', 'Single'),
+        ('SOFA', 'Sofa bed'),
+        ('BUNK', 'Bunk'),
+    )
+
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='bed_configs')
+    bed_type = models.CharField(max_length=20, choices=BED_TYPE_CHOICES)
+    quantity = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        ordering = ['id']
+        verbose_name = 'GH room bed'
+        verbose_name_plural = '3b · GH — Room beds'
+        unique_together = [('room', 'bed_type')]
+
+    def __str__(self):
+        return f'{self.get_bed_type_display()} ×{self.quantity}'
+
+
+class UnitMedia(models.Model):
+    """Photos for a suite or room — not stored as a single column on Room."""
+
+    UNIT_TYPE_CHOICES = (
+        ('ROOM', 'Room'),
+        ('SUITE', 'Suite'),
+    )
+
+    unit = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='media')
+    unit_type = models.CharField(max_length=10, choices=UNIT_TYPE_CHOICES, default='ROOM')
+    file = models.ImageField(upload_to='gh_unit_media/')
+    caption = models.CharField(max_length=200, blank=True, default='')
+    sort_order = models.PositiveIntegerField(default=0)
+    is_cover = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sort_order', 'id']
+        verbose_name = 'GH unit media'
+        verbose_name_plural = '3c · GH — Unit media'
+
+    def __str__(self):
+        return f'{self.unit} media #{self.pk}'
+
+    def save(self, *args, **kwargs):
+        if self.unit_id:
+            self.unit_type = 'SUITE' if self.unit.is_suite else 'ROOM'
+        super().save(*args, **kwargs)
+        if self.is_cover and self.unit_id:
+            UnitMedia.objects.filter(unit_id=self.unit_id).exclude(pk=self.pk).update(is_cover=False)
+
+
+class Amenity(models.Model):
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='gh_amenities')
+    name = models.CharField(max_length=80)
+    code = models.CharField(max_length=40, blank=True, default='')
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['sort_order', 'name']
+        unique_together = [('tenant', 'name')]
+        verbose_name = 'GH amenity'
+        verbose_name_plural = '3d · GH — Amenities'
+
+    def __str__(self):
+        return self.name
+
+
+class UnitAmenity(models.Model):
+    unit = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='unit_amenities')
+    amenity = models.ForeignKey(Amenity, on_delete=models.CASCADE, related_name='unit_links')
+
+    class Meta:
+        unique_together = [('unit', 'amenity')]
+        verbose_name = 'GH unit amenity'
+        verbose_name_plural = '3e · GH — Unit amenities'
+
+    def __str__(self):
+        return f'{self.unit} · {self.amenity}'
 
 
 class GuestHouseService(models.Model):

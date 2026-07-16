@@ -11,7 +11,22 @@ export function getIncludedGuests(room) {
   const included = Number(room.included_guests);
   if (included > 0) return included;
   if (room.effective_included_guests) return Number(room.effective_included_guests);
+  const bedRows = Array.isArray(room.bed_configs) ? room.bed_configs : [];
+  const bedTotal = bedRows.reduce((sum, b) => sum + (Number(b.quantity) || 0), 0);
+  if (bedTotal > 0) return bedTotal;
   return Number(room.beds) || 1;
+}
+
+export function getMaxGuests(room) {
+  if (!room) return 1;
+  if (room.effective_max_guests) return Number(room.effective_max_guests);
+  const included = getIncludedGuests(room);
+  const max = Number(room.max_guests);
+  if (max > 0) return Math.max(max, included);
+  if (room.extra_bed_allowed && Number(room.extra_bed_limit) > 0) {
+    return included + Number(room.extra_bed_limit);
+  }
+  return included;
 }
 
 export function getServicePriceLabel(service) {
@@ -34,8 +49,12 @@ export function computeRoomGuestCharges(room, nights, guestsCount) {
   const guests = Math.max(Number(guestsCount) || 1, 1);
   const nightly = Number(room?.price_per_night) || 0;
   const included = getIncludedGuests(room);
+  const maxGuests = getMaxGuests(room);
   const extraFee = Number(room?.extra_guest_fee_per_night) || 0;
-  const extraGuests = Math.max(guests - included, 0);
+  let extraGuests = Math.max(guests - included, 0);
+  if (room?.extra_bed_allowed && Number(room.extra_bed_limit) > 0) {
+    extraGuests = Math.min(extraGuests, Number(room.extra_bed_limit));
+  }
   const roomBase = nightly * n;
   const extraGuestTotal = extraFee * extraGuests * n;
   const roomGuestTotal = roomBase + extraGuestTotal;
@@ -43,6 +62,7 @@ export function computeRoomGuestCharges(room, nights, guestsCount) {
     nights: n,
     guests,
     included,
+    maxGuests,
     extraGuests,
     nightly,
     extraFee,
@@ -93,11 +113,12 @@ export function formatReservationRoomLabel(room, nights, guestsCount) {
   const extraGuests = Math.max(guests - included, 0);
   const rate = Number(room.price_per_night).toLocaleString();
   const extraFee = Number(room.extra_guest_fee_per_night) || 0;
+  const kind = room.unit_kind === 'SUITE' || room.is_suite ? 'Suite' : 'Room';
   let guestPart = `${guests} guest${guests !== 1 ? 's' : ''}`;
   if (extraGuests > 0 && extraFee > 0) {
     guestPart += ` (${extraGuests} extra @ ${extraFee.toLocaleString()}/night)`;
   }
-  return `Room ${room.room_number} (${rate}/night × ${nightsN} night${nightsN !== 1 ? 's' : ''}) · ${guestPart}`;
+  return `${kind} ${room.room_number} (${rate}/night × ${nightsN} night${nightsN !== 1 ? 's' : ''}) · ${guestPart}`;
 }
 
 export function formatRoomGuestChargeLabel(billing) {

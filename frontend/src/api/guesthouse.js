@@ -12,31 +12,13 @@ export const getGuestHouseRecords = (params) => client.get('/guesthouse/records/
 export const getGuestHouseDaily = (params) => client.get('/guesthouse/daily/', { params }).then((r) => r.data);
 export const getGhPageVisibility = () => client.get('/guesthouse/page-visibility/').then((r) => r.data);
 
-const roomRequestConfig = (payload, imageFile) => {
-  if (imageFile instanceof File) {
-    const formData = new FormData();
-    Object.entries(payload).forEach(([key, value]) => {
-      if (value === undefined || value === null) return;
-      if (Array.isArray(value)) {
-        value.forEach((item) => formData.append(key, item));
-        return;
-      }
-      formData.append(key, value);
-    });
-    formData.append('image', imageFile);
-    return {
-      data: formData,
-      config: { headers: { 'Content-Type': 'multipart/form-data' } },
-    };
-  }
-  return { data: payload, config: {} };
-};
-
 export const listGhServices = (params) => client.get('/guesthouse/services/', { params }).then((r) => unwrap(r.data));
 export const listGhServicesAll = () => listGhServices({ include_inactive: '1' });
 export const createGhService = (payload) => client.post('/guesthouse/services/', payload).then((r) => r.data);
 export const updateGhService = (id, payload) => client.patch(`/guesthouse/services/${id}/`, payload).then((r) => r.data);
 export const deleteGhService = (id) => client.delete(`/guesthouse/services/${id}/`);
+
+export const listAmenities = (params) => client.get('/guesthouse/amenities/', { params }).then((r) => unwrap(r.data));
 
 export const addStayCharge = (stayId, payload) =>
   client.post(`/guesthouse/stays/${stayId}/add_charge/`, payload).then((r) => r.data);
@@ -45,15 +27,27 @@ export const removeStayCharge = (stayId, chargeId) =>
 
 export const listRooms = (params) => client.get('/guesthouse/rooms/', { params }).then((r) => unwrap(r.data));
 export const getRoom = (id) => client.get(`/guesthouse/rooms/${id}/`).then((r) => r.data);
-export const createRoom = (payload, imageFile) => {
-  const { data, config } = roomRequestConfig(payload, imageFile);
-  return client.post('/guesthouse/rooms/', data, config).then((r) => r.data);
-};
-export const updateRoom = (id, payload, imageFile) => {
-  const { data, config } = roomRequestConfig(payload, imageFile);
-  return client.patch(`/guesthouse/rooms/${id}/`, data, config).then((r) => r.data);
-};
+export const createRoom = (payload) => client.post('/guesthouse/rooms/', payload).then((r) => r.data);
+export const updateRoom = (id, payload) => client.patch(`/guesthouse/rooms/${id}/`, payload).then((r) => r.data);
 export const deleteRoom = (id) => client.delete(`/guesthouse/rooms/${id}/`);
+
+export const listRoomMedia = (roomId) =>
+  client.get(`/guesthouse/rooms/${roomId}/media/`).then((r) => r.data);
+export const uploadRoomMedia = (roomId, file, { caption = '', is_cover = false } = {}) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (caption) formData.append('caption', caption);
+  if (is_cover) formData.append('is_cover', 'true');
+  return client.post(`/guesthouse/rooms/${roomId}/media/`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then((r) => r.data);
+};
+export const updateRoomMedia = (roomId, mediaId, payload) =>
+  client.patch(`/guesthouse/rooms/${roomId}/media/${mediaId}/`, payload).then((r) => r.data);
+export const deleteRoomMedia = (roomId, mediaId) =>
+  client.delete(`/guesthouse/rooms/${roomId}/media/${mediaId}/`);
+export const reorderRoomMedia = (roomId, order) =>
+  client.post(`/guesthouse/rooms/${roomId}/media/reorder/`, { order }).then((r) => r.data);
 
 export const listStays = (params) => client.get('/guesthouse/stays/', { params }).then((r) => unwrap(r.data));
 export const getStay = (id) => client.get(`/guesthouse/stays/${id}/`).then((r) => r.data);

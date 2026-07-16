@@ -678,7 +678,7 @@ export default function BookFutureGuestBar({
             />
           </label>
           <label className="book-future-party-bar__count">
-            <span>Child</span>
+            <span>Children</span>
             <input
               type="number"
               min={0}
@@ -686,7 +686,7 @@ export default function BookFutureGuestBar({
               value={under3Count}
               onChange={(e) => handleUnder3Change(parseInt(e.target.value, 10) || 0)}
               disabled={disabled}
-              aria-label="Child guests"
+              aria-label="Children guests"
             />
           </label>
         </div>

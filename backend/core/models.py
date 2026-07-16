@@ -17,7 +17,7 @@ class Tenant(models.Model):
     address = models.TextField(blank=True, default='')
     sms_enabled = models.BooleanField(default=True)
     default_country_code = models.CharField(max_length=5, default='+92')
-    gh_default_check_in_time = models.TimeField(default=datetime.time(14, 0))
+    gh_default_check_in_time = models.TimeField(default=datetime.time(18, 0))
     gh_default_check_out_time = models.TimeField(default=datetime.time(11, 0))
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

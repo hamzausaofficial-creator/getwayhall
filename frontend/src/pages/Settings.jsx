@@ -66,7 +66,10 @@ const formatRole = (role) => {
 const TAB_HEADINGS = {
   Profile: { title: 'My profile', subtitle: 'Update your photo, display name, and view account details.' },
   Halls: { title: 'Hall management', subtitle: 'Venues, capacity, and pricing for Marriage Hall bookings.' },
-  Rooms: { title: 'Room management', subtitle: 'Rooms, rates, and availability for guest stays.' },
+  Units: {
+    title: 'Units',
+    subtitle: 'Suites, suite rooms, and independent rooms in one parent–child inventory.',
+  },
   'Add-on Services': { title: 'Add-on services', subtitle: 'Manage AC, breakfast, laundry, and other extras for stays.' },
   Staff: { title: 'Staff management', subtitle: 'Team accounts, roles, and access for your organization.' },
   'All Records': { title: 'All records', subtitle: 'Reservations, payments, and expense vouchers in one ledger.' },
@@ -92,7 +95,7 @@ const parseApiError = (err) => {
 
 const TAB_FROM_PARAM = {
   halls: 'Halls',
-  rooms: 'Rooms',
+  rooms: 'Units',
   services: 'Add-on Services',
   staff: 'Staff',
   records: 'All Records',
@@ -134,7 +137,7 @@ const Settings = () => {
     name: '',
     phone: '',
     address: '',
-    gh_default_check_in_time: '14:00',
+    gh_default_check_in_time: '18:00',
     gh_default_check_out_time: '11:00',
   });
   const [notifSettings, setNotifSettings] = useState({
@@ -204,7 +207,7 @@ const Settings = () => {
 
   const tabAllowed = (tabName) => {
     if (isGuestHouse) {
-      if (tabName === 'Rooms') return isGhPageVisible(GH_PAGE_KEYS.ROOMS);
+      if (tabName === 'Units') return isGhPageVisible(GH_PAGE_KEYS.ROOMS);
       if (tabName === 'Add-on Services') return isGhPageVisible(GH_PAGE_KEYS.SERVICES);
       if (tabName === 'All Records') return isGhPageVisible(GH_PAGE_KEYS.RECORDS);
       if (tabName === 'Staff') return isAdmin && isGhPageVisible(GH_PAGE_KEYS.STAFF);
@@ -371,7 +374,7 @@ const Settings = () => {
   const tabs = [
     { name: 'Profile', icon: User },
     ...(isMarriageHall && isHallPageVisible(HALL_PAGE_KEYS.HALLS) ? [{ name: 'Halls', icon: LayoutGrid }] : []),
-    ...(isGuestHouse && isGhPageVisible(GH_PAGE_KEYS.ROOMS) ? [{ name: 'Rooms', icon: BedDouble }] : []),
+    ...(isGuestHouse && isGhPageVisible(GH_PAGE_KEYS.ROOMS) ? [{ name: 'Units', icon: BedDouble }] : []),
     ...(isGuestHouse && isGhPageVisible(GH_PAGE_KEYS.SERVICES) ? [{ name: 'Add-on Services', icon: Snowflake }] : []),
     ...(isGuestHouse && isGhPageVisible(GH_PAGE_KEYS.RECORDS) ? [{ name: 'All Records', icon: Archive }] : []),
     ...(isAdmin && (
@@ -443,7 +446,7 @@ const Settings = () => {
         </div>
 
         {/* Content Area */}
-        <div className={`card settings-panel-card${['Halls', 'Rooms', 'Add-on Services', 'Staff', 'All Records'].includes(activeTab) ? ' settings-panel-card--wide' : ''}${activeTab === 'Profile' ? ' settings-panel-card--profile' : ''}`}>
+        <div className={`card settings-panel-card${['Halls', 'Units', 'Add-on Services', 'Staff', 'All Records'].includes(activeTab) ? ' settings-panel-card--wide' : ''}${activeTab === 'Profile' ? ' settings-panel-card--profile' : ''}`}>
           <div className="settings-panel-card__head">
             <div style={{ minWidth: 0 }}>
               <h3 className="settings-panel-card__title">{panelHeading.title}</h3>
@@ -464,12 +467,12 @@ const Settings = () => {
             )}
           </div>
 
-          <div className={`settings-panel-card__body${['Halls', 'Rooms', 'Add-on Services', 'Staff', 'All Records'].includes(activeTab) ? ' settings-panel-card__body--wide' : ''}`}>
+          <div className={`settings-panel-card__body${['Halls', 'Units', 'Add-on Services', 'Staff', 'All Records'].includes(activeTab) ? ' settings-panel-card__body--wide' : ''}`}>
             {activeTab === 'Halls' && isMarriageHall && (
               <HallManagement embedded />
             )}
 
-            {activeTab === 'Rooms' && isGuestHouse && (
+            {activeTab === 'Units' && isGuestHouse && (
               <GuestHouseRooms embedded />
             )}
 

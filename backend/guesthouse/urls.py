@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     RoomViewSet,
+    AmenityViewSet,
     GuestHouseServiceViewSet,
     StayBookingViewSet,
     StayPaymentViewSet,
@@ -19,6 +20,7 @@ from .views import (
 
 router = DefaultRouter()
 router.register(r'rooms', RoomViewSet, basename='gh-room')
+router.register(r'amenities', AmenityViewSet, basename='gh-amenity')
 router.register(r'services', GuestHouseServiceViewSet, basename='gh-service')
 router.register(r'stays', StayBookingViewSet, basename='gh-stay')
 router.register(r'payments', StayPaymentViewSet, basename='gh-payment')

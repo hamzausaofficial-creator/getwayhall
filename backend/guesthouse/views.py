@@ -21,11 +21,15 @@ from core.permissions import (
     IsTenantOwner,
     IsGuestHouseApp,
 )
-from .models import Room, StayBooking, StayPayment, StayCharge, GhExpense, GuestHousePageVisibility, GuestHouseService
+from .models import Room, StayBooking, StayPayment, StayCharge, GhExpense, GuestHousePageVisibility, GuestHouseService, UnitMedia, Amenity
 from .page_visibility import ensure_tenant_gh_pages, GH_MODULE_KEYS, GH_PAGE_KEYS
 from .services_catalog import ensure_tenant_gh_services
+from .amenities_catalog import ensure_tenant_gh_amenities
+from .availability import blocked_unit_ids
 from .serializers import (
     RoomSerializer,
+    UnitMediaSerializer,
+    AmenitySerializer,
     StayBookingSerializer,
     StayPaymentSerializer,
     GhExpenseSerializer,
@@ -311,27 +315,24 @@ class GuestHouseRoomAvailabilityView(APIView):
         if check_out <= check_in:
             return Response({'detail': 'check_out must be after check_in.'}, status=400)
 
-        booked_qs = StayBooking.objects.filter(
-            tenant=tenant,
-            check_in__lt=check_out,
-            check_out__gt=check_in,
-        ).exclude(status='CANCELLED')
-        if exclude_stay:
-            booked_qs = booked_qs.exclude(pk=exclude_stay)
-        booked_room_ids = booked_qs.values_list('room_id', flat=True)
+        booked_ids = blocked_unit_ids(tenant, check_in, check_out, exclude_stay=exclude_stay)
 
-        all_rooms = Room.objects.filter(tenant=tenant, status='ACTIVE').order_by('room_number')
-        available = all_rooms.exclude(id__in=booked_room_ids)
-        booked_ids = list(booked_room_ids)
-        room_data = RoomSerializer(all_rooms, many=True).data
+        all_rooms = (
+            Room.objects.filter(tenant=tenant, status='ACTIVE', sellable=True)
+            .select_related('parent')
+            .prefetch_related('bed_configs', 'children', 'media', 'amenities')
+            .order_by('unit_kind', 'room_number')
+        )
+        available = all_rooms.exclude(id__in=booked_ids)
+        room_data = RoomSerializer(all_rooms, many=True, context={'request': request}).data
         for room in room_data:
             room['is_available'] = room['id'] not in booked_ids
         return Response({
             'check_in': check_in,
             'check_out': check_out,
             'all_rooms': room_data,
-            'available_rooms': RoomSerializer(available, many=True).data,
-            'booked_room_ids': booked_ids,
+            'available_rooms': RoomSerializer(available, many=True, context={'request': request}).data,
+            'booked_room_ids': list(booked_ids),
             'total_available': available.count(),
             'total_rooms': all_rooms.count(),
         })
@@ -414,13 +415,116 @@ class GuestHouseSearchView(APIView):
 
 
 class RoomViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewSet):
-    queryset = Room.objects.all().order_by('room_number')
+    queryset = (
+        Room.objects.all()
+        .select_related('parent')
+        .prefetch_related('bed_configs', 'children', 'media', 'amenities')
+        .order_by('unit_kind', 'room_number')
+    )
     serializer_class = RoomSerializer
     permission_classes = [IsGuestHouseApp, IsAdminOrManagerOrReadOnly, IsTenantOwner]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status', 'room_type']
+    filterset_fields = ['status', 'room_type', 'unit_kind', 'parent', 'sellable']
     search_fields = ['room_number', 'description']
     ordering_fields = ['price_per_night', 'room_number', 'created_at']
+
+    def get_queryset(self):
+        tenant = self.request.user.tenant
+        if tenant:
+            ensure_tenant_gh_amenities(tenant)
+        return super().get_queryset()
+
+    @action(detail=True, methods=['get', 'post'], url_path='media')
+    def media(self, request, pk=None):
+        room = self.get_object()
+        if request.method == 'GET':
+            qs = room.media.all()
+            return Response(UnitMediaSerializer(qs, many=True, context={'request': request}).data)
+
+        upload = request.FILES.get('file') or request.FILES.get('image')
+        if not upload:
+            return Response({'detail': 'file is required.'}, status=400)
+        caption = request.data.get('caption', '')
+        is_cover = str(request.data.get('is_cover', '')).lower() in ('1', 'true', 'yes')
+        sort_order = request.data.get('sort_order')
+        if sort_order is None:
+            last = room.media.order_by('-sort_order').values_list('sort_order', flat=True).first()
+            sort_order = (last or 0) + 10
+        if is_cover or not room.media.exists():
+            is_cover = True
+        media = UnitMedia.objects.create(
+            unit=room,
+            file=upload,
+            caption=caption or '',
+            sort_order=int(sort_order),
+            is_cover=is_cover,
+        )
+        return Response(
+            UnitMediaSerializer(media, context={'request': request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=['patch', 'delete'], url_path=r'media/(?P<media_id>[^/.]+)')
+    def media_item(self, request, pk=None, media_id=None):
+        room = self.get_object()
+        try:
+            media = room.media.get(pk=media_id)
+        except UnitMedia.DoesNotExist:
+            return Response({'detail': 'Media not found.'}, status=404)
+
+        if request.method == 'DELETE':
+            was_cover = media.is_cover
+            media.file.delete(save=False)
+            media.delete()
+            if was_cover:
+                nxt = room.media.order_by('sort_order', 'id').first()
+                if nxt:
+                    nxt.is_cover = True
+                    nxt.save(update_fields=['is_cover'])
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        serializer = UnitMediaSerializer(
+            media,
+            data=request.data,
+            partial=True,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(UnitMediaSerializer(media, context={'request': request}).data)
+
+    @action(detail=True, methods=['post'], url_path='media/reorder')
+    def media_reorder(self, request, pk=None):
+        room = self.get_object()
+        order = request.data.get('order') or []
+        if not isinstance(order, list):
+            return Response({'detail': 'order must be a list of media ids.'}, status=400)
+        id_to_media = {m.id: m for m in room.media.filter(id__in=order)}
+        for index, media_id in enumerate(order):
+            media = id_to_media.get(int(media_id))
+            if media:
+                media.sort_order = index * 10
+                media.save(update_fields=['sort_order'])
+        qs = room.media.all()
+        return Response(UnitMediaSerializer(qs, many=True, context={'request': request}).data)
+
+
+class AmenityViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewSet):
+    queryset = Amenity.objects.all().order_by('sort_order', 'name')
+    serializer_class = AmenitySerializer
+    permission_classes = [IsGuestHouseApp, IsAdminOrManagerOrReadOnly, IsTenantOwner]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['is_active']
+    search_fields = ['name', 'code']
+
+    def get_queryset(self):
+        tenant = self.request.user.tenant
+        if tenant:
+            ensure_tenant_gh_amenities(tenant)
+        qs = super().get_queryset()
+        if self.request.query_params.get('include_inactive') != '1':
+            qs = qs.filter(is_active=True)
+        return qs
 
 
 class GuestHouseServiceViewSet(TenantQuerysetMixin, TenantAssignMixin, viewsets.ModelViewSet):
